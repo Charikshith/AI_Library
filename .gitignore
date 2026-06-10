@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.pyc
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+
+# Local reference material (not part of the published site)
+The-Complete-Guide-to-Building-Skill-for-Claude.pdf
