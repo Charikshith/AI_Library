@@ -225,6 +225,10 @@ GLUE = (".topbar-actions .tnav{font-family:'Inter',sans-serif;font-weight:600;fo
         ".chapter-nav span{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;"
         "text-transform:uppercase;color:var(--text-muted)}"
         ".chapter-nav strong{font-family:'Inter',sans-serif;font-weight:600;font-size:15px;color:var(--text)}"
+        ".repo-badge{display:inline-flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;"
+        "font-size:10px;font-weight:600;letter-spacing:.04em;color:var(--text);background:var(--bg-muted);"
+        "border:1px solid var(--border);border-radius:999px;padding:3px 9px;line-height:1}"
+        ".repo-badge svg{flex:none}"
         # --- entrance + scroll-reveal animations (respect reduced-motion; safe without JS) ---
         "@media(prefers-reduced-motion:no-preference){"
         "@keyframes ail-rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}"
@@ -300,15 +304,31 @@ def shell_page(title, desc, root, active, hero, main_html, extra_head=""):
 # --------------------------------------------------------------------------- #
 # Cards
 # --------------------------------------------------------------------------- #
+# GitHub octocat mark, shown as a badge on cards that link to a github.com repo.
+GH_SVG = ('<svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="'
+          'M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49'
+          '-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58'
+          ' 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31'
+          '-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09'
+          ' 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87'
+          ' 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 '
+          '0016 8c0-4.42-3.58-8-8-8z"/></svg>')
+
+
+def head_marker(url):
+    """Top-right card marker: a GitHub badge for repo links, else a directional arrow."""
+    if "github.com" in url:
+        return f'<span class="repo-badge">{GH_SVG} GitHub</span>'
+    return '<span class="chapter-icon">&#8599;</span>' if url.startswith("http") else '<span class="chapter-icon">&rarr;</span>'
+
+
 def tool_card(t):
     tags = "  ".join("#" + x for x in t["tags"])
-    ext = t["url"].startswith("http")
-    tgt = ' target="_blank" rel="noopener"' if ext else ''
-    arrow = "&#8599;" if ext else "&rarr;"
+    tgt = ' target="_blank" rel="noopener"' if t["url"].startswith("http") else ''
     return ("".join([
         f'<a class="chapter-card" href="{h(t["url"])}"{tgt}>',
         f'<div class="chapter-card-head"><span class="chapter-num">{h(t["added"])}</span>'
-        f'<span class="chapter-icon">{arrow}</span></div>',
+        f'{head_marker(t["url"])}</div>',
         f'<h3 class="chapter-title">{h(t["name"])}</h3>',
         f'<p class="chapter-desc">{h(t["description"])}</p>',
         f'<div class="chapter-card-foot">{h(tags)}</div></a>',
@@ -329,14 +349,12 @@ def subject_card(s):
 
 def project_card(p):
     tags = "  ".join("#" + x for x in p["tags"])
-    if p["writeup"]:
-        href, tgt, arrow = f'projects/{h(p["slug"])}/{h(p["writeup"])}', "", "&rarr;"
-    else:
-        href, tgt, arrow = h(p["repo"]), ' target="_blank" rel="noopener"', "&#8599;"
+    raw = f'projects/{p["slug"]}/{p["writeup"]}' if p["writeup"] else p["repo"]
+    tgt = ' target="_blank" rel="noopener"' if raw.startswith("http") else ''
     return ("".join([
-        f'<a class="chapter-card" href="{href}"{tgt}>',
+        f'<a class="chapter-card" href="{h(raw)}"{tgt}>',
         f'<div class="chapter-card-head"><span class="chapter-num">{h(p["added"])}</span>'
-        f'<span class="chapter-icon">{arrow}</span></div>',
+        f'{head_marker(raw)}</div>',
         f'<h3 class="chapter-title">{h(p["title"])}</h3>',
         f'<p class="chapter-desc">{h(p["description"])}</p>',
         f'<div class="chapter-card-foot">{h(tags)}</div></a>',
