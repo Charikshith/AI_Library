@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build Your Own Claude — Learning Journal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link id="hl-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<link id="hl-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" disabled>
+<style>
+:root,:root[data-theme="dark"]{
+  --bg:#0b0f15; --bg-soft:#0e131b; --panel:#131a23; --panel-2:#0e141c;
+  --border:#222c38; --border-soft:#1a222d;
+  --fg:#e8eef4; --fg-soft:#b3bfca; --muted:#7c8a98;
+  --clay:#d97757; --clay-bright:#ec8e6f; --teal:#5ec8b6; --green:#57c98a; --amber:#e0a64a; --red:#ef9a8a;
+  --node-bg:#161d27; --th-bg:#10161e; --code-bg:#1a222d; --code-fg:#f0c8b6; --pre-fg:#cdd6e0;
+  --diagram-bg:radial-gradient(120% 120% at 50% 0%,#10171f,#0b1016);
+  --banner-bg:radial-gradient(820px 380px at 12% -25%,rgba(217,119,87,.22),transparent 60%),radial-gradient(700px 480px at 96% 8%,rgba(94,200,182,.13),transparent 55%),linear-gradient(180deg,#0d131b,#0a0e14);
+  --title-grad:linear-gradient(120deg,#fff 20%,#f3d9cd 60%,var(--clay-bright));
+  --dot-grid:rgba(255,255,255,.05); --hover:rgba(255,255,255,.018); --chip-bg:rgba(255,255,255,.02);
+  --grain:.022;
+}
+:root[data-theme="light"]{
+  --bg:#faf8f5; --bg-soft:#f2ede7; --panel:#fffdfb; --panel-2:#f5f0ea;
+  --border:#e4ddd3; --border-soft:#ece6dd;
+  --fg:#2a2520; --fg-soft:#574f47; --muted:#8a8074;
+  --clay:#c0532f; --clay-bright:#a8472a; --teal:#15897a; --green:#2c9760; --amber:#9c7416; --red:#bf432b;
+  --node-bg:#fffdfb; --th-bg:#f3ede5; --code-bg:#f3ece3; --code-fg:#a8472a; --pre-fg:#2f2a25;
+  --diagram-bg:radial-gradient(120% 120% at 50% 0%,#fffdfb,#f3ece4);
+  --banner-bg:radial-gradient(820px 380px at 12% -25%,rgba(192,83,47,.16),transparent 60%),radial-gradient(700px 480px at 96% 8%,rgba(21,137,122,.14),transparent 55%),linear-gradient(180deg,#fbf6f0,#f3ebe1);
+  --title-grad:linear-gradient(120deg,#3a2a22 10%,#9e4a2c 55%,var(--clay));
+  --dot-grid:rgba(0,0,0,.06); --hover:rgba(0,0,0,.022); --chip-bg:rgba(0,0,0,.02);
+  --grain:.03;
+}
+*{ box-sizing:border-box; }
+html{ scroll-behavior:smooth; scroll-padding-top:24px; }
+body{ margin:0; background:var(--bg); color:var(--fg); font-family:var(--body);
+  line-height:1.7; font-size:16.5px; -webkit-font-smoothing:antialiased;
+  --display:"Bricolage Grotesque",Georgia,serif;
+  --body:"Hanken Grotesk",-apple-system,BlinkMacSystemFont,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+body{ font-family:var(--body); }
+body::before{ content:""; position:fixed; inset:0; z-index:9999; pointer-events:none; opacity:var(--grain);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+::selection{ background:rgba(217,119,87,.3); }
+::-webkit-scrollbar{ width:11px; height:11px; }
+::-webkit-scrollbar-thumb{ background:var(--border); border-radius:7px; border:2px solid var(--bg); }
+::-webkit-scrollbar-track{ background:var(--bg); }
+
+#progress{ position:fixed; top:0; left:0; height:3px; width:0; z-index:10000;
+  background:linear-gradient(90deg,var(--clay),var(--amber),var(--teal)); transition:width .08s linear; }
+
+#theme-toggle{ position:fixed; top:15px; right:18px; z-index:10001; width:40px; height:40px; border-radius:50%;
+  border:1px solid var(--border); background:var(--panel); color:var(--fg); font-size:17px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; transition:.2s; box-shadow:0 8px 22px -12px rgba(0,0,0,.5); }
+#theme-toggle:hover{ border-color:var(--clay); color:var(--clay-bright); transform:translateY(-1px); }
+
+.banner{ position:relative; overflow:hidden; padding:74px 28px 60px; border-bottom:1px solid var(--border);
+  background:var(--banner-bg); }
+.banner::after{ content:""; position:absolute; inset:0; pointer-events:none; opacity:.5;
+  background-image:radial-gradient(var(--dot-grid) 1px, transparent 1px); background-size:24px 24px;
+  -webkit-mask:linear-gradient(180deg,#000,transparent 78%); mask:linear-gradient(180deg,#000,transparent 78%); }
+.banner-inner{ position:relative; max-width:1180px; margin:0 auto; }
+.eyebrow{ font-family:var(--mono); font-size:12px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--clay-bright); display:flex; align-items:center; gap:9px; }
+.eyebrow .dot{ width:7px; height:7px; border-radius:50%; background:var(--clay);
+  box-shadow:0 0 0 4px rgba(217,119,87,.18); animation:pulse 2.6s ease-in-out infinite; }
+@keyframes pulse{ 50%{ box-shadow:0 0 0 8px rgba(217,119,87,0); } }
+.banner h1{ font-family:var(--display); font-weight:700; font-size:clamp(40px,7vw,76px); line-height:.98;
+  margin:.34em 0 .12em; letter-spacing:-.02em;
+  background:var(--title-grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.banner .tagline{ font-size:clamp(16px,2.4vw,20px); color:var(--fg-soft); max-width:60ch; margin:0 0 26px; }
+.meta{ display:flex; flex-wrap:wrap; gap:9px; }
+.meta span{ font-family:var(--mono); font-size:12px; color:var(--fg-soft); padding:5px 12px;
+  border:1px solid var(--border); border-radius:999px; background:var(--chip-bg); }
+.meta span::before{ content:"\25B9 "; color:var(--teal); }
+
+.wrap{ display:flex; gap:46px; max-width:1180px; margin:0 auto; padding:44px 28px 90px; align-items:flex-start; }
+nav#toc{ position:sticky; top:24px; flex:0 0 246px; font-size:13.5px; max-height:calc(100vh - 48px); overflow:auto; }
+nav#toc .toc-head{ font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--muted); margin-bottom:12px; padding-left:13px; }
+nav#toc ul{ list-style:none; margin:0; padding:0; }
+nav#toc .toc-h2{ display:flex; align-items:center; gap:8px; width:100%; text-align:left; cursor:pointer;
+  background:none; border:none; border-left:2px solid var(--border-soft); color:var(--fg-soft);
+  font-family:var(--body); font-size:13.5px; line-height:1.35; padding:6px 6px 6px 11px; transition:.18s; }
+nav#toc .toc-h2:hover{ color:var(--fg); border-left-color:var(--clay); }
+nav#toc .toc-h2.active,nav#toc .toc-h2.current{ color:var(--clay-bright); border-left-color:var(--clay); background:var(--chip-bg); }
+nav#toc .toc-h2 .caret{ flex:0 0 9px; font-size:9px; color:var(--muted); transition:transform .2s; }
+nav#toc .toc-group.open .toc-h2 .caret{ transform:rotate(90deg); }
+nav#toc .toc-group.no-subs .caret{ visibility:hidden; }
+nav#toc .toc-h2 .lbl{ flex:1; }
+nav#toc .toc-subs{ overflow:hidden; max-height:0; transition:max-height .3s ease; }
+nav#toc .toc-group.open .toc-subs{ max-height:1200px; }
+nav#toc .toc-subs a{ display:block; text-decoration:none; color:var(--muted); font-size:12.5px; line-height:1.3;
+  padding:4px 0 4px 28px; border-left:2px solid var(--border-soft); transition:.15s; }
+nav#toc .toc-subs a:hover{ color:var(--fg-soft); border-left-color:var(--clay); }
+nav#toc .toc-subs a.active{ color:var(--clay-bright); border-left-color:var(--clay); }
+main{ flex:1 1 auto; min-width:0; max-width:850px; }
+
+main h1,main h2,main h3,main h4{ font-family:var(--display); font-weight:600; line-height:1.22;
+  margin:1.9em 0 .55em; letter-spacing:-.01em; color:var(--fg); }
+main h2{ font-size:30px; padding-bottom:.34em; border-bottom:1px solid var(--border);
+  display:flex; align-items:baseline; gap:.5ch; }
+main h2::before{ content:"\00A7"; color:var(--clay); font-size:.7em; font-weight:700; }
+main h3{ font-size:21px; }
+main h4{ font-size:17px; color:var(--fg); font-family:var(--body); font-weight:700; }
+main h2:first-child,main h3:first-child{ margin-top:0; }
+main p,main li{ color:var(--fg-soft); }
+main strong{ color:var(--fg); font-weight:700; }
+a{ color:var(--clay-bright); text-decoration:none; border-bottom:1px solid rgba(192,83,47,.3); }
+a:hover{ border-bottom-color:var(--clay-bright); }
+hr{ border:none; height:1px; background:linear-gradient(90deg,transparent,var(--border),transparent); margin:3em 0; }
+
+code{ font-family:var(--mono); font-size:.84em; background:var(--code-bg); color:var(--code-fg);
+  padding:.16em .42em; border-radius:6px; border:1px solid var(--border-soft); }
+pre{ background:var(--panel-2); border:1px solid var(--border); border-radius:12px; padding:18px 20px;
+  overflow:auto; margin:1.4em 0; box-shadow:0 18px 40px -30px rgba(0,0,0,.4); }
+pre code{ background:none; border:none; padding:0; color:var(--pre-fg); font-size:13.5px; line-height:1.62; }
+pre code.hljs{ background:none; }
+main img{ max-width:100%; height:auto; display:block; margin:1.2em auto; border-radius:12px;
+  border:1px solid var(--border); box-shadow:0 22px 48px -30px rgba(0,0,0,.6); }
+
+blockquote{ margin:1.5em 0; padding:16px 20px; border:1px solid var(--border); border-left:3px solid var(--clay);
+  border-radius:0 12px 12px 0; background:linear-gradient(90deg,rgba(217,119,87,.07),rgba(217,119,87,0) 60%); }
+blockquote p{ margin:.35em 0; color:var(--fg-soft); }
+blockquote p:first-child{ margin-top:0; } blockquote p:last-child{ margin-bottom:0; }
+
+table{ border-collapse:collapse; width:100%; margin:1.5em 0; font-size:14.5px;
+  border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+th,td{ border-bottom:1px solid var(--border-soft); padding:10px 14px; text-align:left; }
+th{ background:var(--th-bg); font-family:var(--mono); font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:var(--fg); }
+tr:last-child td{ border-bottom:none; }
+tbody tr:hover{ background:var(--hover); }
+
+main ul,main ol{ padding-left:1.4em; }
+main li{ margin:.3em 0; }
+li.task-list-item{ list-style:none; margin-left:-1.1em; }
+li.task-list-item input{ appearance:none; -webkit-appearance:none; width:15px; height:15px; border:1.5px solid var(--border);
+  border-radius:4px; vertical-align:-2px; margin-right:8px; position:relative; background:var(--panel-2); }
+li.task-list-item input:checked{ background:var(--green); border-color:var(--green); }
+li.task-list-item input:checked::after{ content:"\2713"; position:absolute; inset:0; color:#06140c; font-size:11px;
+  display:flex; align-items:center; justify-content:center; font-weight:800; }
+
+/* ---------- bespoke HTML diagrams ---------- */
+.hdiagram{ background:var(--diagram-bg); border:1px solid var(--border);
+  border-radius:16px; padding:34px 28px; margin:1.9em 0; overflow-x:auto;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03), 0 24px 50px -34px rgba(0,0,0,.5); }
+.hdiagram::before{ content:"diagram"; display:block; font-family:var(--mono); font-size:10px; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:22px; }
+.hdiagram .node{ font-family:var(--mono); font-size:13px; color:var(--fg); background:var(--node-bg);
+  border:1px solid var(--border); border-radius:11px; padding:13px 17px; line-height:1.45; text-align:center;
+  display:inline-flex; flex-direction:column; gap:3px; }
+.hdiagram .node small{ font-family:var(--body); font-size:11.5px; color:var(--muted); }
+.hdiagram .node.accent{ border-color:var(--clay); color:var(--clay-bright);
+  background:linear-gradient(180deg,rgba(217,119,87,.16),rgba(217,119,87,.05)); }
+.hdiagram .node.accent small{ color:var(--clay-bright); }
+.hdiagram .node.ghost{ border-style:dashed; color:var(--fg-soft); background:transparent; }
+.hdiagram .node.decision{ border-color:var(--amber); border-radius:999px; color:var(--amber); font-weight:600;
+  background:linear-gradient(180deg,rgba(224,166,74,.14),rgba(224,166,74,.04)); }
+.hdiagram .node.stop{ border-color:var(--green); color:var(--green);
+  background:linear-gradient(180deg,rgba(87,201,138,.14),rgba(87,201,138,.04)); }
+.hdiagram .arrow{ font-family:var(--mono); color:var(--muted); font-size:18px; }
+.hdiagram .to{ font-family:var(--mono); color:var(--clay); font-size:18px; align-self:center; }
+.hdiagram .conn{ display:block; text-align:center; color:var(--muted); font-family:var(--mono); font-size:12px; margin:13px 0; }
+.hdiagram .chip{ font-family:var(--mono); font-size:12.5px; color:var(--teal); border:1px solid rgba(94,200,182,.4);
+  background:rgba(94,200,182,.07); border-radius:999px; padding:8px 15px; }
+.hdiagram.roadmap,.hdiagram.pipeline{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; justify-content:center; }
+.hdiagram.roadmap .step{ display:flex; flex-direction:column; align-items:center; gap:7px; min-width:108px;
+  padding:15px 13px; border:1px solid var(--border); border-radius:13px; background:var(--node-bg); }
+.hdiagram.roadmap .step .num{ font-family:var(--mono); width:31px; height:31px; display:flex; align-items:center;
+  justify-content:center; border-radius:50%; border:1px solid var(--border); font-size:13px; }
+.hdiagram.roadmap .step .lbl{ font-size:12.5px; color:var(--fg-soft); text-align:center; }
+.hdiagram.roadmap .step.done{ border-color:rgba(87,201,138,.45); }
+.hdiagram.roadmap .step.done .num{ background:var(--green); color:#06140c; border-color:var(--green); font-weight:800; }
+.hdiagram.roadmap .step.next{ border-color:var(--amber); box-shadow:0 0 0 3px rgba(224,166,74,.14); }
+.hdiagram.roadmap .step.next .num{ background:var(--amber); color:#1c1402; border-color:var(--amber); font-weight:800; }
+.hdiagram.roadmap .step.todo{ opacity:.55; }
+.hdiagram.flow,.hdiagram.loop{ display:flex; flex-direction:column; align-items:center; }
+.hdiagram.flow .row2{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; justify-content:center; }
+.hdiagram.flow .fan{ display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-top:4px; }
+.hdiagram.loop .branches{ display:flex; gap:26px; flex-wrap:wrap; justify-content:center; margin-top:14px; align-items:flex-start; }
+.hdiagram.loop .branch{ display:flex; flex-direction:column; align-items:center; gap:9px; max-width:320px; }
+.hdiagram .blabel{ font-family:var(--mono); font-size:11px; letter-spacing:.1em; padding:3px 11px; border-radius:999px; }
+.hdiagram .blabel.no{ color:var(--red); border:1px solid rgba(239,154,138,.4); }
+.hdiagram .blabel.yes{ color:var(--green); border:1px solid rgba(87,201,138,.4); }
+.hdiagram .loopback{ margin-top:18px; font-family:var(--mono); font-size:12px; color:var(--clay);
+  border:1px dashed rgba(217,119,87,.5); border-radius:999px; padding:8px 17px; }
+
+footer{ max-width:1180px; margin:0 auto; padding:30px 28px 70px; color:var(--muted); font-size:13px;
+  font-family:var(--mono); border-top:1px solid var(--border-soft); }
+footer code{ font-size:12px; }
+
+@keyframes fadeUp{ from{ opacity:0; transform:translateY(16px);} to{ opacity:1; transform:none;} }
+.banner-inner>*{ opacity:0; animation:fadeUp .75s cubic-bezier(.2,.7,.2,1) forwards; }
+.eyebrow{ animation-delay:.02s; } .banner h1{ animation-delay:.10s; }
+.banner .tagline{ animation-delay:.20s; } .meta{ animation-delay:.30s; }
+main,nav#toc{ animation:fadeUp .8s ease .26s both; }
+@media (prefers-reduced-motion:reduce){ *{ animation:none!important; transition:none!important; } html{ scroll-behavior:auto; } }
+@media (max-width:1000px){ nav#toc{ display:none; } .wrap{ padding:30px 20px 70px; } .banner{ padding:54px 20px 44px; } }
+</style>
+<script>
+  (function () {
+    var t = localStorage.getItem('theme') ||
+      ((window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark');
+    document.documentElement.setAttribute('data-theme', t);
+    var l = document.getElementById('hl-light'), d = document.getElementById('hl-dark');
+    if (l) l.disabled = (t !== 'light');
+    if (d) d.disabled = (t === 'light');
+  })();
+</script>
+</head>
+<body><a href="../../projects.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;z-index:99999;font-family:system-ui,sans-serif;font-size:12px;font-weight:600;background:rgba(15,15,18,.85);color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.4)">&#8592; AI Library</a><a href="https://github.com/Charikshith/AI_Projects/tree/main/11-Tony" target="_blank" rel="noopener" data-ailib-gh style="position:fixed;right:16px;bottom:16px;z-index:99999;font-family:system-ui,sans-serif;font-size:12px;font-weight:700;background:#d97757;color:#fff;padding:9px 15px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.4)">View code on GitHub &#8599;</a>
+<div id="progress"></div>
+<button id="theme-toggle" type="button" aria-label="Toggle light / dark theme">&#9728;</button>
+
+<header class="banner">
+  <div class="banner-inner">
+    <div class="eyebrow"><span class="dot"></span>build-your-own coding agent</div>
+    <h1>Build Your Own Claude</h1>
+    <p class="tagline">From a plain chat call to a tool-using agent loop — typed by hand, one stage at a time.</p>
+    <div class="meta"><span>OpenAI-compatible API</span><span>streaming</span><span>tool-calling</span><span>agent loop</span></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav id="toc"><div class="toc-head">Contents</div></nav>
+  <main id="content">Loading…</main>
+</div>
+
+<script type="text/markdown" id="md">
+## 🏠 Start Here — TONY
+
+**TONY** is a small, hackable coding agent that runs in your terminal — a from-scratch cousin of Claude Code. It chats, reads and searches your files, edits them (with confirmation), and runs shell commands, all from one prompt.
+
+![TONY — the agent's REPL, themed Iron-Man gold & red](assets/tony-repl.png)
+
+### What it can do
+- **Explore** a codebase — `read_file`, `read_directory`, `glob`, `grep`
+- **Edit** files — `write_file` (shows a diff and asks before overwriting)
+- **Run commands** — `bash` (asks before anything risky or unrecognized)
+- **Hold a conversation** — a REPL that remembers the whole session, with streaming replies
+
+### Run it in 3 steps
+```powershell
+# 1) install (with uv)
+uv sync
+
+# 2) create a .env with your endpoint
+#    OPENAI_API_KEY=your-key
+#    OPENAI_BASE_URL=https://api.openai.com/v1   (or a local / 3rd-party endpoint)
+#    OPENAI_MODEL=gpt-4o                          (or kimi-k2.5, a local model, ...)
+
+# 3) launch
+tony                                   # interactive REPL (the banner above)
+tony --prompt "explain config.py"      # one-shot, then exit
+```
+No `uv`? `pip install openai python-dotenv rich pyfiglet`, then `python main.py`. Quit the REPL with `/exit`, `/quit`, or `Ctrl+C`.
+
+### The code — six small modules
+| File | Job |
+|---|---|
+| `config.py` | load settings from `.env` |
+| `llm_client.py` | stream responses from the LLM |
+| `tools.py` | the six tools + their schemas |
+| `agent.py` | the agent loop (`agent_turn`) |
+| `banner.py` | the TONY startup banner |
+| `main.py` | CLI + REPL wiring |
+
+### Want to see how it was built?
+Everything below is the **build log** — eight stages from a single chat call to this CLI. Skim the roadmap in **Overview** just below, then read the stages in order. New to the code itself? Follow `config.py` → `llm_client.py` → `tools.py` → `agent.py` → `main.py`.
+
+---
+
+> **Status:** 🏁 **8 stages — a modular, polished CLI agent.** 6 tools (`read_file`, `read_directory`, `glob`, `grep`, `write_file`, `bash`), a multi-turn REPL with conversation memory, streaming, confirm-before-write/run safety, and a `rich` + `pyfiglet` startup banner. Code is split into focused modules.
+> **Stack:** OpenAI-compatible endpoint from `.env`. Currently `kimi-k2.5` @ `https://llm.kimchi.dev/openai/v1`; also works against a local server (e.g. llama.cpp). Deps: `openai`, `rich`, `pyfiglet`.
+> **Files:** `config.py` · `llm_client.py` · `tools.py` · `agent.py` · `banner.py` · `main.py`
+
+## Overview
+
+**The build, stage by stage** — each rung adds one capability (all complete ✅):
+
+<div class="hdiagram roadmap">
+<div class="step done"><span class="num">1</span><span class="lbl">Chat</span></div>
+<div class="arrow">&rarr;</div>
+<div class="step done"><span class="num">2</span><span class="lbl">Advertise tool</span></div>
+<div class="arrow">&rarr;</div>
+<div class="step done"><span class="num">3</span><span class="lbl">Execute + loop</span></div>
+<div class="arrow">&rarr;</div>
+<div class="step done"><span class="num">4</span><span class="lbl">Multi-tool explore</span></div>
+<div class="arrow">&rarr;</div>
+<div class="step done"><span class="num">5</span><span class="lbl">write_file + safety</span></div>
+<div class="arrow">&rarr;</div>
+<div class="step done"><span class="num">6</span><span class="lbl">bash</span></div>
+<div class="arrow">&rarr;</div>
+<div class="step done"><span class="num">7</span><span class="lbl">Interactive REPL</span></div>
+<div class="arrow">&rarr;</div>
+<div class="step done"><span class="num">8</span><span class="lbl">Modularize + CLI</span></div>
+</div>
+
+**How the pieces fit** — one prompt flows through `main.py`'s loop, out to the LLM, and back through the tool table:
+
+<div class="hdiagram flow">
+<div class="node accent">User prompt</div>
+<div class="conn">&#9660;</div>
+<div class="row2"><div class="node ghost">config.py<small>.env &rarr; Config</small></div><span class="to">&rarr;</span><div class="node">main.py<small>agent loop</small></div></div>
+<div class="conn">&#9660; messages + tools&nbsp;&nbsp;&middot;&nbsp;&nbsp;&#9650; stream of text / tool_calls</div>
+<div class="node">llm_client.py<small>chat_stream &#8644; OpenAI-compatible endpoint</small></div>
+<div class="conn">&#9660; tool name + args</div>
+<div class="node decision">TOOLS dispatch</div>
+<div class="fan"><div class="chip">read_file</div><div class="chip">read_directory</div><div class="chip">glob</div><div class="chip">grep</div></div>
+<div class="conn">&#9660; result &rarr; back into the loop &rarr; final answer</div>
+</div>
+
+### Fixed (2026-06-06)
+- [x] `main.py` — added the missing closing quote; `path` is now read safely via `.get("arguments", {}).get("path", "?")`, so a missing `path` no longer raises `KeyError`.
+- [x] `main.py` — typo fixed: now prints `"Tool execution disabled at Stage 2"`.
+- [x] `llm_client.py` — `json.loads(buf["args"])` wrapped in `try/except json.JSONDecodeError`, defaults to `{}` so an empty/partial args string can't crash the stream.
+- [x] `llm_client.py` — empty-`choices` guard changed to `if not chunk.choices:` (covers both `None` and `[]`).
+
+---
+
+## Running & Testing
+
+> No automated test suite yet (the `legacy/` version has one under `tests/`). At Stage 2, "testing" = running the two code paths manually and checking the output. All commands run from the `no_code/` directory.
+
+**Prerequisites**
+- Python 3.10+ with `openai` and `python-dotenv` installed (`pip install openai python-dotenv`).
+- A reachable OpenAI-compatible endpoint set in `.env` — `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`. Works with a local server (e.g. llama.cpp) **or** a remote one.
+
+**Step 0 — Syntax check** (no network, no cost):
+```powershell
+python -m py_compile main.py llm_client.py config.py   # no output = OK
+```
+
+**Step 1 — Config loads?** (no network, no cost, does not print the key):
+```powershell
+python -c "from config import Config; c=Config.from_env(); print('base_url=',c.base_url,'model=',c.model,'key_set=',bool(c.api_key))"
+```
+
+**Step 2 — Text path** (real API call):
+```powershell
+python main.py --prompt "Say hello in exactly three words."
+# Expect a short streamed reply, e.g.:  Hello to you.
+```
+
+**Step 3 — Tool-call path** (the Stage 2 feature; real API call):
+```powershell
+python main.py --prompt "Read the file config.py"
+# Expect:
+#    LLM wants to call: read_file (path='config.py')
+#    XXX Tool execution disabled at Stage 2
+```
+
+**Step 4 — Interactive mode:**
+```powershell
+python main.py        # then type at the "You:" prompt; Ctrl+C to quit
+```
+
+**Pass criteria**
+- Step 2 streams plain text.
+- Step 3 prints a `read_file` tool call with a **balanced quote** and the `disabled at Stage 2` line.
+- No traceback — in particular no `KeyError` (missing `path`) or `JSONDecodeError` (empty args).
+
+**Notes**
+- Steps 2–4 hit `OPENAI_BASE_URL` and consume quota/credits; Steps 0–1 don't.
+- Keep `.env` out of version control (add it to `.gitignore`; commit only an `.env.example`).
+
+_Last verified: 2026-06-06 against `kimi-k2.5` @ `https://llm.kimchi.dev/openai/v1` — both paths passed._
+
+---
+
+## Stage 1: Communicate with the LLM
+
+## Step 1: config.py
+
+### What we learned
+- `python-dotenv` loads `.env` file into `os.environ` so `os.getenv()` can read values
+- `@dataclass` auto-generates `__init__`, `__repr__`, `__eq__` — no boilerplate
+- `@classmethod` receives the class itself as first argument (`cls`) instead of `self`
+- Default parameter values in `os.getenv("KEY", "default")` provide fallbacks
+
+### .env format
+```
+OPENAI_API_KEY=dummy
+OPENAI_BASE_URL=http://127.0.0.1:8080/v1
+OPENAI_MODEL=unsloth/gemma-4-E4B-it-GGUF:Q8_0
+```
+
+### Code written
+```python
+# no_code/config.py
+import os
+from dataclasses import dataclass
+from dotenv import load_dotenv
+
+@dataclass
+class Config:
+    api_key: str
+    base_url: str
+    model: str
+
+    @classmethod
+    def from_env(cls):
+        load_dotenv()
+        return cls(
+            api_key=os.getenv("OPENAI_API_KEY", ""),
+            base_url=os.getenv("OPENAI_BASE_URL", ""),
+            model=os.getenv("OPENAI_MODEL", "nomodel"),
+        )
+```
+
+### Verification
+```
+python -c "from config import Config; c = Config.from_env(); print(c)"
+# Output: Config(api_key='dummy', base_url='http://127.0.0.1:8080/v1', model='unsloth/gemma-4-E4B-it-GGUF:Q8_0')
+```
+
+### Alex's notes
+- Comment typo: `os.EnvironmentError` should be `os.environ` (just cosmetic, no impact)
+- `load_dotenv()` without a path looks for `.env` in the current working directory — works because we run from project root
+- Good: defaults for all `os.getenv()` calls mean the code won't crash if `.env` is missing
+
+---
+
+## Step 2: llm_client.py
+
+### What we learned
+- `await` only works inside `async def` functions — not at the top level of a file
+- `AsyncOpenAI` is the async version of the OpenAI client (uses `await` instead of blocking)
+- `stream=True` makes the API return chunks one at a time instead of waiting for the full response
+- `async for` iterates over an async generator — yields each chunk as it arrives
+- `chunk.choices[0].delta.content` contains one text token per chunk
+- `yield` inside an `async def` makes it an **async generator** — callers use `async for`
+- `__init__` has **two** underscores on each side — `__init__` not `__init_`
+
+### Mistakes made & fixed
+1. Used `await` at top level → must be inside `async def`
+2. Wrong import: `from openpyxl.descriptors import base` (Excel library!) → removed
+3. Wrong URL: `https://127.0.0.8000/v1` → `http://127.0.0.1:8080/v1`
+4. Typo: `__init_` → `__init__` (single underscore instead of double)
+5. Typo: `chat_strem` → `chat_stream`
+
+### Code written
+
+> ℹ️ **Stage 1 version** (text-only streaming, no tools) — superseded in Stage 2. See *Stage 2 → Modified code* below for the current file on disk.
+
+```python
+# no_code/llm_client.py
+from openai import AsyncOpenAI
+
+class LLMClient:
+    def __init__(self, api_key, base_url, model):
+        self.model = model
+        self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+
+    async def chat_stream(self, messages):
+        stream = await self._client.chat.completions.create(
+            model=self.model, messages=messages, stream=True,
+        )
+        async for chunk in stream:
+            if chunk.choices and chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
+```
+
+### Key concepts
+- **Async generator:** A function with `async def` + `yield`. Callers iterate with `async for`.
+- **Streaming:** The API sends tokens as they're generated. `stream=True` enables this.
+- **`max_tokens`:** Optional limit on response length. We'll add this later.
+
+### Verification
+```
+# Test script (not saved):
+import asyncio
+from config import Config
+from llm_client import LLMClient
+
+async def main():
+    cfg = Config.from_env()
+    client = LLMClient(cfg.api_key, cfg.base_url, cfg.model)
+    async for token in client.chat_stream([{"role": "user", "content": "Say hello in 3 words."}]):
+        print(token, end="", flush=True)
+    print()
+
+asyncio.run(main())
+
+# Output: Hello there, friend.
+```
+
+---
+
+## Step 3: main.py — CLI Entry Point
+
+### What we learned
+- `argparse` creates CLI flags — `parser.add_argument("--prompt")` lets you run `python main.py --prompt "hello"`
+- `input("You: ")` gives interactive mode when `--prompt` isn't provided
+- `if __name__ == "__main__":` prevents the script from running when imported as a module
+- `print(token, end="", flush=True)` prints without newlines and flushes immediately for streaming
+
+### Mistakes made & fixed
+1. `argparse` imported twice → removed duplicate
+2. `from rich import prompt` → unused import, removed
+3. Missing `if __name__ == "__main__":` guard → added
+
+### Code written
+
+> ℹ️ **Stage 1 version** (no tools, prints raw tokens) — superseded in Stage 2. See *Stage 2 → Modified code* below for the current file on disk.
+
+```python
+# no_code/main.py
+import argparse
+import asyncio
+from config import Config
+from llm_client import LLMClient
+
+async def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--prompt", type=str, default=None)
+    args = parser.parse_args()
+
+    cfg = Config.from_env()
+    client = LLMClient(cfg.api_key, cfg.base_url, cfg.model)
+
+    prompt = args.prompt or input("You: ")
+    async for token in client.chat_stream([{"role": "user", "content": prompt}]):
+        print(token, end="", flush=True)
+    print()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### Verification
+```
+python main.py --prompt "Say hello"   → Hello!
+python main.py --prompt "What is 2+2? Answer in one word."  → Four
+```
+
+---
+
+## Stage 1 Complete! 🎉
+
+### What we built
+A working CLI that streams responses from your local LLM:
+- `config.py` — loads settings from `.env`
+- `llm_client.py` — async streaming client for OpenAI-compatible APIs
+- `main.py` — CLI with `--prompt` flag
+
+### Run it
+```
+cd no_code
+python main.py --prompt "your question here"
+python main.py                     # interactive mode
+```
+
+---
+
+## Stage 2: Advertise the Read Tool
+
+### Goal
+Tell the LLM it has a `read_file` tool. When the LLM requests to use it, detect and display the request — but DO NOT execute anything.
+
+### How OpenAI function calling works
+- You send `tools` alongside `messages` in the API call
+- The LLM may respond with `tool_calls` instead of `content`
+- Each tool call has: `id` (unique call ID), `name` (tool name), `arguments` (JSON string)
+- In streaming mode, tool calls arrive in fragments across multiple chunks
+- You must accumulate fragments, then parse the complete JSON at the end
+
+### Tool definition (sent to the LLM)
+```python
+tools = [{
+    "type": "function",
+    "function": {
+        "name": "read_file",
+        "description": "Read a file from the local filesystem.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Path to the file."
+                }
+            },
+            "required": ["path"]
+        }
+    }
+}]
+```
+
+### What changes
+
+**llm_client.py:**
+- `chat_stream()` needs a `tools` parameter (optional, defaults to `None`)
+- When `tools` is provided, pass it to `chat.completions.create(tools=tools)`
+- Accumulate tool call fragments from chunks:
+  - `chunk.choices[0].delta.tool_calls[0].function.name` — tool name (may come once)
+  - `chunk.choices[0].delta.tool_calls[0].function.arguments` — JSON fragments (multiple chunks!)
+  - `chunk.choices[0].delta.tool_calls[0].id` — unique call ID
+- After all chunks, parse the accumulated arguments JSON
+- Yield `("tool_call", {"id": ..., "name": ..., "arguments": {...}})` for each complete tool call
+- Yield `("text", token)` for regular text, `("done", None)` at the end
+
+**main.py:**
+- Define the `read_file` tool definition
+- Pass it to `client.chat_stream(messages, tools=tools)`
+- Handle the new event types from the stream:
+  - `("text", token)` → print the token (same as Stage 1)
+  - `("tool_call", data)` → print what the LLM wants to call, but don't execute
+  - `("done", None)` → stream finished
+
+### Streaming flow with tools
+```
+Chunk 1:  delta.content = None,  delta.tool_calls = [{index:0, function: {name:"read_file", arguments:"{"}}]
+Chunk 2:  delta.content = None,  delta.tool_calls = [{index:0, function: {arguments:'"path"'}}]
+Chunk 3:  delta.content = None,  delta.tool_calls = [{index:0, function: {arguments:'":"'}}]
+Chunk 4:  delta.content = None,  delta.tool_calls = [{index:0, function: {arguments:'py'}}]
+... 
+Chunk N:  delta.content = None,  delta.tool_calls = [{index:0, function: {arguments:'"}'}}]
+→ Accumulate: '{"path":"pyproject.toml"}'
+→ Parse JSON: {"path": "pyproject.toml"}
+→ Yield: ("tool_call", {"id": "call_xyz", "name": "read_file", "arguments": {"path": "pyproject.toml"}})
+```
+
+### Key thing to watch for
+Your Gemma model produces `reasoning_content` chunks before the actual tool call — these have `delta.content = None` and no tool calls. Just skip them.
+
+### Successful test looks like
+```
+$ python main.py --prompt "Read pyproject.toml"
+LLM wants to call: read_file (path='pyproject.toml')
+XXX Tool execution disabled at Stage 2
+```
+
+### Actual test result ✅
+```
+$ python main.py --prompt "Read the file pyproject.toml"
+LLM wants to call: read_file (path= 'pyproject.toml)
+XXX Tool execution disable at stage2
+```
+→ Works! LLM correctly detected the tool and requested the file path.
+
+> ℹ️ The output above is the **original Stage 2 run** — note the missing quote (`'pyproject.toml)`) and the `disable at stage2` typo. Both were fixed on 2026-06-06 (see *Fixed* at the top). Current output reads `(path='pyproject.toml')` and `Tool execution disabled at Stage 2`.
+
+### Modified code
+
+**llm_client.py changes:**
+- Added `tools=None` parameter to `chat_stream()`
+- Accumulates tool call fragments using `delta.tool_calls[index]` pattern
+- Parses accumulated JSON with `json.loads()`
+- Yields `("tool_call", {...})` events alongside `("text", ...)` and `("done", ...)`
+
+**main.py changes:**
+- Added `tools` list with `read_file` function definition
+- Passed `tools=tools` to `chat_stream()`
+- Handles three event types: `text`, `tool_call`, `done`
+- Prints tool call requests but does NOT execute them
+
+#### Current `llm_client.py` (matches disk; whitespace tidied)
+```python
+# no_code/llm_client.py
+from openai import AsyncOpenAI
+import json
+from collections.abc import AsyncIterator
+from typing import Any
+
+class LLMClient:
+    def __init__(self, api_key, base_url, model):
+        self.model = model
+        self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+
+    async def chat_stream(self, messages, tools=None) -> AsyncIterator[tuple[str, Any]]:
+        kwargs = {"model": self.model, "messages": messages, "stream": True}
+        if tools:
+            kwargs["tools"] = tools
+
+        stream = await self._client.chat.completions.create(**kwargs)
+
+        tools_buffers = {}  # index -> {id, name, args}
+
+        async for chunk in stream:
+            if not chunk.choices:  # covers both None and an empty list
+                continue
+            delta = chunk.choices[0].delta
+
+            if delta.content:
+                yield ("text", delta.content)
+
+            if delta.tool_calls:
+                for tc in delta.tool_calls:
+                    idx = tc.index
+                    if idx not in tools_buffers:
+                        tools_buffers[idx] = {"id": "", "name": "", "args": ""}
+                    if tc.id:
+                        tools_buffers[idx]["id"] = tc.id
+                    if tc.function and tc.function.name:
+                        tools_buffers[idx]["name"] += tc.function.name
+                    if tc.function and tc.function.arguments:
+                        tools_buffers[idx]["args"] += tc.function.arguments
+
+        # After stream ends, emit completed tool calls
+        for buf in tools_buffers.values():
+            try:
+                args = json.loads(buf["args"])
+            except json.JSONDecodeError:
+                args = {}  # empty/partial args string — don't crash the stream
+            yield ("tool_call", {"id": buf["id"], "name": buf["name"], "arguments": args})
+
+        yield ("done", None)
+```
+
+#### `main.py` at end of Stage 2 (superseded in Stage 3 — see the Stage 3 section below for the current file)
+```python
+# no_code/main.py
+import argparse
+import asyncio
+from config import Config
+from llm_client import LLMClient
+
+
+tools = [{
+    "type": "function",
+    "function": {
+        "name": "read_file",
+        "description": "Read a file from the local filesystem.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Path to the file."}
+            },
+            "required": ["path"]
+        }
+    }
+}]
+
+
+async def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--prompt", type=str, default=None)
+    args = parser.parse_args()
+
+    cfg = Config.from_env()
+    client = LLMClient(cfg.api_key, cfg.base_url, cfg.model)
+
+    prompt = args.prompt or input("You: ")
+    messages = [{"role": "user", "content": prompt}]
+    async for event_type, data in client.chat_stream(messages=messages, tools=tools):
+        if event_type == "text":
+            print(data, end="", flush=True)
+        elif event_type == "tool_call":
+            path = data.get("arguments", {}).get("path", "?")
+            print(f"\n LLM wants to call: {data['name']} (path='{path}')")
+            print("XXX Tool execution disabled at Stage 2")
+        elif event_type == "done":
+            pass
+
+    print()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### What we learned
+- OpenAI's tool calling uses the same streaming API as chat — same `chat.completions.create()` call
+- Tool call arguments arrive as JSON **fragments** across multiple chunks — must accumulate
+- The `index` field on tool call chunks lets you track which tool call a chunk belongs to (for parallel calls)
+- `json.loads()` parses the accumulated string into a Python dict
+
+---
+
+## Stage 3: Execute the Tool & Loop
+
+### Goal
+Stop just *detecting* the `read_file` call — actually **run it**, feed the result back to the model, and call the model again so it can answer using the file contents. This request → execute → feed back → answer cycle is the **agent loop**.
+
+### The agent loop (per user turn)
+
+<div class="hdiagram loop">
+<div class="node">Build messages<small>system + user</small></div>
+<div class="conn">&#9660;</div>
+<div class="node accent">Stream reply<small>collect text + tool_calls</small></div>
+<div class="conn">&#9660;</div>
+<div class="node decision">Any tool_calls?</div>
+<div class="branches"><div class="branch"><span class="blabel no">NO</span><div class="node stop">Save answer &rarr; STOP</div></div><div class="branch"><span class="blabel yes">YES</span><div class="node">For each call<small>1&nbsp;&middot; append request&nbsp;&nbsp; 2&nbsp;&middot; run tool&nbsp;&nbsp; 3&nbsp;&middot; append result</small></div></div></div>
+<div class="loopback">&#8634; loop back &mdash; results now in context</div>
+</div>
+
+```
+build messages (system + user)
+repeat (capped at 5):
+    stream a reply, collecting text + tool_calls
+    if no tool_calls -> save the answer, STOP
+    else for each tool_call:
+        append the assistant's request to messages
+        run the tool
+        append the tool result to messages
+    (loop back -> model is re-called with the results in context)
+```
+
+### The message protocol (the part that bites everyone)
+After the model asks for a tool, **two** messages get appended before re-calling:
+
+1. **Assistant request** — echo back what it asked for. Gotcha: `arguments` must be a JSON **string**, so `json.dumps()` the dict our client parsed:
+   ```python
+   {"role": "assistant", "content": None,
+    "tool_calls": [{"id": tc["id"], "type": "function",
+                    "function": {"name": tc["name"], "arguments": json.dumps(tc["arguments"])}}]}
+   ```
+2. **Tool result** — one per call, linked by `tool_call_id`:
+   ```python
+   {"role": "tool", "tool_call_id": tc["id"], "content": result}
+   ```
+If the IDs don't match or message (1) is missing, the API rejects the next call with *"messages with role 'tool' must be a response to a preceding message with tool_calls."*
+
+### Mistakes made & fixed
+1. Left the Stage 2 code in the `tool_call` branch (printed "disabled") instead of `tool_calls.append(data)` → `tool_calls` stayed empty, so the tool never ran.
+2. Missing the `if not tool_calls: break` + the feedback block → the loop re-sent the *same* messages and printed "disabled" 5× (one API call per spin).
+3. `from email import message` — an editor auto-import when typing `message`; it's the unrelated stdlib `email` module. Removed.
+4. `message.append([ {...} ])` → wrong variable (`message` vs `messages`) **and** the dict was wrapped in a list. Fixed to `messages.append({...})`.
+
+### Code written
+```python
+# no_code/main.py  (Stage 3 — matches disk; whitespace tidied)
+import argparse
+import asyncio
+import json
+
+from config import Config
+from llm_client import LLMClient
+
+tools = [{
+    "type": "function",
+    "function": {
+        "name": "read_file",
+        "description": "Read a file from the local filesystem.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Path to the file."}
+            },
+            "required": ["path"],
+        },
+    },
+}]
+
+
+def read_file(path):
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            return f.read()
+    except Exception as e:
+        return f"Error reading {path}: {e}"
+
+
+async def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--prompt", type=str, default=None)
+    args = parser.parse_args()
+
+    cfg = Config.from_env()
+    client = LLMClient(cfg.api_key, cfg.base_url, cfg.model)
+
+    prompt = args.prompt or input("You: ")
+    messages = [
+        {"role": "system", "content": "You are a coding assistant with a working read_file tool. "
+                                       "When you need a file, call it; I will run it and return the "
+                                       "contents, then you answer."},
+        {"role": "user", "content": prompt},
+    ]
+
+    for _ in range(5):  # iteration cap: stop a tool-happy model looping forever
+        text = ""
+        tool_calls = []
+
+        async for event_type, data in client.chat_stream(messages=messages, tools=tools):
+            if event_type == "text":
+                text += data
+                print(data, end="", flush=True)
+            elif event_type == "tool_call":
+                tool_calls.append(data)
+            elif event_type == "done":
+                pass
+
+        # No tool calls -> the model gave its final answer. Save it and stop.
+        if not tool_calls:
+            messages.append({"role": "assistant", "content": text})
+            break
+
+        # Otherwise: run each requested tool and feed the result back, then loop.
+        for tc in tool_calls:
+            # (a) echo the assistant's request — arguments must be a JSON *string*
+            messages.append({
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [{
+                    "id": tc["id"],
+                    "type": "function",
+                    "function": {"name": tc["name"], "arguments": json.dumps(tc["arguments"])},
+                }],
+            })
+            # (b) run the tool, append result linked by tool_call_id
+            path = tc["arguments"]["path"]
+            print(f"\n[running read_file: {path}]")
+            result = read_file(path)
+            messages.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
+
+    print()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### Verification ✅
+```
+$ python main.py --prompt "Read the file config.py and tell me what it does."
+
+ [running read_file: config.py]
+ The file `config.py` defines a configuration management system for an OpenAI API client.
+ ... (accurate, multi-section explanation of Config + from_env) ...
+```
+→ Tool fired, contents fed back, and the model explained the *actual* file. The loop works.
+_Verified 2026-06-06 against `kimi-k2.5` @ `https://llm.kimchi.dev/openai/v1`._
+
+### What we learned
+- The agent loop = stream → if tool calls, run them and append results → re-call; else stop.
+- Tool args come back from our client as a **dict**, but the assistant-history message needs them re-serialized with `json.dumps()` (a string).
+- Every `tool` message must pair with a preceding assistant `tool_calls` message sharing the same `id`.
+- An iteration cap (`range(5)`) is a cheap guard against a model that keeps calling tools forever.
+- Type checkers can't narrow `data` by the `event_type` string (separate variables), so an untyped generator makes `data` a `str | dict | None` union and flags `text += data`. Fix at the source: annotate `chat_stream` as `-> AsyncIterator[tuple[str, Any]]` (makes `data` an `Any`), which is what `legacy` does.
+
+### TODO / known issues
+- [ ] Console shows `�` for em-dashes on Windows — `main.py` doesn't force UTF-8 output. Fix: add `import sys; sys.stdout.reconfigure(encoding="utf-8", errors="replace")` near the top (this is what `legacy/main.py` does).
+- [ ] `read_file` reads any path on the system — no workspace confinement (fine for learning; revisit if it becomes a real tool).
+
+---
+
+## Stage 4: Explore the Codebase (multiple read tools)
+
+### Goal
+Give the model more ways to look around — `read_directory`, `glob` (find files by pattern), `grep` (search contents) — not just read one named file. The model can now chain tools across loop iterations to explore a project.
+
+### The key idea: a dispatch table
+At Stage 3 the loop hardcoded one tool: `result = read_file(tc["arguments"]["path"])`. That doesn't scale to many tools with different args. The fix is a **name → function table** plus `fn(**args)` to spread the model's parsed argument dict into the function's named parameters:
+```python
+TOOLS = {
+    "read_file": read_file,
+    "read_directory": read_directory,
+    "glob": glob_files,      # tool name "glob" -> python function glob_files
+    "grep": grep,
+}
+...
+name = tc["name"]
+tool_args = tc["arguments"]
+print(f"\n [running {name}: {tool_args}]")
+fn = TOOLS.get(name)
+result = fn(**tool_args) if fn else f"Error: unknown tool '{name}'"
+```
+**The loop body never changes again** — adding a tool = write an executor + a JSON definition + a `TOOLS` entry. The `.get(name)` + fallback also turns a hallucinated tool name into a clean error instead of a crash.
+
+<div class="hdiagram pipeline">
+<div class="node">tool_call<small>name = 'grep'&nbsp;&middot; args = (pattern&hellip;)</small></div>
+<div class="arrow">&rarr;</div>
+<div class="node">fn = TOOLS.get(name)</div>
+<div class="arrow">&rarr;</div>
+<div class="node accent">grep()</div>
+<div class="arrow">&rarr;</div>
+<div class="node">fn(**args)</div>
+<div class="arrow">&rarr;</div>
+<div class="node">result string</div>
+<div class="arrow">&rarr;</div>
+<div class="node">role: tool message</div>
+</div>
+
+### The new executors (in `main.py`)
+```python
+def read_directory(path="."):
+    try:
+        entries = sorted(os.listdir(path))
+    except Exception as e:
+        return f"Error listing {path}: {e}"
+    lines = [f"{e}/" if os.path.isdir(os.path.join(path, e)) else e for e in entries]
+    return f"{path} ({len(entries)} entries):\n" + "\n".join(lines)
+
+
+def glob_files(pattern, path="."):
+    matches = sorted(str(p) for p in Path(path).glob(pattern))
+    if not matches:
+        return f"No files match {pattern!r} in {path}"
+    return f"{len(matches)} match(es) for {pattern!r}:\n" + "\n".join(matches)
+
+
+def grep(pattern, directory="."):
+    try:
+        regex = re.compile(pattern)
+    except re.error as e:
+        return f"Invalid regex {pattern!r}: {e}"
+    results = []
+    for root, dirs, files in os.walk(directory):
+        dirs[:] = [d for d in dirs
+                   if not d.startswith(".") and d not in {"__pycache__", "node_modules", "venv", ".venv"}]
+        for fn in files:
+            fp = os.path.join(root, fn)
+            try:
+                with open(fp, encoding="utf-8", errors="replace") as f:
+                    for i, line in enumerate(f, 1):
+                        if regex.search(line):
+                            results.append(f"{fp}:{i}: {line.rstrip()}")
+                            if len(results) >= 100:
+                                return "\n".join(results) + "\n[truncated at 100 matches]"
+            except OSError:
+                continue
+    return "\n".join(results) if results else f"No matches for {pattern!r}"
+```
+Each one also needs a JSON definition appended to the `tools = [...]` list (same shape as `read_file`), and the system prompt was updated to mention all four tools. New imports: `os`, `re`, `from pathlib import Path`.
+
+### Mistakes made & fixed
+1. `from unittest import result` — yet another editor auto-import (after the `email`/`message` one in Stage 3). Unused and wrong; the real `result` is the local variable in the loop. Removed.
+2. Renamed the loop's `args = tc["arguments"]` to `tool_args` — it was shadowing `args = parser.parse_args()`. Harmless (the Namespace was already consumed) but confusing.
+
+### Verification ✅
+```
+$ python main.py --prompt "Which file defines the LLMClient class? Use grep."
+
+ [running grep: {'pattern': 'class LLMClient'}]
+ The `LLMClient` class is defined in `llm_client.py` (at line 6) ...
+```
+→ `grep` routed through the dispatch table, ran, and the model used the result. Other prompts to try: "What Python files are here?" (glob/read_directory) and "List the files, then summarize the project" (multi-tool chain).
+_Verified 2026-06-06 against `kimi-k2.5`._
+
+### What we learned
+- A dispatch table (`name -> function`) + `fn(**parsed_args)` makes the agent loop tool-agnostic — the hard part is done once, then every new tool is just data + a small function.
+- The model-facing **tool name** and the **python function name** don't have to match (`"glob"` → `glob_files`); the table maps between them.
+- `dirs[:] = [...]` inside `os.walk` mutates the list in place to prune directories you don't want to descend into (`.git`, `__pycache__`, etc.).
+
+### TODO / known issues
+- [ ] No path confinement on any tool (read_directory/glob/grep can walk the whole disk) — same caveat as `read_file`.
+- [ ] `grep` reads every non-skipped file fully; fine for small projects, slow on large trees. Capped at 100 matches.
+
+---
+
+## Stage 5: Write Files — with a Safety Gate
+
+### Goal
+Add `write_file` — the first tool that **changes the disk**. New files write freely, but **overwriting an existing file pauses the loop, shows a diff, and asks for confirmation**. The new idea isn't writing; it's putting a human in the loop before a destructive change.
+
+### The key idea: confirm-before-overwrite
+A read tool can run unattended. A *write* tool must not clobber your work silently. So the executor:
+1. Path **doesn't exist** → just write it (no friction for new files).
+2. Path **exists** → read the old content, build a `difflib.unified_diff`, print it, and block on `input()` for `y/n`.
+3. You **decline** → return a `"User declined"` string. It goes back to the model as the tool result (the loop appends it like any other), so the model *sees* the refusal and reacts instead of assuming success.
+
+### The executor (in `main.py`)
+```python
+import difflib  # added to imports
+
+def write_file(path, content):
+    p = Path(path)
+    if p.exists():                                   # existing file -> confirm
+        old = p.read_text(encoding="utf-8", errors="replace")
+        diff = "".join(difflib.unified_diff(
+            old.splitlines(keepends=True),
+            content.splitlines(keepends=True),
+            fromfile=path, tofile=path,
+        ))
+        print(f"\n--- proposed changes to {path} ---")
+        print(diff or "(no textual changes)")
+        if input(f"Overwrite {path}? [y/n] ").strip().lower() != "y":
+            return f"User declined to overwrite {path}."
+    p.parent.mkdir(parents=True, exist_ok=True)      # new file or confirmed
+    p.write_text(content, encoding="utf-8")
+    return f"Wrote {len(content)} characters to {path}."
+```
+Then registered in `TOOLS`, added to the `tools` JSON list (two required params: `path`, `content`), and the system prompt updated to mention it.
+
+### Verification ✅
+**New file** — writes with no prompt, and the model read it back to verify itself:
+```
+$ python main.py --prompt "Create hello.txt containing a short haiku about Python."
+ [running write_file: {'path': 'hello.txt', 'content': '...'}]
+ [running read_file: {'path': 'hello.txt'}]
+ Done! I created hello.txt ...
+```
+**Overwrite** — diff + confirmation:
+```
+$ python main.py --prompt "Rewrite hello.txt with a haiku about the ocean instead."
+--- proposed changes to hello.txt ---
+@@ -1,3 +1,3 @@
+-Silent whitespace speaks
+-Elegant and clean it winds
+-Python's gentle hiss
++Waves kiss the shoreline
++Salt air whispers secrets deep
++Endless blue horizon
+Overwrite hello.txt? [y/n] y
+```
+→ `y` wrote the new haiku (confirmed on disk); `n` returns "User declined" to the model. _Verified 2026-06-06 against `kimi-k2.5`._
+
+### What we learned
+- A write tool needs a **human in the loop** — show the change (a diff) and get explicit approval before overwriting.
+- `difflib.unified_diff` produces the git-style `-`/`+` view from two lists of lines (use `splitlines(keepends=True)`).
+- Returning a refusal **as the tool result** keeps the model informed — a decline is data, not an error.
+- The model often **reads a file before/after writing** to ground and verify itself — emergent behaviour, not coded.
+
+### TODO / known issues
+- [ ] An auto-confirm flag (e.g. `--yes`) for non-interactive runs — an overwrite currently always blocks on `input()`.
+- [ ] No path confinement — `write_file` can write anywhere on disk (same caveat as the read tools).
+- [ ] Tidy-up: a duplicate `import difflib` and two stray autocomplete words left in comments (`...overwriting.Path`, `...write.from`).
+
+---
+
+## Stage 6: Run Shell Commands (`bash`) — the Capstone
+
+### Goal
+Give the agent a `bash` tool to run shell commands — the most powerful *and* most dangerous tool. It reuses Stage 5's human-in-the-loop, plus two new ideas: **classify the command** (read-only vs. risky) and **run an external process safely** (capture output + exit code, with a timeout).
+
+### The key ideas
+1. **Allow-list + deny-list, default to ask.** A command runs unattended only if its first word is a known read-only one *and* it has no destructive token. Anything else — `rm`, a `>` redirect, or an unrecognized command — hits the same `y/n` gate from Stage 5. *Unknown ⇒ ask* is the safe default.
+2. **Capture, don't inherit.** `subprocess.run(..., capture_output=True, text=True)` grabs stdout+stderr as strings so they can be returned *to the model* (it needs the output to reason).
+3. **Timeout.** `timeout=30` turns a hung command into a `TimeoutExpired` we catch, instead of freezing the loop.
+
+### The executor (in `main.py`)
+```python
+import subprocess
+
+READ_ONLY = {"ls", "dir", "cat", "type", "echo", "pwd", "whoami", "head", "tail",
+             "grep", "find", "findstr", "wc", "date", "where", "which", "python", "pip", "git"}
+DANGEROUS = ("rm", "del", "rmdir", "rd", "mv", "move", "format", "dd", ">",
+             "shutdown", "reboot", "kill", "mkfs")
+
+def run_bash(command):
+    cmd = command.strip()
+    first = cmd.split()[0].lower() if cmd.split() else ""
+    risky = first not in READ_ONLY or any(tok in cmd.lower() for tok in DANGEROUS)
+    if risky:
+        print(f"\n--- about to run a non-read-only command ---\n  {cmd}")
+        try:
+            answer = input("Run this command? [y/n] ").strip().lower()
+        except EOFError:                      # no TTY (piped / non-interactive)
+            return f"No confirmation available (non-interactive); skipped: {cmd}"
+        if answer != "y":
+            return f"User declined to run: {cmd}"
+    try:
+        r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
+    except subprocess.TimeoutExpired:
+        return f"Command timed out after 30s: {cmd}"
+    out = ((r.stdout or "") + (r.stderr or "")).strip()
+    return f"exit code {r.returncode}\n{out or '(no output)'}"
+```
+Then registered as `"bash": run_bash` in `TOOLS`, added to the `tools` JSON list (`command` required), and the system prompt updated to list all six tools.
+
+### Verification ✅
+```
+$ python main.py --prompt "Run dir with the bash tool, then tell me how many files you see."
+ [running bash: {'command': 'ls'}]
+ I ran ls in the current directory. I can see 10 items: 1 directory (__pycache__) and 9 files ...
+```
+→ `ls` is in the allow-list, so it ran with **no prompt**; `subprocess` captured the listing and the model summarized it accurately. A separate `python3 --version` attempt was correctly flagged risky (only `python` is allow-listed, not `python3`) and **paused for confirmation**. _Verified 2026-06-06 against `kimi-k2.5`._
+
+### What we learned
+- The Stage 5 pattern generalizes: **classify, then gate the risky path** — only the *test* for "risky" changes per tool.
+- **Default-to-ask** is the safe posture: treat *unknown* as risky, not safe.
+- A tool must return command output **as a string** to the model — capture stdout/stderr instead of letting them print to the terminal.
+- `input()` raises `EOFError` with no TTY; catching it (return a "skipped" result) keeps non-interactive runs from crashing.
+
+### TODO / known issues
+- [ ] Substring matching in `DANGEROUS` (e.g. `"rm"`, `"rd"`) over-flags commands that merely *contain* those letters — safe (over-asks), just eager; word-boundary matching would be tighter.
+- [ ] Deny-list classifier can be phrased around (`sed -i`, piping to a shell). Fine for learning; a real agent needs sandboxing.
+- [ ] No path/permission confinement on any tool — the agent can read/write/run anywhere the user can.
+
+---
+
+## Stage 7: Interactive REPL (Extension)
+
+### Goal
+Turn the one-shot CLI into a **conversation**. Instead of running one prompt and exiting, keep reading input and **remember everything across turns** — so a follow-up like "what about that file?" just works.
+
+### The concept: a *turn* vs. a *conversation*
+- A **turn** = the agent loop you already had — stream, run tools, repeat until a final answer.
+- A **conversation** = many turns sharing **one** `messages` list.
+
+The refactor is two moves:
+1. **Extract `agent_turn(client, messages)`** — lift the inner loop out of `main()`. It mutates the shared `messages` in place (appends the assistant reply + any tool messages).
+2. **Persist `messages`** — build it **once** (just the system message) *above* a `while` loop. Each turn: read input → append a user message → `agent_turn(...)`. Because the list carries over, the model sees the entire history (including earlier tool results) — that's conversation memory.
+
+> The one trap: initialise `messages` **above** the loop, not inside it. Build it inside and you get amnesia every turn.
+
+### The code (in `main.py`)
+```python
+async def agent_turn(client, messages):
+    """One assistant turn: stream, run tools, loop until a final answer.
+    Mutates `messages` in place."""
+    for _ in range(5):
+        text, tool_calls = "", []
+        async for event_type, data in client.chat_stream(messages=messages, tools=tools):
+            if event_type == "text":
+                text += data
+                print(data, end="", flush=True)
+            elif event_type == "tool_call":
+                tool_calls.append(data)
+        if not tool_calls:
+            messages.append({"role": "assistant", "content": text})
+            break
+        for tc in tool_calls:
+            messages.append({"role": "assistant", "content": None, "tool_calls": [{
+                "id": tc["id"], "type": "function",
+                "function": {"name": tc["name"], "arguments": json.dumps(tc["arguments"])}}]})
+            name, tool_args = tc["name"], tc["arguments"]
+            print(f"\n [running {name}: {tool_args}]")
+            fn = TOOLS.get(name)
+            result = fn(**tool_args) if fn else f"Error: unknown tool '{name}'"
+            messages.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
+    print()
+
+
+async def main():
+    ...
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]   # created ONCE -> persists
+
+    if args.prompt:                       # single-shot mode, unchanged behaviour
+        messages.append({"role": "user", "content": args.prompt})
+        await agent_turn(client, messages)
+        return
+
+    print("TONY REPL — ask me anything. Type /exit (or Ctrl+C) to quit.")
+    while True:                           # the conversation
+        try:
+            user = input("\nYou: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nBye"); break
+        if not user:
+            continue
+        if user in ("/exit", "/quit"):
+            print("Bye"); break
+        messages.append({"role": "user", "content": user})
+        await agent_turn(client, messages)
+```
+
+### Verification ✅
+Two piped turns where the second depends on the first:
+```
+You: Remember the number 42.                 -> "I've remembered the number 42..."
+You: What number did I ask you to remember?  -> "42"          <- recalled across turns
+You: /exit                                   -> "Bye"
+```
+The model answered "42" with no re-prompting — proof `messages` persisted. Single-shot (`--prompt`) still works unchanged. _Verified 2026-06-07 against `kimi-k2.5`._
+
+### What we learned
+- Separating **one turn** (the tool loop) from **the conversation** (the outer loop) is the key structural move — the loop becomes a reusable function.
+- **Conversation memory is just a list you don't throw away** — persist `messages` across turns and the model "remembers" for free.
+- Handle the exits: `/exit`/`/quit`, empty input (skip), and `EOFError`/`KeyboardInterrupt` (Ctrl+C or piped EOF) so quitting never tracebacks.
+
+### TODO / known issues
+- [ ] No context-window management — `messages` grows unbounded across a long session; eventually trim or summarize old turns.
+- [ ] Cosmetic: `agent_turn` docstring typos ("trun"/"assistan"), and a double `print()` (turn end + `main`) adds an extra blank line between turns.
+
+---
+
+## Stage 8: Modularize + a CLI Banner
+
+### Goal
+Two things at once: **split the clumsy ~340-line `main.py` into focused modules**, and give the REPL a proper **CLI banner** (`rich` + `pyfiglet`) so it feels like a real tool. New deps: `rich`, `pyfiglet`.
+
+### Before → after
+`main.py` was doing five jobs (config wiring, tool schemas, executors, the agent loop, the REPL). Now each file has one:
+
+| Module | Responsibility |
+|---|---|
+| `config.py` | `.env` → `Config` |
+| `llm_client.py` | streaming OpenAI client |
+| `tools.py` | executors + `TOOLS` registry + `TOOL_DEFINITIONS` + safety lists |
+| `agent.py` | `SYSTEM_PROMPT` + `agent_turn()` (the loop) |
+| `banner.py` | `show_banner()` — wordmark + status line |
+| `main.py` | argparse + wire-up + REPL (≈45 lines) |
+
+### What we learned
+- **One file, one job.** The agent loop doesn't need to know how `grep` works; `main.py` doesn't need to know the message protocol. The boundaries show up as imports: `agent.py` does `from tools import TOOLS, TOOL_DEFINITIONS`; `main.py` imports `agent` + `banner`.
+- **Module-level globals become imports.** The old loop referenced module globals `tools`/`TOOLS`; now `agent_turn` imports them, so it works regardless of who calls it.
+- **A banner is just composed renderables.** `pyfiglet` turns text into block art; `rich` colors it (a top→bottom neon gradient), centers each word, and frames it in a rounded `Panel` with a status line.
+- **Force UTF-8 at the entry point.** `sys.stdout.reconfigure(encoding="utf-8", errors="replace")` at the very top of `main.py` fixes the `�` em-dashes *and* the box-drawing/emoji crash on legacy Windows consoles — do it before anything prints.
+
+### The banner (`banner.py`)
+```python
+from pyfiglet import Figlet
+from rich.align import Align
+from rich.box import ROUNDED
+from rich.console import Console, Group
+from rich.panel import Panel
+from rich.text import Text
+
+NEON = ["#9becff", "#5cd2ff", "#2bb4ff", "#1e9bff", "#1380e6", "#0a6bd0"]
+
+def _word_art(word, font="ansi_shadow", start=0):
+    fig = Figlet(font=font, width=200)
+    t = Text()
+    for i, line in enumerate(fig.renderText(word).rstrip("\n").split("\n")):
+        t.append(line + "\n", style=f"bold {NEON[min(start + i, len(NEON) - 1)]}")
+    return Align.center(t)            # left-aligned art, centered as one block
+
+def show_banner(model=None, console=None):
+    console = console or Console()
+    body = Group(_word_art("TONY"), ..., status_line, tagline)
+    console.print(Panel(body, box=ROUNDED, border_style="bright_cyan", padding=(1, 4)))
+```
+> Layout gotcha: a single wide wordmark wraps and scrambles inside the panel. The fix (same as the NANO screenshot) is to render each word separately and center it as a *block* — `Align.center` keeps the block art aligned instead of centering each line individually.
+
+### Verification ✅
+
+![TONY — the REPL on startup, themed Iron-Man gold & red](assets/tony-repl.png)
+
+Single-shot (`--prompt`) and the REPL both work against `kimi-k2.5`; all six modules compile and import cleanly. _Verified 2026-06-08._
+
+### TODO / known issues
+- [ ] `banner.py` comment still says "stack MY / CLAUDE" though the chosen wordmark is "TONY" — cosmetic.
+- [ ] Status-line glyphs depend on the terminal font (Windows Terminal / a Nerd Font renders them; plain `cmd.exe` may show boxes).
+
+---
+
+## 🏁 Done — the full agent
+
+Eight stages — six focused modules (~440 lines total; `main.py` just ~45): a streaming, multi-tool, safety-gated, **conversational** coding agent with a `rich` + `pyfiglet` CLI banner.
+
+| Tool(s) | Action | Safety |
+|---|---|---|
+| `read_file`, `read_directory`, `glob`, `grep` | read-only exploration | none needed |
+| `write_file` | create / edit files | diff + confirm on overwrite |
+| `bash` | run shell commands | confirm on risky / unknown commands |
+
+**Possible next steps:** a `--yes` auto-confirm flag, path confinement to a workspace, context-window trimming for long sessions, more tools (HTTP fetch, apply-patch), or porting the OpenAI-style calls to the Anthropic API.
+
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>
+(function () {
+  var source = document.getElementById('md').textContent;
+  var main = document.getElementById('content');
+  main.innerHTML = marked.parse(source);
+
+  main.querySelectorAll('pre code[class*="language-"]').forEach(function (code) {
+    hljs.highlightElement(code);
+  });
+
+  // Collapsible table of contents: main headings expand to reveal sub-headings.
+  var toc = document.getElementById('toc');
+  var listEl = document.createElement('ul');
+  toc.appendChild(listEl);
+  var map = {}, groups = [], cur = null, i = 0;
+
+  main.querySelectorAll('h2, h3').forEach(function (h) {
+    if (!h.id) h.id = 'sec-' + (i++);
+    if (h.tagName === 'H2') {
+      var li = document.createElement('li'); li.className = 'toc-group';
+      var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'toc-h2';
+      btn.setAttribute('aria-expanded', 'false'); btn.dataset.target = h.id;
+      var caret = document.createElement('span'); caret.className = 'caret'; caret.innerHTML = '&#9656;';
+      var lbl = document.createElement('span'); lbl.className = 'lbl'; lbl.textContent = h.textContent;
+      btn.appendChild(caret); btn.appendChild(lbl);
+      var subs = document.createElement('ul'); subs.className = 'toc-subs';
+      li.appendChild(btn); li.appendChild(subs); listEl.appendChild(li);
+      groups.push(li);
+      map[h.id] = { kind: 'h2', btn: btn, group: li };
+      cur = { subs: subs, btn: btn, group: li };
+    } else if (cur) {
+      var a = document.createElement('a'); a.href = '#' + h.id; a.textContent = h.textContent;
+      cur.subs.appendChild(a);
+      map[h.id] = { kind: 'h3', link: a, group: cur.group, h2btn: cur.btn };
+    }
+  });
+  groups.forEach(function (g) { if (!g.querySelector('.toc-subs a')) g.classList.add('no-subs'); });
+
+  function openOnly(group) {
+    groups.forEach(function (g) {
+      var on = (g === group);
+      g.classList.toggle('open', on);
+      var b = g.querySelector('.toc-h2'); if (b) b.setAttribute('aria-expanded', on ? 'true' : 'false');
+    });
+  }
+
+  listEl.querySelectorAll('.toc-h2').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var li = btn.parentElement;
+      if (!li.classList.contains('no-subs')) openOnly(li.classList.contains('open') ? null : li);
+      var t = document.getElementById(btn.dataset.target);
+      if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  // Scrollspy: highlight + auto-open the section currently in view.
+  var spy = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      var info = map[e.target.id]; if (!info) return;
+      listEl.querySelectorAll('.active,.current').forEach(function (x) { x.classList.remove('active', 'current'); });
+      if (info.kind === 'h2') { info.btn.classList.add('active'); openOnly(info.group); }
+      else { info.link.classList.add('active'); info.h2btn.classList.add('current'); openOnly(info.group); }
+    });
+  }, { rootMargin: '0px 0px -72% 0px', threshold: 0 });
+  main.querySelectorAll('h2, h3').forEach(function (h) { spy.observe(h); });
+
+  // Reading-progress bar.
+  var bar = document.getElementById('progress');
+  window.addEventListener('scroll', function () {
+    var d = document.documentElement;
+    bar.style.width = (d.scrollTop / (d.scrollHeight - d.clientHeight) * 100) + '%';
+  }, { passive: true });
+
+  // Theme toggle.
+  var root = document.documentElement, btn = document.getElementById('theme-toggle');
+  function glyph(t) { btn.innerHTML = (t === 'light') ? '&#9790;' : '&#9728;'; }  // moon / sun
+  glyph(root.getAttribute('data-theme'));
+  btn.addEventListener('click', function () {
+    var next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    root.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    document.getElementById('hl-light').disabled = (next !== 'light');
+    document.getElementById('hl-dark').disabled = (next === 'light');
+    glyph(next);
+  });
+})();
+</script>
+</body>
+</html>

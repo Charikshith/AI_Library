@@ -29,6 +29,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 README = ROOT / "README.md"
 NOTES_DIR = ROOT / "notes"
+PROJECTS_DIR = ROOT / "projects"   # projects/<slug>/_project.json (+ prebuilt writeup)
 
 START = "<!-- TOOLS:START -->"
 END = "<!-- TOOLS:END -->"
@@ -135,6 +136,29 @@ def parse_subjects():
     return subjects
 
 
+def parse_projects():
+    """Each project = projects/<slug>/_project.json with a prebuilt writeup HTML
+    that lives in the same folder; the source code stays in its own GitHub repo."""
+    projects = []
+    if not PROJECTS_DIR.exists():
+        return projects
+    for p in sorted(x for x in PROJECTS_DIR.iterdir() if x.is_dir()):
+        meta_file = p / "_project.json"
+        if not meta_file.exists():
+            continue
+        meta = json.loads(meta_file.read_text(encoding="utf-8"))
+        projects.append({
+            "slug": p.name,
+            "title": meta.get("title", p.name),
+            "description": meta.get("description", ""),
+            "tags": meta.get("tags", []),
+            "added": meta.get("added", ""),
+            "repo": meta.get("repo", ""),
+            "writeup": meta.get("writeup"),
+        })
+    return projects
+
+
 def group_phases(s):
     chapters = s["chapters"]
     groups, used = [], set()
@@ -192,6 +216,15 @@ GLUE = (".topbar-actions .tnav{font-family:'Inter',sans-serif;font-weight:600;fo
         "text-decoration:none;padding:9px 20px;border-radius:999px;border:1px solid var(--border);transition:all .2s}"
         ".section-nav a:hover{color:var(--text);background:var(--bg-muted)}"
         ".section-nav a.active{color:#fff;background:var(--primary);border-color:var(--primary)}"
+        ".chapter-nav{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:52px 0 8px;padding-top:26px;border-top:1px solid var(--border)}"
+        ".chapter-nav a{display:flex;flex-direction:column;gap:5px;max-width:48%;text-decoration:none;"
+        "border:1px solid var(--border);border-radius:12px;padding:14px 18px;background:var(--bg-elevated);"
+        "transition:border-color .2s,background .2s,transform .2s}"
+        ".chapter-nav a:hover{border-color:var(--primary);background:var(--bg-muted);transform:translateY(-2px)}"
+        ".chapter-nav .cn-next{margin-left:auto;text-align:right;align-items:flex-end}"
+        ".chapter-nav span{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;"
+        "text-transform:uppercase;color:var(--text-muted)}"
+        ".chapter-nav strong{font-family:'Inter',sans-serif;font-weight:600;font-size:15px;color:var(--text)}"
         # --- entrance + scroll-reveal animations (respect reduced-motion; safe without JS) ---
         "@media(prefers-reduced-motion:no-preference){"
         "@keyframes ail-rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}"
@@ -219,12 +252,14 @@ def head(title, desc, root, extra_head=""):
 def topbar(root, active, menu=False, nav=True):
     lib = " active" if active == "library" else ""
     nts = " active" if active == "notes" else ""
+    prj = " active" if active == "projects" else ""
     menubtn = ('<button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">&#9776;</button>'
                if menu else "")
     links = ""
     if nav:
         links = (f'<a class="tnav{lib}" href="{root}index.html">Library</a>'
-                 f'<a class="tnav{nts}" href="{root}notes.html">Notes</a>')
+                 f'<a class="tnav{nts}" href="{root}notes.html">Notes</a>'
+                 f'<a class="tnav{prj}" href="{root}projects.html">Projects</a>')
     return ("".join([
         '<header class="topbar"><a class="brand" href="', root, 'index.html">',
         '<span class="brand-icon">AI</span><span>AI Library</span></a><div class="topbar-actions">',
@@ -237,8 +272,10 @@ def topbar(root, active, menu=False, nav=True):
 def section_nav(root, active):
     lib = " active" if active == "library" else ""
     nts = " active" if active == "notes" else ""
+    prj = " active" if active == "projects" else ""
     return (f'<nav class="section-nav"><a class="{lib.strip()}" href="{root}index.html">Library</a>'
-            f'<a class="{nts.strip()}" href="{root}notes.html">Notes</a></nav>')
+            f'<a class="{nts.strip()}" href="{root}notes.html">Notes</a>'
+            f'<a class="{prj.strip()}" href="{root}projects.html">Projects</a></nav>')
 
 
 def page_scripts(root):
@@ -290,6 +327,22 @@ def subject_card(s):
     ]))
 
 
+def project_card(p):
+    tags = "  ".join("#" + x for x in p["tags"])
+    if p["writeup"]:
+        href, tgt, arrow = f'projects/{h(p["slug"])}/{h(p["writeup"])}', "", "&rarr;"
+    else:
+        href, tgt, arrow = h(p["repo"]), ' target="_blank" rel="noopener"', "&#8599;"
+    return ("".join([
+        f'<a class="chapter-card" href="{href}"{tgt}>',
+        f'<div class="chapter-card-head"><span class="chapter-num">{h(p["added"])}</span>'
+        f'<span class="chapter-icon">{arrow}</span></div>',
+        f'<h3 class="chapter-title">{h(p["title"])}</h3>',
+        f'<p class="chapter-desc">{h(p["description"])}</p>',
+        f'<div class="chapter-card-foot">{h(tags)}</div></a>',
+    ]))
+
+
 def chapter_card(c):
     label = ("Ch " + c["num"]) if c["num"] else "Ref"
     return ("".join([
@@ -309,10 +362,9 @@ def stats_block(stats):
 # --------------------------------------------------------------------------- #
 # Renderers
 # --------------------------------------------------------------------------- #
-def render_library(tools, subjects):
+def render_library(tools, subjects, projects):
     cats = sorted({t["category"] for t in tools}, key=str.lower)
     note_subjects = [s for s in subjects if not s["library"]]
-    total_ch = sum(len(s["chapters"]) for s in note_subjects)
     hero = ("".join([
         '<section class="home-hero"><span class="home-eyebrow">Curated archive</span>',
         '<h1>AI Library</h1>',
@@ -321,7 +373,7 @@ def render_library(tools, subjects):
         stats_block([{"num": str(len(tools)), "label": "Tools"},
                      {"num": str(len(cats)), "label": "Categories"},
                      {"num": str(len(note_subjects)), "label": "Note Subjects"},
-                     {"num": str(total_ch), "label": "Note Chapters"}]),
+                     {"num": str(len(projects)), "label": "Projects"}]),
         '</section>',
     ]))
     sections = []
@@ -357,6 +409,24 @@ def render_notes_index(subjects):
     html = shell_page("Notes — AI Library", "Long-form study notes, references, and cheatsheets.",
                       "", "notes", hero, main)
     (ROOT / "notes.html").write_text(html, encoding="utf-8")
+
+
+def render_projects_index(projects):
+    hero = ("".join([
+        "<section class=\"home-hero\"><span class=\"home-eyebrow\">Things I've built</span>",
+        '<h1>Projects</h1>',
+        '<p class="home-tagline">Hands-on AI projects — each with a full writeup here in the library, '
+        'and the source code on GitHub.</p>',
+        stats_block([{"num": str(len(projects)), "label": "Projects"}]),
+        '</section>',
+    ]))
+    cards = "".join(project_card(p) for p in projects) or '<p>No projects yet.</p>'
+    main = (f'<section><div class="home-section-header"><h2>All Projects</h2>'
+            f'<span class="count">{len(projects)} {"project" if len(projects)==1 else "projects"}</span></div>'
+            f'<div class="chapter-list">{cards}</div></section>')
+    html = shell_page("Projects — AI Library", "Hands-on AI projects with writeups and source code.",
+                      "", "projects", hero, main)
+    (ROOT / "projects.html").write_text(html, encoding="utf-8")
 
 
 def render_subject(s):
@@ -403,8 +473,18 @@ def render_subject(s):
 
 def render_chapter(s, idx):
     root = "../../../"
-    ch = s["chapters"][idx]
+    chapters = s["chapters"]
+    ch = chapters[idx]
     label = ("Chapter " + ch["num"]) if ch["num"] else s["title"]
+    prev_ch = chapters[idx - 1] if idx > 0 else None
+    next_ch = chapters[idx + 1] if idx < len(chapters) - 1 else None
+    chapter_nav = ""
+    if prev_ch or next_ch:
+        prev_html = (f'<a class="cn-prev" href="{h(prev_ch["slug"])}.html"><span>&larr; Previous</span>'
+                     f'<strong>{h(prev_ch["title"])}</strong></a>' if prev_ch else "<span></span>")
+        next_html = (f'<a class="cn-next" href="{h(next_ch["slug"])}.html"><span>Next &rarr;</span>'
+                     f'<strong>{h(next_ch["title"])}</strong></a>' if next_ch else "")
+        chapter_nav = f'<nav class="chapter-nav">{prev_html}{next_html}</nav>'
     sidebar = (f'<a class="toc-back" href="index.html">&larr; {h(s["title"])}</a>'
                '<h3>On this page</h3><ul class="toc-list" id="tocList"></ul>')
     hero = (f'<section class="hero"><span class="chapter-label">{h(label)}</span>'
@@ -424,6 +504,7 @@ def render_chapter(s, idx):
         'if(seen[id]){id=id+"-"+(++seen[id])}else{seen[id]=1}hd.id=id;',
         'var li=document.createElement("li"),a=document.createElement("a");',
         'a.href="#"+id;a.textContent=hd.textContent;li.appendChild(a);toc.appendChild(li);});',
+        (f'm.insertAdjacentHTML("beforeend",{embed_md(chapter_nav)});' if chapter_nav else ''),
         '</script>',
     ]))
     html = ("".join([
@@ -443,8 +524,10 @@ def render_chapter(s, idx):
 def main():
     tools = parse_tools(README.read_text(encoding="utf-8"))
     subjects = parse_subjects()
-    render_library(tools, subjects)
+    projects = parse_projects()
+    render_library(tools, subjects, projects)
     render_notes_index(subjects)
+    render_projects_index(projects)
     gen = 0
     for s in subjects:
         if s["prebuilt"]:
@@ -456,7 +539,7 @@ def main():
     cats = len({t["category"] for t in tools})
     chs = sum(len(s["chapters"]) for s in subjects)
     print(f"Built (System Design theme): {len(tools)} tools / {cats} categories  +  "
-          f"{len(subjects)} subjects ({gen} generated) / {chs} chapters")
+          f"{len(subjects)} subjects ({gen} generated) / {chs} chapters  +  {len(projects)} projects")
 
 
 if __name__ == "__main__":
