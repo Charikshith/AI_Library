@@ -1,6 +1,27 @@
 {
   "title": "System Design",
+  "eyebrow": "A 20-chapter interview course",
   "description": "A full system-design course — fundamentals (networking, protocols, architecture, scalability, storage, performance, reliability, security) through end-to-end designs of real systems like TinyURL, YouTube, Uber, and Google Drive. Diagram-heavy.",
+  "tagline": "From the fundamentals to cracking interviews — networking, scalability, storage, performance, and security, plus eight real-world system designs.",
   "tags": ["system-design", "architecture", "scalability", "interview"],
-  "added": "2026-06-10"
+  "added": "2026-06-10",
+  "prebuilt": "index.html",
+  "stats": [
+    { "num": "20", "label": "Chapters" },
+    { "num": "8", "label": "Case Studies" },
+    { "num": "~30h", "label": "Reading Time" },
+    { "num": "160+", "label": "Diagrams" }
+  ],
+  "learn": [
+    "Reason about latency, throughput, and trade-offs intuitively",
+    "Apply a repeatable framework to any design problem",
+    "Choose between monolith, microservices, and event-driven designs",
+    "Design real systems: YouTube, Uber, Google Docs, and more",
+    "Recognize anti-patterns before they cost you"
+  ],
+  "phases": [
+    { "icon": "📚", "title": "Foundations", "from": 1, "to": 11, "range": "Chapters 1–11" },
+    { "icon": "🏗️", "title": "Case Studies", "from": 12, "to": 24, "range": "Chapters 12–24" },
+    { "icon": "🎯", "title": "Final Prep", "from": 25, "to": 999, "range": "Chapter 25 + Resources" }
+  ]
 }

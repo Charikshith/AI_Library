@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chapter 6 — Scalability</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<link rel="stylesheet" href="../assets/system-design.css">
+<style>
+/* ===== Chapter-specific: Circuit breaker state diagram ===== */
+.state-diagram {
+  background: linear-gradient(180deg, var(--bg-elevated), var(--bg-muted));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px 24px;
+  margin: 24px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.state-node {
+  background: var(--bg);
+  border: 2px solid var(--border-strong);
+  border-radius: 50%;
+  width: 130px;
+  height: 130px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  padding: 8px;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition);
+}
+.state-node:hover { transform: scale(1.05); box-shadow: var(--shadow-md); }
+.state-node .state-label { font-size: 14px; font-weight: 800; margin-bottom: 4px; }
+.state-node .state-desc { font-size: 11px; font-weight: 500; color: var(--text-muted); line-height: 1.3; }
+.state-node.closed { background: var(--success-faint); border-color: var(--success); }
+.state-node.closed .state-label { color: var(--success); }
+.state-node.open { background: var(--danger-faint); border-color: var(--danger); }
+.state-node.open .state-label { color: var(--danger); }
+.state-node.half { background: var(--warning-faint); border-color: var(--warning); }
+.state-node.half .state-label { color: var(--warning); }
+.state-arrow {
+  position: relative;
+  width: 48px;
+  height: 2px;
+  background: var(--border-strong);
+}
+.state-arrow::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border: 6px solid transparent;
+  border-left-color: var(--border-strong);
+  border-right: 0;
+}
+.state-arrow .state-arrow-label {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  background: var(--bg-muted);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+@media (max-width: 640px) {
+  .state-diagram { flex-direction: column; }
+  .state-arrow { width: 2px; height: 36px; }
+  .state-arrow::after {
+    right: auto; top: auto; left: 50%; bottom: -1px;
+    transform: translateX(-50%);
+    border-top-color: var(--border-strong);
+    border-left-color: transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 0;
+  }
+  .state-arrow .state-arrow-label { position: static; transform: none; display: inline-block; margin: 4px auto; }
+}
+
+/* ===== Bulkhead visualization ===== */
+.bulkhead-viz {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  background: linear-gradient(180deg, var(--bg-elevated), var(--bg-muted));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin: 24px 0;
+}
+.bulkhead-cell {
+  background: var(--bg);
+  border: 2px solid var(--primary);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  text-align: center;
+  transition: all var(--transition);
+}
+.bulkhead-cell:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.bulkhead-cell.failed { border-color: var(--danger); background: var(--danger-faint); opacity: 0.6; }
+.bulkhead-cell-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+.bulkhead-cell-pool { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted); }
+.bulkhead-cell.failed .bulkhead-cell-title { color: var(--danger); }
+</style>
+</head>
+<body><a href="../../../notes.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;z-index:99999;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600;background:#0f172a;color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.28)">&#8592; AI Library</a>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">
+    <span class="brand-icon">SD</span>
+    <span>Mastering System Design</span>
+  </a>
+  <div class="topbar-actions">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Chapter 6 — On This Page</h3>
+    <ul class="toc-list" id="tocList">
+      <li><a href="#learning-outcomes">Learning Outcomes</a></li>
+      <li><a href="#what-is-scalability">What is Scalability?</a></li>
+      <li><a href="#why-systems-need-to-scale">Why Systems Need to Scale</a></li>
+      <li><a href="#types-of-scalability">Types of Scalability</a></li>
+      <li><a href="#common-challenges-in-scaling">Common Challenges</a></li>
+      <li><a href="#scaling-strategies">Scaling Strategies</a></li>
+      <li><a href="#load-balancing">Load Balancing</a></li>
+      <li><a href="#autoscaling">Autoscaling in Cloud</a></li>
+      <li><a href="#monitoring-proactive-scaling">Monitoring &amp; Proactive Scaling</a></li>
+      <li><a href="#cost-optimization">Cost Optimization</a></li>
+      <li><a href="#fundamental-laws">The Fundamental Laws</a></li>
+      <li><a href="#stateless-service-design">Stateless Service Design</a></li>
+      <li><a href="#failure-containment">Failure Containment Patterns</a></li>
+      <li><a href="#capacity-planning">Capacity Planning</a></li>
+      <li><a href="#combined-tips">Combined Tips &amp; Tricks</a></li>
+      <li><a href="#interview-questions">Sample Interview Questions</a></li>
+      <li><a href="#key-takeaways">Key Takeaways</a></li>
+      <li><a href="#further-reading">Further Reading</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <span class="chapter-label">Chapter 6</span>
+      <h1>Mastering Scalability in System Design</h1>
+      <p class="hero-subtitle">
+        Vertical, horizontal, and diagonal scaling; load balancing, autoscaling, and Amdahl's Law; circuit breakers, bulkheads, and rate limiting — everything you need to grow a system from 1,000 to 1 billion users without it falling over.
+      </p>
+      <div class="hero-author">By Charikshith</div>
+    </section>
+
+    <p>Scalability is the backbone of robust modern systems — enabling web applications, APIs, and microservices to gracefully handle growth in users, data, and workload.</p>
+    <p>In this chapter, we'll explore the <strong>core principles, strategies, common pitfalls, and best practices</strong> for designing scalable systems — drawing from theory and real-world cloud solutions. You'll learn vertical/horizontal/diagonal scaling, load balancing, autoscaling, and cost optimization.</p>
+
+    <h2 id="learning-outcomes">🎯 Learning Outcomes</h2>
+    <p>After reading this chapter, you'll be able to:</p>
+    <ol class="outcomes-list">
+      <li><span class="outcome-num">1</span><span>Choose between <strong>vertical, horizontal, and diagonal scaling</strong> for a given growth pattern.</span></li>
+      <li><span class="outcome-num">2</span><span>Apply <strong>Amdahl's Law</strong> and recognize the limits of parallelism.</span></li>
+      <li><span class="outcome-num">3</span><span>Design <strong>stateless services</strong> that scale horizontally without coordination.</span></li>
+      <li><span class="outcome-num">4</span><span>Use <strong>circuit breakers, bulkheads, and rate limiting</strong> to prevent cascading failures.</span></li>
+      <li><span class="outcome-num">5</span><span>Estimate capacity for a service from QPS, latency, and resource limits.</span></li>
+    </ol>
+
+    <h2 id="what-is-scalability">What is Scalability?</h2>
+    <blockquote>
+      <strong>Scalability</strong> is the capability of a system to handle an increasing load — or its potential to accommodate growth — without sacrificing performance, reliability, or availability.
+    </blockquote>
+    <p>A scalable system won't break, slow down, or become unreliable as more users come online or data volumes grow. Whether it's 1,000 users or 1 million, a well-designed system maintains its SLAs and keeps the user experience smooth.</p>
+    <p><strong>Key properties:</strong></p>
+    <ul>
+      <li>Maintains throughput and latency under growing traffic.</li>
+      <li>Avoids downtime or service degradation.</li>
+      <li>Grows efficiently without massive re-engineering.</li>
+    </ul>
+
+    <h2 id="why-systems-need-to-scale">Why Systems Need to Scale</h2>
+    <ul>
+      <li><strong>User base growth:</strong> Viral success or global expansion increases the number of users dramatically.</li>
+      <li><strong>Data volume explosion:</strong> IoT, analytics, and sensors can generate data that grows exponentially.</li>
+      <li><strong>Peak events:</strong> Black Friday, ticket sales, news spikes, or viral trends cause sudden traffic surges.</li>
+      <li><strong>Service Level Agreements (SLAs):</strong> Meet strict performance (e.g., &lt;200ms response) and uptime targets (e.g., 99.99%).</li>
+      <li><strong>Avoid downtime:</strong> Unscalable systems crash or slow down under pressure, causing user churn.</li>
+      <li><strong>Expanding to new regions or markets.</strong></li>
+    </ul>
+
+    <h2 id="types-of-scalability">Types of Scalability</h2>
+    <p>There are three main ways to scale a system.</p>
+
+    <h3>1. Vertical Scaling ("Scaling Up")</h3>
+    <p>Add more resources (CPU, RAM, Disk) to a single server.</p>
+
+    <div class="archd" aria-label="Vertical scaling diagram">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User Requests</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">⚖️</span><span>Load Balancer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node"><span class="archd-icon">💪</span><span>Powerful Server (CPU↑, RAM↑)</span></div>
+    </div>
+
+    <p>A simpler view:</p>
+    <div class="archd" aria-label="Vertical scaling simple view">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User Requests</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node"><span class="archd-icon">🖥️</span><span>Single Server</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+    </div>
+
+    <p><strong>Pros:</strong></p>
+    <ul>
+      <li>Simple to implement.</li>
+      <li>Fast upgrades.</li>
+      <li>No need for distributed coordination.</li>
+    </ul>
+    <p><strong>Cons:</strong></p>
+    <ul>
+      <li>Physical hardware caps.</li>
+      <li>Single point of failure (SPOF).</li>
+      <li>Costly at scale.</li>
+    </ul>
+
+    <p><strong>Example: Upgrading an AWS EC2 instance:</strong></p>
+<pre><code class="language-bash">aws ec2 modify-instance-attribute --instance-id i-1234567890abcdef0 --instance-type "{\"Value\": \"t3.2xlarge\"}"</code></pre>
+
+    <h3>2. Horizontal Scaling ("Scaling Out")</h3>
+    <p>Add more servers/nodes, distributing traffic and workload.</p>
+
+    <div class="archd" aria-label="Horizontal scaling diagram">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User Requests</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">⚖️</span><span>Load Balancer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server 1</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server 2</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server 3</span></div>
+      </div>
+    </div>
+
+    <p>A more detailed version showing the shared database:</p>
+    <div class="archd" aria-label="Horizontal scaling with shared database">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User Requests</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">⚖️</span><span>Load Balancer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server 1</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server 2</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server 3</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Shared Database</span></div>
+    </div>
+
+    <p><strong>Pros:</strong></p>
+    <ul>
+      <li>High resilience and availability.</li>
+      <li>Can scale indefinitely.</li>
+      <li>Parallelism, redundancy.</li>
+    </ul>
+    <p><strong>Cons:</strong></p>
+    <ul>
+      <li>Requires stateless design or careful coordination.</li>
+      <li>Needs load balancers.</li>
+      <li>Complex setup (data consistency, replication).</li>
+    </ul>
+
+    <p><strong>Example: Kubernetes Horizontal Pod Autoscaler (HPA) YAML:</strong></p>
+<pre><code class="language-yaml">apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: web-app-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: web-app
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70</code></pre>
+
+    <h3>3. Diagonal Scaling (Hybrid)</h3>
+    <p>Begin with vertical scaling for simplicity; transition to horizontal as needed. Common in cloud-native apps.</p>
+
+    <div class="archd-seq" aria-label="Diagonal scaling progression">
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node"><span class="archd-icon">🌱</span><span>Start: Small Server</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Upgrade</span></div>
+        <div class="archd-node"><span class="archd-icon">💪</span><span>Bigger Server</span></div>
+      </div>
+      <div class="archd-seq-row cols-2" style="margin-top:18px;">
+        <div class="archd-node"><span class="archd-icon">💪</span><span>Bigger Server</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Add More Servers</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Clustered Servers</span></div>
+      </div>
+    </div>
+
+    <p>A two-phase view:</p>
+    <div class="archd" aria-label="Two-phase diagonal scaling">
+      <div class="archd-seq-step"><span class="num">1</span>Phase 1: Vertical</div>
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User Requests</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node"><span class="archd-icon">💪</span><span>Single Powerful Server</span></div>
+      <div class="archd-seq-step" style="margin-top:24px;"><span class="num">2</span>Phase 2: Horizontal</div>
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User Requests</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">⚖️</span><span>Load Balancer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">💪</span><span>Upgraded Server 1</span></div>
+        <div class="archd-node"><span class="archd-icon">💪</span><span>Upgraded Server 2</span></div>
+      </div>
+    </div>
+
+    <p><em>Start vertical, then scale horizontally as needed.</em></p>
+
+    <p>A single-graph view of all 3 types:</p>
+    <div class="archd" aria-label="Three scaling types comparison">
+      <div class="archd-node"><span class="archd-icon">🚀</span><span>Start</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">⬆️</span><span>Vertical Scaling<br><small>(Upgrade existing server)</small></span></div>
+        <div class="archd-node"><span class="archd-icon">➡️</span><span>Horizontal Scaling<br><small>(Add more servers)</small></span></div>
+        <div class="archd-node"><span class="archd-icon">↗️</span><span>Diagonal Scaling<br><small>(Upgrade, then add servers)</small></span></div>
+      </div>
+    </div>
+
+    <p><strong>Real-world examples:</strong></p>
+    <ul>
+      <li><strong>AWS Lambda:</strong> Starts small (vertical), but can auto-scale (horizontal) based on demand.</li>
+      <li><strong>Twitter:</strong> From monolith (vertical) to microservices (horizontal) as user base grew.</li>
+    </ul>
+
+    <h3>Scaling Types — Comparison</h3>
+    <p>A summary of all three types side-by-side:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Scaling Type</th><th>Approach</th><th>Pros</th><th>Cons</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Vertical Scaling</td><td>Upgrade single machine (CPU/RAM/Disk)</td><td>Simple, fast</td><td>Physical limits, SPOF*</td></tr>
+          <tr><td>Horizontal Scaling</td><td>Add more machines/nodes</td><td>Resilient, scalable</td><td>Complex architecture</td></tr>
+          <tr><td>Diagonal Scaling</td><td>Start vertical, then add horizontal nodes</td><td>Flexible, cost-wise</td><td>Hybrid (must manage both)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <blockquote>*SPOF: Single Point of Failure.</blockquote>
+
+    <p>A version focused on pros/cons:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Type</th><th>Description</th><th>Pros</th><th>Cons</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Vertical</strong></td><td>Add resources (CPU/RAM) to a single node</td><td>Simple, fast upgrades</td><td>Physical limits, SPOF</td></tr>
+          <tr><td><strong>Horizontal</strong></td><td>Add more nodes/servers</td><td>High resilience, big scale</td><td>Complex, needs LB/replica</td></tr>
+          <tr><td><strong>Diagonal</strong></td><td>Start vertical, then go horizontal</td><td>Flexible, cost-efficient</td><td>Coordination complexity</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Trade-Offs: Cost, Complexity, and Performance</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Strategy</th><th>Cost (Initial)</th><th>Cost (Growth)</th><th>Complexity</th><th>Performance</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Vertical</td><td>Low</td><td>High</td><td>Low</td><td>High (initial)</td></tr>
+          <tr><td>Horizontal</td><td>Medium</td><td>Linear</td><td>High</td><td>High (scalable)</td></tr>
+          <tr><td>Diagonal</td><td>Balanced</td><td>Balanced</td><td>Medium</td><td>Balanced</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Summary:</strong></p>
+    <ul>
+      <li><strong>Vertical scaling</strong> is easy and cheap to start, but gets expensive and risky at scale.</li>
+      <li><strong>Horizontal scaling</strong> is robust and future-proof, but requires orchestration, monitoring, and stateless patterns.</li>
+      <li><strong>Diagonal scaling</strong> gives early simplicity and long-term scalability, favored by modern cloud-native architectures.</li>
+    </ul>
+
+    <h2 id="common-challenges-in-scaling">Common Challenges in Scaling</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Challenge</th><th>Description</th><th>Example</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Latency</td><td>Delay in response due to distributed components</td><td>Microservices, DB hops</td></tr>
+          <tr><td>Bottlenecks</td><td>Slowest service limits overall throughput</td><td>Locked DB, single-threaded job</td></tr>
+          <tr><td>Downtime</td><td>More servers = more potential failure points</td><td>Outages during deployments</td></tr>
+          <tr><td>Cost</td><td>More resources = higher bills (especially in cloud)</td><td>Over-provisioned instances</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="scaling-strategies">Scaling Strategies — A Deep Dive</h2>
+
+    <h3>When to Use Which Strategy?</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Approach</th><th>When to Use</th><th>Real-World Example</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Vertical</td><td>MVPs, startups, low initial traffic</td><td>Early-stage SaaS, blogs</td></tr>
+          <tr><td>Horizontal</td><td>High-scale apps, resilience needed</td><td>Twitter, Facebook</td></tr>
+          <tr><td>Diagonal</td><td>Cloud-native with uncertain workloads</td><td>AWS Lambda, GCP Cloud Run</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Real-world choices:</strong></p>
+    <ul>
+      <li><strong>Twitter:</strong> Monolith → microservices (horizontal) as user base grew.</li>
+      <li><strong>AWS Lambda:</strong> Diagonal + autoscaling.</li>
+      <li><strong>Startups:</strong> Vertical first, then horizontal as needed.</li>
+    </ul>
+
+    <h3>Example: Setting up AWS Auto Scaling Group (Horizontal)</h3>
+<pre><code class="language-bash">aws autoscaling create-auto-scaling-group \
+  --auto-scaling-group-name my-asg \
+  --launch-configuration-name my-launch-config \
+  --min-size 2 \
+  --max-size 10 \
+  --desired-capacity 2 \
+  --vpc-zone-identifier "subnet-12345678,subnet-23456789"</code></pre>
+
+    <h3>Practical Tips for Scaling Strategy Choice</h3>
+    <ul>
+      <li><strong>Start simple:</strong> Early-stage startups or MVPs should favor vertical scaling to keep things simple and cost-effective.</li>
+      <li><strong>Know when to switch:</strong> Monitor system metrics. When you approach hardware limits or need high availability, start planning horizontal or diagonal scaling.</li>
+      <li><strong>Embrace statelessness:</strong> For horizontal scaling, design services to be stateless. Use shared databases or distributed caches for state.</li>
+      <li><strong>Use managed services:</strong> Cloud providers offer powerful auto-scaling and load balancing solutions (AWS ELB, Azure Load Balancer).</li>
+      <li><strong>Don't over-engineer:</strong> Avoid building distributed systems too early. Scale complexity with actual demand.</li>
+      <li><strong>Implement load balancers:</strong> Distribute traffic, prevent overload, increase reliability.</li>
+      <li><strong>Monitor proactively:</strong> Use CloudWatch, Prometheus, or Grafana to anticipate scaling needs before issues arise.</li>
+    </ul>
+
+    <h2 id="load-balancing">Load Balancing — The Backbone of Scalability</h2>
+    <p>Scalability is at the heart of robust system design. As user bases and data volumes grow, ensuring your application remains fast, available, and cost-effective becomes critical. One of the key enablers is <strong>load balancing</strong> — the art and science of distributing incoming traffic across a pool of servers.</p>
+
+    <h3>Why Load Balancing is Essential</h3>
+    <p>Imagine a high-traffic e-commerce website during Black Friday. Without load balancing, a single server could get overwhelmed, causing slowdowns or outages. With a load balancer, incoming requests are automatically spread across multiple backend servers for maximum uptime and minimum latency.</p>
+
+    <p><strong>Key benefits:</strong></p>
+    <ul>
+      <li><strong>High Availability:</strong> Keeps your app running even during server failures or traffic spikes.</li>
+      <li><strong>Traffic Distribution:</strong> Prevents overload by spreading requests evenly.</li>
+      <li><strong>Improved Performance:</strong> Routes requests to the least-busy or fastest server.</li>
+      <li><strong>Graceful Failure Handling:</strong> Detects and bypasses failed servers.</li>
+      <li><strong>Scalability:</strong> Makes it easy to add or remove servers as demand changes.</li>
+      <li><strong>Reduces latency for users.</strong></li>
+    </ul>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Real-World Example</div>
+        <p>During a flash sale, Amazon's load balancers distribute millions of requests per second across a massive fleet of servers, ensuring shoppers never see a 503 error.</p>
+      </div>
+    </div>
+
+    <h3>Types of Load Balancers</h3>
+    <p>Load balancers can be categorized by the <strong>network layer</strong> they operate on and by their <strong>deployment model</strong>.</p>
+
+    <h4>By Network Layer</h4>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Type</th><th>Layer</th><th>Examples</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Layer 4 (Transport)</td><td>TCP/UDP</td><td>AWS NLB, HAProxy (TCP), F5</td></tr>
+          <tr><td>Layer 7 (App)</td><td>HTTP/HTTPS/gRPC</td><td>AWS ALB, NGINX, Envoy, Google L7 LB</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Layer 4 (Transport Layer):</strong></p>
+    <ul>
+      <li>Operates at TCP/UDP level.</li>
+      <li>Routes based on IP address and port.</li>
+      <li><strong>Pros:</strong> Blazing fast, efficient, low overhead.</li>
+      <li><strong>Cons:</strong> No content-based routing.</li>
+    </ul>
+
+    <p><strong>Layer 7 (Application Layer):</strong></p>
+    <ul>
+      <li>Operates at HTTP/HTTPS.</li>
+      <li>Routes based on HTTP headers, cookies, URLs, etc.</li>
+      <li><strong>Pros:</strong> Intelligent content-aware routing.</li>
+      <li><strong>Cons:</strong> Slightly more processing overhead.</li>
+    </ul>
+
+    <h4>Diagram: Layer 4 vs Layer 7</h4>
+    <div class="archd" aria-label="Layer 4 vs Layer 7 load balancers">
+      <div class="archd-node is-external"><span class="archd-icon">🌐</span><span>Internet</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">⚖️</span><span>Layer 4 LB</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🧠</span><span>Layer 7 LB</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server 1</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server 2</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🛒</span><span>Server 3 — Product Pages</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">💳</span><span>Server 4 — Checkout</span></div>
+      </div>
+    </div>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">📝</span>
+      <div class="callout-content">
+        <div class="callout-title">Routing Notes</div>
+        <ul>
+          <li><strong>Layer 4 LB:</strong> Routes based on IP and port only.</li>
+          <li><strong>Layer 7 LB:</strong> Inspects HTTP path, headers, cookies.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h4>By Deployment Model</h4>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Type</th><th>Examples</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Hardware</strong></td><td>F5 BIG-IP, Citrix NetScaler</td></tr>
+          <tr><td><strong>Software</strong></td><td>NGINX, HAProxy, Envoy</td></tr>
+          <tr><td><strong>Cloud-based</strong></td><td>AWS ELB, Azure Load Balancer, GCP Load Balancer</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Hardware Load Balancers:</strong></p>
+    <ul>
+      <li>Specialized devices, used in large data centers.</li>
+      <li>Often with SSL termination and DDoS protection.</li>
+    </ul>
+
+    <p><strong>Software Load Balancers:</strong></p>
+    <ul>
+      <li>Apps running on commodity servers.</li>
+      <li>Flexible, cost-effective, popular in microservices and Kubernetes.</li>
+    </ul>
+
+    <p><strong>Cloud-based Load Balancers:</strong></p>
+    <ul>
+      <li>Managed services provided by cloud vendors.</li>
+      <li>Handles scaling, failover, security out-of-the-box.</li>
+    </ul>
+
+    <h3>Load Balancing Algorithms</h3>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">🔄</div>
+        <div class="card-title">Round Robin</div>
+        <div class="card-body">Sequential distribution — each new request goes to the next server in the list.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📉</div>
+        <div class="card-title">Least Connections</div>
+        <div class="card-body">Server with fewest active connections wins. Better for long-lived sessions.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔐</div>
+        <div class="card-title">IP Hash</div>
+        <div class="card-body">Consistent routing based on client IP (supports sticky sessions).</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚖️</div>
+        <div class="card-title">Weighted</div>
+        <div class="card-body">Some servers get more requests based on capacity.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">⏱️</div>
+        <div class="card-title">Least Response Time</div>
+        <div class="card-body">Routes to the fastest responding server.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🤖</div>
+        <div class="card-title">Adaptive</div>
+        <div class="card-body">Continuously analyzes CPU, memory, and health metrics.</div>
+      </div>
+    </div>
+
+    <h3>Code: Load Balancing Algorithms in Python</h3>
+
+    <p><strong>Simple round-robin (pseudocode):</strong></p>
+<pre><code class="language-python"># Pseudocode: Simple Round Robin Load Balancer
+servers = [srv1, srv2, srv3]
+next_server = 0
+
+def get_server():
+    global next_server
+    srv = servers[next_server]
+    next_server = (next_server + 1) % len(servers)
+    return srv</code></pre>
+
+    <p><strong>Round-robin with function-level state:</strong></p>
+<pre><code class="language-python">servers = ['A', 'B', 'C']
+idx = 0
+
+def get_next_server():
+    global idx
+    server = servers[idx]
+    idx = (idx + 1) % len(servers)
+    return server</code></pre>
+
+    <p><strong>Round-robin as a class:</strong></p>
+<pre><code class="language-python">class RoundRobinLB:
+    def __init__(self, servers):
+        self.servers = servers
+        self.index = 0
+
+    def get_server(self):
+        server = self.servers[self.index]
+        self.index = (self.index + 1) % len(self.servers)
+        return server
+
+# Usage
+lb = RoundRobinLB(['server1', 'server2', 'server3'])
+for _ in range(6):
+    print(lb.get_server())</code></pre>
+
+    <p>Output:</p>
+<pre><code class="language-bash">server1
+server2
+server3
+server1
+server2
+server3</code></pre>
+
+    <p><strong>Least connections:</strong></p>
+<pre><code class="language-python">connections = {'A': 3, 'B': 1, 'C': 2}
+
+def get_least_connections():
+    return min(connections, key=connections.get)</code></pre>
+
+    <p><strong>IP hashing:</strong></p>
+<pre><code class="language-python">import hashlib
+
+def ip_hash(ip, servers):
+    idx = int(hashlib.md5(ip.encode()).hexdigest(), 16) % len(servers)
+    return servers[idx]</code></pre>
+
+    <p><strong>Weighted round robin:</strong></p>
+<pre><code class="language-python">servers = [('A', 3), ('B', 1)]  # (server, weight)
+weighted_list = [s for s, w in servers for _ in range(w)]
+idx = 0
+
+def get_weighted_server():
+    global idx
+    server = weighted_list[idx]
+    idx = (idx + 1) % len(weighted_list)
+    return server</code></pre>
+
+    <h3>Load Balancer in Action</h3>
+    <div class="archd-seq" aria-label="Load balancer sequence">
+      <div class="archd-seq-step"><span class="num">1</span>HTTP Request 1 — User → LB → Server 1</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">HTTP Request 1</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">⚖️</span><span>Load Balancer</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Forward</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server 1</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>HTTP Request 2 — User → LB → Server 2</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">HTTP Request 2</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">⚖️</span><span>Load Balancer</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Forward</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server 2</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>HTTP Request 3 — User → LB → Server 3</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">HTTP Request 3</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">⚖️</span><span>Load Balancer</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Forward</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server 3</span></div>
+      </div>
+    </div>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Note</div>
+        <p>The LB continuously monitors server health and reroutes traffic if one fails.</p>
+      </div>
+    </div>
+
+    <p>A simpler view:</p>
+    <div class="archd" aria-label="Load balancer simple view">
+      <div class="archd-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client 1</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client 2</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">⚖️</span><span>Load Balancer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server 1</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server 2</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server 3</span></div>
+      </div>
+    </div>
+
+    <p><strong>Handling failures gracefully:</strong> If Server 2 crashes, the load balancer detects this via health checks and reroutes all new traffic to Server 1 and Server 3 only, preserving high availability.</p>
+
+    <h3>Sample NGINX Load Balancer Config</h3>
+<pre><code class="language-nginx">http {
+    upstream backend {
+        server backend1.example.com weight=3;
+        server backend2.example.com weight=2;
+        server backend3.example.com weight=1;
+    }
+
+    server {
+        listen 80;
+        location / {
+            proxy_pass http://backend;
+        }
+    }
+}</code></pre>
+
+    <h3>Choosing the Right Load Balancer</h3>
+    <ul>
+      <li><strong>Layer 4:</strong> Choose for raw speed and lower-level TCP/UDP traffic.</li>
+      <li><strong>Layer 7:</strong> Choose for intelligent routing (APIs, microservices).</li>
+      <li><strong>Software:</strong> Great for flexible, cost-effective deployments.</li>
+      <li><strong>Hardware:</strong> Enterprise-grade performance, in data centers.</li>
+      <li><strong>Cloud:</strong> Seamless scaling, built-in security, minimal management.</li>
+    </ul>
+
+    <p><strong>Other considerations:</strong></p>
+    <ul>
+      <li><strong>SSL Termination:</strong> Offload CPU-heavy encryption from backend servers.</li>
+      <li><strong>DDoS Protection:</strong> Many cloud/hardware LBs provide built-in attack mitigation.</li>
+      <li><strong>Session Persistence:</strong> Use IP hashing or sticky sessions if needed.</li>
+    </ul>
+
+    <h3>Load Balancing — Tips &amp; Best Practices</h3>
+    <div class="callout callout-tip">
+      <span class="callout-icon">🎯</span>
+      <div class="callout-content">
+        <div class="callout-title">Best Practices</div>
+        <ul>
+          <li><strong>Always set up health checks</strong> for your backend servers.</li>
+          <li><strong>Prefer stateless backend design</strong> for easier load balancing.</li>
+          <li><strong>Monitor metrics</strong> like connection counts, response times, error rates.</li>
+          <li><strong>For microservices</strong>, consider using a service mesh (Istio, Linkerd) for advanced L7 routing.</li>
+          <li><strong>Enable SSL termination</strong> at the load balancer to reduce backend CPU load.</li>
+          <li><strong>Use autoscaling</strong> in conjunction with load balancing for elastic capacity.</li>
+          <li><strong>Choose the right strategy</strong> based on traffic patterns and backend capabilities.</li>
+          <li><strong>Combine load balancing with autoscaling</strong> for true elasticity in the cloud.</li>
+          <li><strong>Monitor, test, and iterate</strong> — don't "set and forget" your load balancer.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2 id="autoscaling">Autoscaling in Cloud Environments</h2>
+    <p>In modern cloud architecture, <strong>autoscaling</strong> is a core technique for building highly available, cost-effective, and resilient systems.</p>
+
+    <h3>What is Autoscaling?</h3>
+    <p><strong>Autoscaling</strong> is the <strong>automatic adjustment of compute resources</strong> (servers, containers, or functions) in response to real-time demand.</p>
+    <ul>
+      <li><strong>Objective:</strong> Maintain performance and availability while optimizing costs.</li>
+      <li><strong>Common use cases:</strong> Microservices, web applications, event-driven systems, batch processing.</li>
+    </ul>
+
+    <blockquote>
+      "Autoscaling plays a critical role in keeping system performance available and cost-efficient, especially where demand can vary drastically and unpredictably."
+    </blockquote>
+
+    <h3>How Autoscaling Works</h3>
+    <p>Autoscaling decisions are <strong>triggered by metrics</strong> such as:</p>
+    <ul>
+      <li><strong>CPU usage</strong></li>
+      <li><strong>Memory consumption</strong></li>
+      <li><strong>Request rate</strong></li>
+      <li><strong>Queue length</strong></li>
+      <li><strong>Custom business KPIs</strong></li>
+    </ul>
+
+    <h3>Autoscaling Types</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Type</th><th>Description</th><th>Example</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Horizontal</strong></td><td>Add/remove instances (scale out/in)</td><td>Add EC2 VMs/Pods</td></tr>
+          <tr><td><strong>Vertical</strong></td><td>Resize a single instance (scale up/down)</td><td>Add CPU/RAM to server</td></tr>
+          <tr><td><strong>Diagonal</strong></td><td>Start vertical, then add horizontal as needed (hybrid approach)</td><td>Cloud-native workloads</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Diagram: Scaling Types</strong></p>
+    <div class="archd" aria-label="Three autoscaling types">
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">⬆️</span><span>Vertical Scaling</span></div>
+        <div class="archd-node"><span class="archd-icon">➡️</span><span>Horizontal Scaling</span></div>
+        <div class="archd-node"><span class="archd-icon">↗️</span><span>Diagonal Scaling</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">💪</span><span>Single Server<br><small>(Add CPU/RAM)</small></span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🖥️🖥️🖥️</span><span>Multiple Servers<br><small>(Add Servers)</small></span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🔀</span><span>Hybrid<br><small>(Start vertical, then add)</small></span></div>
+      </div>
+    </div>
+
+    <h3>Scaling Policies</h3>
+    <ul>
+      <li><strong>Reactive Scaling:</strong> Triggers when specific metrics cross thresholds (e.g., CPU &gt; 80%).</li>
+      <li><strong>Predictive Scaling:</strong> Uses historical trends and ML to forecast and scale <em>before</em> demand spikes.</li>
+      <li><strong>Scheduled Scaling:</strong> Scales resources at set times based on known traffic patterns (e.g., daily peaks, Black Friday).</li>
+    </ul>
+
+    <h3>Autoscaling Across Major Cloud Providers</h3>
+    <p>All major clouds offer first-class autoscaling features.</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Provider</th><th>Autoscaling Services</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>AWS</td><td>EC2 Auto Scaling Groups, Lambda, ECS, EKS</td></tr>
+          <tr><td>Azure</td><td>VM Scale Sets, App Service Plans, AKS</td></tr>
+          <tr><td>GCP</td><td>Managed Instance Groups (MIGs), Cloud Run, GKE, Functions</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>A more detailed view:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Cloud</th><th>Compute Autoscaling</th><th>Container Autoscaling</th><th>Monitoring / Metrics</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>AWS</strong></td><td>EC2 Auto Scaling Groups, Lambda</td><td>ECS, EKS (Kubernetes) Autoscaling</td><td>CloudWatch</td></tr>
+          <tr><td><strong>Azure</strong></td><td>VM Scale Sets, App Service Plans</td><td>AKS (Kubernetes) Autoscaling</td><td>Azure Monitor</td></tr>
+          <tr><td><strong>GCP</strong></td><td>Managed Instance Groups, Functions</td><td>Cloud Run, GKE Autoscaling</td><td>Stackdriver/Operations</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Example: AWS EC2 Auto Scaling Group (CloudFormation YAML)</h3>
+<pre><code class="language-yaml">Resources:
+  MyAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      MinSize: '2'
+      MaxSize: '10'
+      DesiredCapacity: '2'
+      LaunchConfigurationName: !Ref MyLaunchConfig
+      TargetGroupARNs:
+        - !Ref MyTargetGroup
+      MetricsCollection:
+        - Granularity: "1Minute"</code></pre>
+
+    <p>A version with tags:</p>
+<pre><code class="language-yaml">Resources:
+  MyAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      MinSize: 2
+      MaxSize: 10
+      DesiredCapacity: 4
+      LaunchConfigurationName: !Ref MyLaunchConfig
+      TargetGroupARNs:
+        - !Ref MyTargetGroup
+      MetricsCollection:
+        - Granularity: "1Minute"
+      Tags:
+        - Key: Name
+          Value: MyASGInstance
+          PropagateAtLaunch: true</code></pre>
+
+    <h3>Example: Azure VM Scale Set (CLI)</h3>
+<pre><code class="language-bash">az vmss create \
+  --resource-group myResourceGroup \
+  --name myScaleSet \
+  --image UbuntuLTS \
+  --upgrade-policy-mode automatic \
+  --custom-data cloud-init.txt \
+  --admin-username azureuser
+
+az vmss autoscale create \
+  --resource-group myResourceGroup \
+  --name myAutoscaleSetting \
+  --vmss-name myScaleSet \
+  --min-count 2 --max-count 10 --count 2</code></pre>
+
+    <h3>Example: GCP Managed Instance Group (gcloud)</h3>
+<pre><code class="language-bash">gcloud compute instance-groups managed create my-group \
+  --base-instance-name my-instance \
+  --template my-instance-template \
+  --size 2 \
+  --zone us-central1-a
+
+gcloud compute instance-groups managed set-autoscaling my-group \
+  --max-num-replicas 10 \
+  --min-num-replicas 2 \
+  --target-cpu-utilization 0.75 \
+  --cool-down-period 90</code></pre>
+
+    <h2 id="monitoring-proactive-scaling">Monitoring &amp; Proactive Scaling</h2>
+    <p>Effective autoscaling depends on robust monitoring.</p>
+    <ul>
+      <li><strong>Key Metrics:</strong> CPU, memory, network, queue depth, custom KPIs.</li>
+      <li><strong>Tools:</strong> AWS CloudWatch, Prometheus, Azure Monitor, GCP Operations, Grafana.</li>
+      <li><strong>Proactive Scaling:</strong> Use ML/trends to <em>forecast</em> demand, not just react.</li>
+      <li><strong>Scheduled Scaling:</strong> Predefine scaling windows for known peak times (Black Friday, daily traffic patterns).</li>
+    </ul>
+
+    <h2 id="cost-optimization">Cost Optimization Strategies</h2>
+    <p>Cloud costs can spiral if autoscaling is not managed carefully. Best practices:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Strategy</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Avoid Over-provisioning</strong></td><td>Scale just enough for demand; avoid idle resources.</td></tr>
+          <tr><td><strong>Use Spot/Preemptible VMs</strong></td><td>For batch/non-critical workloads; up to 80% cheaper.</td></tr>
+          <tr><td><strong>Set Resource Limits/Quotas</strong></td><td>Prevent runaway scaling, especially in dev/test environments.</td></tr>
+          <tr><td><strong>Rightsize Regularly</strong></td><td>Analyze actual usage and adjust resource size accordingly.</td></tr>
+          <tr><td><strong>Auto-pausing/Scale-to-zero</strong></td><td>Use features that pause/stop idle services (e.g., Cloud Run, Lambda)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="fundamental-laws">The Fundamental Laws</h2>
+
+    <h3>Amdahl's Law — Why Adding Servers Doesn't Linearly Scale</h3>
+    <p>If 95% of a workload is parallelizable and 5% is serial, the <strong>maximum speedup is 20×</strong> — no matter how many machines you throw at it.</p>
+
+<pre><code class="language-bash">Speedup ≤  1 / ((1 - P) + P/N)
+where P = parallel fraction, N = number of processors</code></pre>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Parallel %</th><th>Max speedup (∞ machines)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>50%</td><td>2×</td></tr>
+          <tr><td>90%</td><td>10×</td></tr>
+          <tr><td>95%</td><td>20×</td></tr>
+          <tr><td>99%</td><td>100×</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Lesson:</strong> the serial part of your system is the bottleneck. Profile to find it; eliminate it before adding more machines.</p>
+
+    <h3>Universal Scalability Law (Gunther)</h3>
+    <p>In practice, scaling is often <em>worse</em> than Amdahl predicts because of <strong>coordination overhead</strong> — locks, consensus, distributed transactions. There's a point past which adding more nodes makes the system <em>slower</em>. This is why "just add another microservice" doesn't always help.</p>
+
+    <h2 id="stateless-service-design">Stateless Service Design</h2>
+    <p>The single most important enabler of horizontal scaling. A <strong>stateless</strong> service holds no per-request memory between requests; any instance can serve any request.</p>
+
+    <h3>Where to Put the State Instead</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>State</th><th>Where it goes</th><th>Why</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>User session</td><td>Redis / Memcached</td><td>Any instance can look it up by ID</td></tr>
+          <tr><td>File uploads in progress</td><td>Object storage with session tokens</td><td>Resumable uploads work across servers</td></tr>
+          <tr><td>In-progress workflows</td><td>Database or workflow engine (Temporal, Step Functions)</td><td>Survives restarts</td></tr>
+          <tr><td>WebSocket state</td><td>Pub/Sub layer (Redis Streams, Kafka)</td><td>Any WebSocket server can deliver to any user</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">🎯</span>
+      <div class="callout-content">
+        <div class="callout-title">Rule</div>
+        <p>If your service can't be killed and restarted at any moment without users noticing, you have hidden state. Find it.</p>
+      </div>
+    </div>
+
+    <h2 id="failure-containment">Failure Containment Patterns</h2>
+    <p>Scaling isn't only about handling load — it's about preventing one failure from cascading.</p>
+
+    <h3>Circuit Breaker</h3>
+    <p>If a downstream service is failing, <strong>stop calling it for a while</strong> so the failing service can recover and your service doesn't waste resources waiting on timeouts.</p>
+
+    <div class="state-diagram" aria-label="Circuit breaker state diagram">
+      <div class="state-node closed">
+        <div class="state-label">CLOSED</div>
+        <div class="state-desc">normal</div>
+      </div>
+      <div class="state-arrow"><span class="state-arrow-label">N% fail</span></div>
+      <div class="state-node open">
+        <div class="state-label">OPEN</div>
+        <div class="state-desc">fail fast</div>
+      </div>
+      <div class="state-arrow"><span class="state-arrow-label">cooldown</span></div>
+      <div class="state-node half">
+        <div class="state-label">HALF-OPEN</div>
+        <div class="state-desc">try one</div>
+      </div>
+      <div class="state-arrow"><span class="state-arrow-label">success</span></div>
+      <div class="state-node closed">
+        <div class="state-label">CLOSED</div>
+        <div class="state-desc">back to normal</div>
+      </div>
+    </div>
+
+    <p><strong>Implementation:</strong> count failures in a window; trip if &gt;N% fail; after a cooldown, allow one trial request.</p>
+
+    <h3>Bulkhead</h3>
+    <p>Isolate resources so failure in one part of the system can't drown the rest. Just like the watertight compartments on a ship — if one floods, the rest stay dry.</p>
+
+    <div class="bulkhead-viz" aria-label="Bulkhead pattern: isolated pools">
+      <div class="bulkhead-cell">
+        <div class="bulkhead-cell-title">🔐 Auth Service</div>
+        <div class="bulkhead-cell-pool">pool: 200 threads</div>
+      </div>
+      <div class="bulkhead-cell failed">
+        <div class="bulkhead-cell-title">💳 Payment Service</div>
+        <div class="bulkhead-cell-pool">pool: 200 threads (slow)</div>
+      </div>
+      <div class="bulkhead-cell">
+        <div class="bulkhead-cell-title">📦 Inventory Service</div>
+        <div class="bulkhead-cell-pool">pool: 200 threads</div>
+      </div>
+      <div class="bulkhead-cell">
+        <div class="bulkhead-cell-title">🔔 Notification Service</div>
+        <div class="bulkhead-cell-pool">pool: 200 threads</div>
+      </div>
+    </div>
+
+    <p><strong>Example:</strong> dedicate separate thread pools (or connection pools) per downstream service. If the slow payment service eats all 200 threads, your auth calls still have their own pool.</p>
+
+    <h3>Rate Limiting</h3>
+    <p>Cap how many requests any one client (IP, user, API key) can send in a window. Protects against abuse <em>and</em> against your own systems thundering when something goes wrong.</p>
+
+    <p><strong>Algorithms (in order of sophistication):</strong></p>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">🪟</div>
+        <div class="card-title">Fixed Window</div>
+        <div class="card-body"><strong>Simplicity:</strong> simplest<br><strong>Burst handling:</strong> bad (allows 2× burst at window edges)<br><strong>Memory:</strong> tiny</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📜</div>
+        <div class="card-title">Sliding Window Log</div>
+        <div class="card-body"><strong>Simplicity:</strong> precise<br><strong>Burst handling:</strong> great<br><strong>Memory:</strong> high (stores timestamps)</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔢</div>
+        <div class="card-title">Sliding Window Counter</div>
+        <div class="card-body"><strong>Simplicity:</strong> balanced<br><strong>Burst handling:</strong> good<br><strong>Memory:</strong> low</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🪣</div>
+        <div class="card-title">Token Bucket</div>
+        <div class="card-body"><strong>Simplicity:</strong> most flexible<br><strong>Burst handling:</strong> great (allows bursts up to bucket size)<br><strong>Memory:</strong> small</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">💧</div>
+        <div class="card-title">Leaky Bucket</div>
+        <div class="card-body"><strong>Simplicity:</strong> smoothes traffic<br><strong>Burst handling:</strong> enforces constant rate<br><strong>Memory:</strong> small</div>
+      </div>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">🎯</span>
+      <div class="callout-content">
+        <div class="callout-title">Default Choice</div>
+        <p>Token bucket. Easy to reason about, allows reasonable bursts, well-supported in libraries.</p>
+      </div>
+    </div>
+
+    <h3>Backpressure</h3>
+    <p>When you can't keep up, <strong>tell upstream to slow down</strong> rather than silently dropping or queuing forever. Standard mechanisms: HTTP 429, gRPC <code>RESOURCE_EXHAUSTED</code>, blocking writes on a bounded queue.</p>
+
+    <h2 id="capacity-planning">Capacity Planning — Back-of-the-Envelope</h2>
+    <p>Given:</p>
+    <ul>
+      <li>p99 latency budget: <strong>100 ms</strong></li>
+      <li>Each request takes: <strong>~20 ms</strong> of CPU</li>
+      <li>Each server: <strong>8 cores</strong></li>
+    </ul>
+
+    <p><strong>Throughput per server:</strong> <code>(8 cores × 1000 ms/s) / 20 ms ≈ 400 req/s</code> (ignoring I/O wait)</p>
+
+    <p><strong>At 10K req/s peak load:</strong> <code>10,000 / 400 = 25 servers</code>, plus <strong>+50% headroom</strong> for spikes and rolling deploys → <strong>40 servers</strong>.</p>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">🎯</span>
+      <div class="callout-content">
+        <div class="callout-title">Rule of Thumb</div>
+        <p>Aim for <strong>60-70% steady-state utilization.</strong> Higher = no margin for spikes. Lower = wasted money.</p>
+      </div>
+    </div>
+
+    <h2 id="combined-tips">Combined Tips &amp; Tricks</h2>
+    <p>A consolidated master list drawn from all sections.</p>
+
+    <h3>General Scaling</h3>
+    <ul>
+      <li><strong>Start simple:</strong> Use vertical scaling for MVPs; switch to horizontal as needs grow. Don't over-engineer.</li>
+      <li><strong>Design stateless services:</strong> Easier to distribute and scale horizontally. Use shared databases or distributed caches for state.</li>
+      <li><strong>Choose the right scaling strategy:</strong> Horizontal for resilience, vertical for simplicity, diagonal for flexibility.</li>
+      <li><strong>Know when to switch:</strong> Monitor system metrics; switch when approaching hardware limits or needing high availability.</li>
+      <li><strong>Document scaling decisions:</strong> Record why/when you chose vertical, horizontal, or diagonal scaling to aid future maintenance.</li>
+    </ul>
+
+    <h3>Automation &amp; Monitoring</h3>
+    <ul>
+      <li><strong>Automate monitoring:</strong> Track key metrics and set up alerts.</li>
+      <li><strong>Monitor everything:</strong> Use dashboards and alerts (CloudWatch, Prometheus, Grafana).</li>
+      <li><strong>Monitor both technical and business KPIs:</strong> e.g., queue depth, orders per minute.</li>
+      <li><strong>Plan for failure:</strong> Implement health checks and graceful failover in load balancers.</li>
+      <li><strong>Test under load:</strong> Use chaos engineering and load testing to surface bottlenecks early.</li>
+    </ul>
+
+    <h3>Load Balancers</h3>
+    <ul>
+      <li><strong>Implement load balancers:</strong> Distribute traffic, prevent overload, increase reliability.</li>
+      <li><strong>Choose the right load balancing strategy:</strong> Match to traffic patterns.</li>
+      <li><strong>Always set up health checks</strong> for backend servers.</li>
+      <li><strong>For microservices</strong>, consider using a service mesh (Istio, Linkerd) for advanced L7 routing.</li>
+      <li><strong>Enable SSL termination</strong> at the load balancer to reduce backend CPU load.</li>
+    </ul>
+
+    <h3>Autoscaling</h3>
+    <ul>
+      <li><strong>Set conservative thresholds at first, then tune.</strong> Avoid thrashing (rapid scaling in/out).</li>
+      <li><strong>Test autoscaling in staging with simulated traffic spikes.</strong></li>
+      <li><strong>Combine reactive and predictive scaling for best results.</strong></li>
+      <li><strong>Document your scaling policies</strong> and update them as usage patterns evolve.</li>
+      <li><strong>For serverless, check for concurrency limits and cold start implications.</strong></li>
+      <li><strong>Always review cloud provider pricing calculators</strong> to forecast cost under peak loads.</li>
+      <li><strong>Limit autoscaling:</strong> Set quotas to avoid runaway costs.</li>
+    </ul>
+
+    <h3>Cost Optimization</h3>
+    <ul>
+      <li><strong>Avoid over-provisioning.</strong> Use auto-pausing and scale-to-zero features in serverless/cloud.</li>
+      <li><strong>Use spot/preemptible instances</strong> for batch workloads (up to 80% cheaper).</li>
+      <li><strong>Rightsize regularly</strong> based on actual usage.</li>
+      <li><strong>Set resource limits/quotas</strong> to prevent runaway costs in dev/test environments.</li>
+    </ul>
+
+    <h2 id="interview-questions">💬 Sample Interview Questions</h2>
+    <ol>
+      <li>What does scalability mean in system design?</li>
+      <li>Compare vertical and horizontal scaling. When would you use each?</li>
+      <li>Explain diagonal scaling and why it's useful in cloud-native apps.</li>
+      <li>What are common bottlenecks, and how do you identify them?</li>
+      <li>How does a load balancer improve availability and performance?</li>
+      <li>What is autoscaling, and how is it implemented in AWS/Azure/GCP?</li>
+      <li>How do you optimize for cost while scaling in the cloud?</li>
+      <li>Describe a scenario where horizontal scaling wouldn't help.</li>
+      <li>How do you balance cost and complexity in scaling strategies?</li>
+      <li>What challenges arise in horizontal scaling and how would you solve them?</li>
+      <li>Explain the difference between Layer 4 and Layer 7 load balancers — with examples.</li>
+      <li>Compare Round Robin vs. Least Connections — pros/cons.</li>
+      <li>When would you use software, hardware, or cloud-based load balancers?</li>
+      <li>How do you handle failover and high availability?</li>
+      <li>How does predictive autoscaling work?</li>
+      <li>How would you set up autoscaling for a containerized app?</li>
+      <li>What challenges arise with autoscaling in real-time systems?</li>
+      <li>How can you ensure cost optimization when implementing autoscaling?</li>
+    </ol>
+
+    <h2 id="key-takeaways">🔑 Key Takeaways</h2>
+    <ul>
+      <li><strong>Scalability is essential</strong> for growth, reliability, and performance in modern architectures.</li>
+      <li><strong>Vertical, horizontal, and diagonal scaling</strong> serve different needs — choose wisely based on workload and growth patterns.</li>
+      <li><strong>Load balancers are key</strong> to distributing traffic and ensuring uptime.</li>
+      <li><strong>Autoscaling</strong> enables agility and cost efficiency in the cloud.</li>
+      <li><strong>Continuous monitoring and optimization</strong> keep your system healthy as it grows.</li>
+      <li><strong>Your scaling strategy should evolve</strong> with your system's growth and requirements.</li>
+      <li><strong>Align autoscaling with cost optimization goals</strong> to avoid budget overruns.</li>
+    </ul>
+
+    <h2 id="further-reading">📚 Further Reading</h2>
+
+    <h3>AWS</h3>
+    <ul>
+      <li><a href="https://docs.aws.amazon.com/autoscaling/" target="_blank">AWS Auto Scaling Documentation</a></li>
+      <li><a href="https://aws.amazon.com/elasticloadbalancing/" target="_blank">AWS Elastic Load Balancing</a></li>
+    </ul>
+
+    <h3>Azure</h3>
+    <ul>
+      <li><a href="https://learn.microsoft.com/en-us/azure/azure-monitor/autoscale/autoscale-overview" target="_blank">Azure Autoscale Documentation</a></li>
+      <li><a href="https://azure.microsoft.com/en-us/services/load-balancer/" target="_blank">Azure Load Balancer</a></li>
+    </ul>
+
+    <h3>GCP</h3>
+    <ul>
+      <li><a href="https://cloud.google.com/compute/docs/autoscaler/" target="_blank">GCP Autoscaling Documentation</a></li>
+      <li><a href="https://cloud.google.com/load-balancing" target="_blank">Google Cloud Load Balancing</a></li>
+      <li><a href="https://cloud.google.com/solutions/cost-optimization" target="_blank">Cloud Cost Optimization Guide</a></li>
+    </ul>
+
+    <h3>Tools</h3>
+    <ul>
+      <li><a href="https://docs.nginx.com/nginx/admin-guide/load-balancer/http-load-balancer/" target="_blank">NGINX Load Balancing Docs</a></li>
+      <li><a href="https://docs.nginx.com/nginx/admin-guide/load-balancer/" target="_blank">NGINX Load Balancing Guide</a></li>
+      <li><a href="https://www.haproxy.org/" target="_blank">HAProxy Documentation</a></li>
+    </ul>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">📌</span>
+      <div class="callout-content">
+        <div class="callout-title">Diagram Rendering Note</div>
+        <p>The original markdown used Mermaid diagrams. They have been re-rendered here as themed HTML/CSS architecture diagrams for an interactive, accessible reading experience.</p>
+      </div>
+    </div>
+
+    <nav class="chapter-nav">
+      <a class="chapter-nav-card" href="5 - Web Concepts in System Design (System Design Fundamentals).html">
+        <div class="chapter-nav-label">← Previous</div>
+        <div class="chapter-nav-title">Chapter 5 — Web Concepts</div>
+      </a>
+      <a class="chapter-nav-card next" href="7 - Storage - Database and Storage.html">
+        <div class="chapter-nav-label">Next chapter →</div>
+        <div class="chapter-nav-title">Chapter 7 — Storage</div>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-yaml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-nginx.min.js"></script>
+<script src="../assets/system-design.js"></script>
+
+</body>
+</html>

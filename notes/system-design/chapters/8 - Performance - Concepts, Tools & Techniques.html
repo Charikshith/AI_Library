@@ -1,0 +1,2657 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chapter 8 — Performance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<link rel="stylesheet" href="../assets/system-design.css">
+<style>
+  /* Chapter 8 — Performance diagrams */
+  figure.ch8-fig { margin: 22px 0; padding: 0; }
+  figure.ch8-fig > figcaption {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Eviction policy cards */
+  .ch8-evict-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin: 18px 0;
+  }
+  .ch8-evict {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .ch8-evict h5 {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--primary);
+  }
+  .ch8-evict-row {
+    display: flex;
+    gap: 4px;
+    align-items: flex-end;
+    margin-bottom: 8px;
+  }
+  .ch8-evict-cell {
+    flex: 1;
+    height: 28px;
+    border-radius: 6px;
+    background: var(--primary-faint);
+    border: 1px solid var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--primary);
+  }
+  .ch8-evict-cell.evict {
+    background: var(--danger-faint);
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+  .ch8-evict-cell.fresh {
+    background: var(--success-faint);
+    border-color: var(--success);
+    color: var(--success);
+  }
+  .ch8-evict-cap {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  /* Sync vs Async timeline comparison */
+  .ch8-syncasync {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin: 18px 0;
+  }
+  @media (max-width: 720px) {
+    .ch8-syncasync { grid-template-columns: 1fr; }
+  }
+  .ch8-syncasync-col {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .ch8-syncasync-col h5 {
+    margin: 0 0 12px 0;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .ch8-syncasync-col.sync h5 { color: var(--danger); }
+  .ch8-syncasync-col.async h5 { color: var(--success); }
+  .ch8-tl-row {
+    display: grid;
+    grid-template-columns: 70px 1fr;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .ch8-tl-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: right;
+  }
+  .ch8-tl-bar {
+    height: 16px;
+    border-radius: 4px;
+    background: var(--border);
+    position: relative;
+  }
+  .ch8-tl-bar .seg {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 600;
+    color: white;
+  }
+  .ch8-tl-bar .seg.work    { background: var(--primary); }
+  .ch8-tl-bar .seg.wait    { background: var(--danger); }
+  .ch8-tl-bar .seg.queue   { background: var(--accent); color: var(--text); }
+  .ch8-tl-bar .seg.consume { background: var(--success); }
+  .ch8-tl-bar .seg.idle    { background: var(--border-strong); color: var(--text); }
+
+  /* Concurrency vs Parallelism execution lanes */
+  .ch8-cp {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin: 18px 0;
+  }
+  @media (max-width: 720px) { .ch8-cp { grid-template-columns: 1fr; } }
+  .ch8-cp-panel {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .ch8-cp-panel h5 {
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--primary);
+  }
+  .ch8-cp-lane {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .ch8-cp-axis {
+    font-size: 11px;
+    color: var(--text-faint);
+    text-align: center;
+    margin-top: 6px;
+    border-top: 1px dashed var(--border-strong);
+    padding-top: 4px;
+  }
+  .ch8-cp-bar { height: 14px; position: relative; }
+  .ch8-cp-bar .blk {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-radius: 3px;
+  }
+  .ch8-cp-bar .blk.a { background: var(--primary); }
+  .ch8-cp-bar .blk.b { background: var(--accent); }
+  .ch8-cp-bar .blk.c { background: var(--success); }
+
+  /* Process vs Thread memory layout */
+  .ch8-pt {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin: 18px 0;
+  }
+  @media (max-width: 720px) { .ch8-pt { grid-template-columns: 1fr; } }
+  .ch8-pt-box {
+    background: var(--bg-elevated);
+    border: 2px solid var(--border-strong);
+    border-radius: var(--radius);
+    padding: 14px;
+  }
+  .ch8-pt-box h5 {
+    margin: 0 0 10px 0;
+    text-align: center;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--primary);
+  }
+  .ch8-pt-shared {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .ch8-pt-tag {
+    flex: 1;
+    padding: 6px 8px;
+    text-align: center;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid;
+  }
+  .ch8-pt-tag.code  { background: var(--primary-faint); border-color: var(--primary); color: var(--primary); }
+  .ch8-pt-tag.data  { background: var(--accent-faint); border-color: var(--accent); color: var(--accent); }
+  .ch8-pt-tag.files { background: var(--success-faint); border-color: var(--success); color: var(--success); }
+  .ch8-pt-threads { display: flex; gap: 6px; }
+  .ch8-pt-thread {
+    flex: 1;
+    padding: 8px 6px;
+    text-align: center;
+    border: 1px dashed var(--border-strong);
+    border-radius: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .ch8-pt-thread .stk {
+    display: block;
+    margin: 4px auto;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--danger-faint);
+    border: 2px solid var(--danger);
+  }
+
+  /* Master-Slave / Master-Master diagram */
+  .ch8-repl {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+    margin: 18px 0;
+  }
+  @media (max-width: 720px) { .ch8-repl { grid-template-columns: 1fr; } }
+  .ch8-repl-panel {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    text-align: center;
+  }
+  .ch8-repl-panel h5 {
+    margin: 0 0 14px 0;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--primary);
+  }
+  .ch8-repl-nodes {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .ch8-db {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 78px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    border: 2px solid;
+  }
+  .ch8-db .ic { font-size: 22px; }
+  .ch8-db.master { background: var(--accent-faint); border-color: var(--accent); color: var(--accent); }
+  .ch8-db.slave  { background: var(--primary-faint); border-color: var(--primary); color: var(--primary); }
+  .ch8-repl-arrows {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .ch8-repl-arrows .a-down { color: var(--success); }
+  .ch8-repl-arrows .a-bi   { color: var(--accent); }
+
+  /* Index types card grid */
+  .ch8-idx-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin: 18px 0;
+  }
+  .ch8-idx {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .ch8-idx h5 {
+    margin: 0 0 6px 0;
+    font-size: 13px;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .ch8-idx p { margin: 0 0 12px 0; font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+  .ch8-idx-vis {
+    height: 64px;
+    background: var(--bg-muted, var(--bg-elevated));
+    border: 1px dashed var(--border-strong);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+  /* B-tree visual */
+  .ch8-btree { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .ch8-btree .row { display: flex; gap: 6px; }
+  .ch8-btree .nd {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--primary-faint);
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    font-size: 10px;
+  }
+  /* Hash visual */
+  .ch8-hash { display: flex; align-items: center; gap: 4px; }
+  .ch8-hash .pill {
+    padding: 3px 6px;
+    border-radius: 10px;
+    border: 1px solid var(--accent);
+    background: var(--accent-faint);
+    color: var(--accent);
+    font-size: 10px;
+  }
+  .ch8-hash .arr { color: var(--text-muted); font-size: 11px; }
+  /* Bitmap visual */
+  .ch8-bitmap { display: flex; flex-direction: column; gap: 2px; font-size: 10px; }
+  .ch8-bitmap .bm { display: flex; gap: 2px; }
+  .ch8-bitmap .bm .bit {
+    width: 12px;
+    height: 12px;
+    border: 1px solid var(--border-strong);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    color: var(--text-muted);
+    border-radius: 2px;
+  }
+  .ch8-bitmap .bm .bit.on {
+    background: var(--success);
+    color: white;
+    border-color: var(--success);
+  }
+  /* Full-text visual */
+  .ch8-ft { display: flex; flex-direction: column; gap: 4px; }
+  .ch8-ft .tok {
+    display: inline-block;
+    padding: 2px 6px;
+    background: var(--success-faint);
+    color: var(--success);
+    border: 1px solid var(--success);
+    border-radius: 10px;
+    font-size: 10px;
+    margin-right: 4px;
+  }
+
+  /* Normalization vs Denormalization */
+  .ch8-norm {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin: 18px 0;
+  }
+  @media (max-width: 720px) { .ch8-norm { grid-template-columns: 1fr; } }
+  .ch8-norm-panel {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .ch8-norm-panel h5 {
+    margin: 0 0 12px 0;
+    text-align: center;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .ch8-norm-panel.left  h5 { color: var(--primary); }
+  .ch8-norm-panel.right h5 { color: var(--accent); }
+  .ch8-tbl {
+    background: var(--bg);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .ch8-tbl-hdr {
+    background: var(--primary);
+    color: white;
+    padding: 5px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: 0.05em;
+  }
+  .ch8-norm-panel.right .ch8-tbl-hdr { background: var(--accent); color: var(--text); }
+  .ch8-tbl ul {
+    list-style: none;
+    margin: 0;
+    padding: 6px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1.7;
+    color: var(--text-muted);
+  }
+  .ch8-norm-join {
+    text-align: center;
+    font-size: 11px;
+    color: var(--success);
+    font-weight: 600;
+    margin: 6px 0;
+  }
+
+  /* Connection pool diagram */
+  .ch8-pool {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    display: grid;
+    grid-template-columns: auto 1fr auto 1fr auto;
+    gap: 16px;
+    align-items: center;
+    margin: 18px 0;
+  }
+  @media (max-width: 720px) {
+    .ch8-pool { grid-template-columns: 1fr; gap: 10px; }
+  }
+  .ch8-pool-col {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .ch8-pool-cli {
+    padding: 8px 10px;
+    background: var(--primary-faint);
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    border-radius: 6px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .ch8-pool-cli.idle { opacity: 0.4; }
+  .ch8-pool-box {
+    border: 2px dashed var(--accent);
+    background: var(--accent-faint);
+    border-radius: 50px;
+    padding: 16px 14px;
+    text-align: center;
+    position: relative;
+  }
+  .ch8-pool-box .lbl {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .ch8-pool-conn {
+    padding: 6px 10px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--accent);
+    color: var(--text);
+    border-radius: 4px;
+    font-size: 11px;
+    margin: 4px 0;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .ch8-pool-db {
+    padding: 14px 10px;
+    background: var(--success-faint);
+    border: 2px solid var(--success);
+    color: var(--success);
+    border-radius: 12px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .ch8-pool-db .ic { display: block; font-size: 24px; margin-bottom: 4px; }
+  .ch8-pool-arr {
+    color: var(--text-muted);
+    font-size: 18px;
+    text-align: center;
+  }
+
+  /* Materialized View */
+  .ch8-matview {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 16px;
+    align-items: center;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    margin: 18px 0;
+  }
+  @media (max-width: 720px) {
+    .ch8-matview { grid-template-columns: 1fr; }
+    .ch8-matview .arr-h { transform: rotate(90deg); }
+  }
+  .ch8-matview-side h5 {
+    margin: 0 0 8px 0;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: center;
+  }
+  .ch8-matview-side.src h5 { color: var(--primary); }
+  .ch8-matview-side.dst h5 { color: var(--accent); }
+  .ch8-mini-tbl {
+    background: var(--bg);
+    border: 1px solid var(--border-strong);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    line-height: 1.6;
+    color: var(--text-muted);
+    margin: 4px 0;
+  }
+  .ch8-mini-tbl .tbl-hd {
+    font-weight: 700;
+    color: var(--primary);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2px;
+  }
+  .ch8-matview-side.dst .ch8-mini-tbl .tbl-hd { color: var(--accent); }
+  .arr-h {
+    font-size: 28px;
+    color: var(--text-muted);
+    text-align: center;
+  }
+  .arr-h .label {
+    display: block;
+    font-size: 10px;
+    color: var(--success);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Decoupled order processing flow */
+  .ch8-decoupled {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    margin: 18px 0;
+  }
+  .ch8-decoupled-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    gap: 12px;
+    align-items: center;
+  }
+  @media (max-width: 720px) {
+    .ch8-decoupled-row { grid-template-columns: 1fr; }
+    .ch8-decoupled-row .arr-h { transform: rotate(90deg); }
+  }
+  .ch8-svc {
+    padding: 12px 14px;
+    background: var(--primary-faint);
+    border: 2px solid var(--primary);
+    color: var(--primary);
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 12px;
+  }
+  .ch8-svc.bus { background: var(--accent-faint); border-color: var(--accent); color: var(--accent); }
+  .ch8-svc .sub { display: block; font-size: 10px; font-weight: 500; color: var(--text-muted); margin-top: 4px; }
+  .ch8-fanout {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ch8-fanout-item {
+    padding: 6px 10px;
+    background: var(--success-faint);
+    border: 1px solid var(--success);
+    color: var(--success);
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  /* Message broker architecture overview */
+  .ch8-arch {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+    gap: 12px;
+    align-items: center;
+    margin: 18px 0;
+  }
+  @media (max-width: 720px) {
+    .ch8-arch { grid-template-columns: 1fr; }
+    .ch8-arch .arr-h { transform: rotate(90deg); }
+  }
+  .ch8-arch-col {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ch8-arch-col .lbl {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .ch8-arch-cube {
+    padding: 8px 10px;
+    background: var(--primary-faint);
+    border: 2px solid var(--primary);
+    color: var(--primary);
+    border-radius: 6px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .ch8-arch-cube.topic { background: var(--accent-faint); border-color: var(--accent); color: var(--accent); }
+  .ch8-arch-cube.queue {
+    background: var(--success-faint);
+    border-color: var(--success);
+    color: var(--success);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.2em;
+  }
+  .ch8-arch-cube.cons { background: var(--primary-faint); border-color: var(--primary); color: var(--primary); }
+</style>
+</head>
+<body><a href="../../../notes.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;z-index:99999;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600;background:#0f172a;color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.28)">&#8592; AI Library</a>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">
+    <span class="brand-icon">SD</span>
+    <span>Mastering System Design</span>
+  </a>
+  <div class="topbar-actions">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Chapter 8 — On This Page</h3>
+    <ul class="toc-list" id="tocList">
+      <li><a href="#learning-outcomes">Learning Outcomes</a></li>
+      <li><a href="#introduction-to-system-performance">Introduction to System Performance</a></li>
+      <li><a href="#key-metrics">Key Metrics</a></li>
+      <li><a href="#measuring-performance">Measuring Performance — SLAs, SLOs, SLIs</a></li>
+      <li><a href="#performance-testing-monitoring">Performance Testing &amp; Monitoring</a></li>
+      <li><a href="#caching-for-speed-optimization">Caching for Speed Optimization</a></li>
+      <li><a href="#messaging-and-queues">Messaging &amp; Queues for Decoupling</a></li>
+      <li><a href="#concurrency-and-parallelism">Concurrency &amp; Parallelism</a></li>
+      <li><a href="#database-performance-optimization">Database Performance Optimization</a></li>
+      <li><a href="#performance-anti-patterns">Performance Anti-Patterns</a></li>
+      <li><a href="#cache-patterns-full-picture">Cache Patterns — Full Picture</a></li>
+      <li><a href="#combined-tips-and-tricks">Combined Tips &amp; Tricks</a></li>
+      <li><a href="#sample-interview-questions">Sample Interview Questions</a></li>
+      <li><a href="#summary-key-takeaways">Summary &amp; Key Takeaways</a></li>
+      <li><a href="#further-reading">Further Reading</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <span class="chapter-label">Chapter 8</span>
+      <h1>Performance — Concepts, Tools &amp; Techniques</h1>
+      <p class="hero-subtitle">
+        Master the levers that make systems feel fast: caching strategies, message queues for decoupling, concurrency models, database indexing and query tuning — plus the anti-patterns (N+1 queries, cache stampedes, blocking I/O) that quietly destroy production performance.
+      </p>
+      <div class="hero-author">By Charikshith</div>
+    </section>
+
+    <p>Performance is the heart of modern system design. It's not just about how fast your system runs — it's about how well it scales, how it responds under pressure, and how efficiently it utilizes resources. In this chapter, we'll break down the essential pillars of performance: latency, throughput, caching, messaging queues, concurrency, and database optimization.</p>
+
+    <h2 id="learning-outcomes">🎯 Learning Outcomes</h2>
+    <p>After reading this chapter, you'll be able to:</p>
+    <ol class="outcomes-list">
+      <li><span class="outcome-num">1</span><span>Reason about <strong>p50, p95, p99</strong> latency and explain why averages lie.</span></li>
+      <li><span class="outcome-num">2</span><span>Pick the right caching strategy (cache-aside, write-through, write-back) for a workload.</span></li>
+      <li><span class="outcome-num">3</span><span>Diagnose and prevent <strong>cache stampedes</strong> and the <strong>thundering herd</strong> problem.</span></li>
+      <li><span class="outcome-num">4</span><span>Spot the <strong>N+1 query</strong> problem in code and fix it.</span></li>
+      <li><span class="outcome-num">5</span><span>Size a database connection pool correctly (smaller than you think).</span></li>
+    </ol>
+
+    <h2 id="introduction-to-system-performance">Introduction to System Performance</h2>
+    <p>Performance in system design is a <strong>multidimensional goal</strong> — balancing speed, scalability, and efficiency:</p>
+    <ul>
+      <li><strong>Speed:</strong> How quickly does your system respond? (Measured as latency.)</li>
+      <li><strong>Capacity:</strong> How much work can it handle at once? (Measured as throughput.)</li>
+      <li><strong>Efficiency:</strong> How well does it use resources under stress? (CPU, memory, network.)</li>
+    </ul>
+
+    <blockquote><strong>Performance is not a single metric — it's about achieving the right balance for your application.</strong></blockquote>
+
+    <h3>Why Performance Matters</h3>
+    <ul>
+      <li><strong>User expectations:</strong> Slow systems lose users and revenue.</li>
+      <li><strong>Business impact:</strong> Performance affects drop-offs, bounce rates, and costs.</li>
+      <li><strong>System stability:</strong> Poor performance leads to instability and outages.</li>
+    </ul>
+
+    <blockquote><strong>Performance is a feature, not an afterthought.</strong></blockquote>
+
+    <h2 id="key-metrics">Key Metrics — Latency, Throughput, Scalability &amp; Responsiveness</h2>
+
+    <h3>Latency vs. Throughput</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>Description</th><th>Unit</th><th>Affects</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Latency</td><td>Time to process a single request</td><td>ms, s</td><td>Responsiveness</td></tr>
+          <tr><td>Throughput</td><td>Requests processed per second</td><td>RPS, TPS</td><td>Scalability</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Note</div>
+        <p>Low latency ≠ high throughput. Both must be balanced per use case.</p>
+      </div>
+    </div>
+
+    <h3>Code: Measuring Latency and Throughput (Python)</h3>
+<pre><code class="language-python">import time
+import requests
+
+def measure_latency(url):
+    start = time.time()
+    response = requests.get(url)
+    latency = time.time() - start
+    return latency
+
+def measure_throughput(url, n_requests):
+    start = time.time()
+    for _ in range(n_requests):
+        requests.get(url)
+    total_time = time.time() - start
+    return n_requests / total_time
+
+print("Latency:", measure_latency("https://example.com"))
+print("Throughput:", measure_throughput("https://example.com", 100), "req/sec")</code></pre>
+
+    <h3>Diagram: Latency vs. Throughput</h3>
+    <p>A simple way to picture the difference — latency is the round-trip time of a single request; throughput is how many of those requests the server handles per second.</p>
+    <div class="archd-seq" aria-label="Latency vs throughput sequence">
+      <div class="archd-seq-step"><span class="num">1</span>Request 1 (measure latency)</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">request</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-seq-arrow left"><span class="label">response (Latency)</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Request 2 — and so on per second</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">request 2</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-seq-arrow left"><span class="label">response 2</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">∑</span>Throughput = Total requests / time</div>
+    </div>
+
+    <h3>Scalability vs. Responsiveness</h3>
+    <ul>
+      <li><strong>Scalability:</strong> Can the system handle more load as users/data grow?
+        <ul>
+          <li><strong>Horizontal scaling:</strong> Adding more servers.</li>
+          <li><strong>Vertical scaling:</strong> Increasing resources of existing servers.</li>
+        </ul>
+      </li>
+      <li><strong>Responsiveness:</strong> How quickly the system replies, even under heavy load. Tightly linked to latency.</li>
+    </ul>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Goal</div>
+        <p>Good design should ensure responsiveness at scale.</p>
+      </div>
+    </div>
+
+    <h2 id="measuring-performance">Measuring Performance — SLAs, SLOs, SLIs, and Percentiles</h2>
+
+    <h3>SLAs, SLOs, and SLIs</h3>
+    <ul>
+      <li><strong>SLA (Service Level Agreement):</strong> External contractual performance guarantee.</li>
+      <li><strong>SLO (Service Level Objective):</strong> Internal performance target.</li>
+      <li><strong>SLI (Service Level Indicator):</strong> Actual measured value.</li>
+    </ul>
+
+    <p><strong>Example:</strong></p>
+<pre><code class="language-bash">SLA: 99.9% uptime for customers
+SLO: 95% of requests &lt; 300ms latency
+SLI: Actual: 93% of requests &lt; 300ms (need improvement!)</code></pre>
+
+    <h3>Percentiles: P50, P95, P99</h3>
+    <p><strong>Why not just use averages?</strong> Because averages hide outliers.</p>
+    <ul>
+      <li><strong>P50:</strong> 50% (median) requests are faster.</li>
+      <li><strong>P95:</strong> 95% of requests are faster; 5% are slower.</li>
+      <li><strong>P99:</strong> The slowest 1% (tail latency) — critical for user experience.</li>
+    </ul>
+
+    <p><strong>Visualization:</strong></p>
+<pre><code class="language-bash">|----|------------------|------------------|------------------|----|
+  0%   50% (P50)         95% (P95)          99% (P99)         100%</code></pre>
+
+    <h2 id="performance-testing-monitoring">Performance Testing &amp; Monitoring</h2>
+
+    <h3>Performance Testing Types</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Type</th><th>Description</th><th>Goal</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Load Testing</td><td>Normal expected load</td><td>Baseline performance</td></tr>
+          <tr><td>Stress Testing</td><td>Beyond normal load</td><td>Graceful degradation/crash</td></tr>
+          <tr><td>Spike Testing</td><td>Sudden burst load</td><td>Absorb traffic spikes</td></tr>
+          <tr><td>Endurance (Soak)</td><td>Extended duration load</td><td>Memory leaks / fatigue</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Goal:</strong> Identify bottlenecks &amp; ensure reliability.</p>
+
+    <h4>CLI Example: Load Testing with <code>wrk</code></h4>
+<pre><code class="language-bash">wrk -t8 -c400 -d30s https://yourapi.com/api/endpoint</code></pre>
+
+    <h3>Performance Monitoring</h3>
+    <ul>
+      <li><strong>Testing</strong> is pre-deployment; <strong>monitoring</strong> is continuous in production.</li>
+      <li><strong>APM tools:</strong> New Relic, Datadog.</li>
+      <li><strong>Logs &amp; metrics:</strong> ELK stack, Prometheus + Grafana.</li>
+    </ul>
+
+    <p><strong>What to track:</strong></p>
+    <ul>
+      <li>Latency &amp; throughput.</li>
+      <li>Error rates.</li>
+      <li>Resource usage (CPU, memory, DB queries).</li>
+    </ul>
+
+    <h2 id="caching-for-speed-optimization">Caching for Speed Optimization</h2>
+    <p>Caching is one of the most powerful levers for reducing latency, easing backend load, and scaling systems.</p>
+
+    <h3>Why Caching Matters</h3>
+    <ul>
+      <li><strong>Reducing latency:</strong> Serve requests in milliseconds by avoiding repeated trips to databases or recomputing results.</li>
+      <li><strong>Easing backend load:</strong> Offload expensive queries or computations from databases.</li>
+      <li><strong>Improving scalability:</strong> Handle more users with the same infrastructure.</li>
+      <li><strong>Enhancing user experience:</strong> Faster response times = happier users.</li>
+    </ul>
+
+    <h3>Diagram: Caching in a Web Application</h3>
+    <div class="archd" aria-label="Caching in a web application">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">HTTP Request</span></div>
+      <div class="archd-node"><span class="archd-icon">🖥️</span><span>Web Server</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Check Cache</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>In-memory Cache</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database (on miss)</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Cache Hit / Return Data</span></div>
+      <div class="archd-node"><span class="archd-icon">🖥️</span><span>Web Server</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">HTTP Response</span></div>
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+    </div>
+
+    <h3>Types of Caching</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Type</th><th>Where it Lives</th><th>Example Tools / Tech</th><th>Use Case</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Client-side</strong></td><td>User's browser/device</td><td>localStorage, Service Workers, IndexedDB</td><td>Offline support, quick navigation</td></tr>
+          <tr><td><strong>Server-side</strong></td><td>Application server memory</td><td>Redis, Memcached</td><td>Session tokens, user data, computed results</td></tr>
+          <tr><td><strong>CDN caching</strong></td><td>Content Delivery Networks</td><td>Cloudflare, Akamai</td><td>Static assets (JS, CSS, images), API responses</td></tr>
+          <tr><td><strong>Database caching</strong></td><td>Database result-set cache</td><td>Redis, Materialized Views</td><td>Expensive queries, analytics</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Caching Strategies</h3>
+
+    <h4>1. Write-Through Caching</h4>
+    <ul>
+      <li><strong>How it works:</strong> Data is written to both the cache and the database at the same time.</li>
+      <li><strong>Pro:</strong> Consistency is guaranteed; cache is always fresh.</li>
+      <li><strong>Con:</strong> Adds latency to write operations.</li>
+    </ul>
+
+    <figure class="ch8-fig">
+      <div class="archd-seq" aria-label="Write-through caching flow">
+        <div class="archd-seq-step"><span class="num">1</span>App writes — cache and DB are updated together</div>
+        <div class="archd-seq-row">
+          <div class="archd-node is-user"><span class="archd-icon">🧑‍💻</span><span>App</span></div>
+          <div class="archd-seq-arrow right"><span class="label">write(key, value)</span></div>
+          <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Cache</span></div>
+          <div class="archd-seq-arrow right"><span class="label">write(key, value)</span></div>
+          <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+        </div>
+        <div class="archd-seq-step"><span class="num">2</span>Both confirm — strong consistency</div>
+        <div class="archd-seq-row">
+          <div class="archd-node is-user"><span class="archd-icon">🧑‍💻</span><span>App</span></div>
+          <div class="archd-seq-arrow left"><span class="label">ack</span></div>
+          <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Cache</span></div>
+          <div class="archd-seq-arrow left"><span class="label">ack</span></div>
+          <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+        </div>
+      </div>
+      <figcaption>Write-Through — cache and datastore updated synchronously</figcaption>
+    </figure>
+
+<pre><code class="language-python">def write(key, value):
+    cache.set(key, value)  # Update cache
+    db.save(key, value)    # Update database</code></pre>
+
+    <h4>2. Write-Back (Write-Behind) Caching</h4>
+    <ul>
+      <li><strong>How it works:</strong> Data is written to the cache first and asynchronously persisted to the database later.</li>
+      <li><strong>Pro:</strong> Fast write performance.</li>
+      <li><strong>Con:</strong> Risk of data loss if cache fails before DB is updated.</li>
+    </ul>
+
+    <figure class="ch8-fig">
+      <div class="archd-seq" aria-label="Write-back caching flow">
+        <div class="archd-seq-step"><span class="num">1</span>App writes to cache only — returns immediately</div>
+        <div class="archd-seq-row cols-2">
+          <div class="archd-node is-user"><span class="archd-icon">🧑‍💻</span><span>App</span></div>
+          <div class="archd-seq-arrow right"><span class="label">write(key, value)</span></div>
+          <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Cache</span></div>
+        </div>
+        <div class="archd-seq-row cols-2">
+          <div class="archd-node is-user"><span class="archd-icon">🧑‍💻</span><span>App</span></div>
+          <div class="archd-seq-arrow left"><span class="label">ack (fast)</span></div>
+          <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Cache</span></div>
+        </div>
+        <div class="archd-seq-step"><span class="num">2</span>Cache flushes to DB asynchronously later</div>
+        <div class="archd-seq-row cols-2">
+          <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Cache</span></div>
+          <div class="archd-seq-arrow right"><span class="label">async write</span></div>
+          <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+        </div>
+      </div>
+      <figcaption>Write-Back (Write-Behind) — cache acks fast, persists to DB later</figcaption>
+    </figure>
+
+<pre><code class="language-python">def write(key, value):
+    cache.set(key, value)
+    # Schedule async write to DB
+    schedule_async_db_write(key, value)</code></pre>
+
+    <h4>3. Lazy Loading (Cache-Aside)</h4>
+    <ul>
+      <li><strong>How it works:</strong> On reads, check cache first. If not found (cache miss), fetch from DB, return, and populate cache.</li>
+      <li><strong>Pro:</strong> Only hot (frequently accessed) data is cached.</li>
+      <li><strong>Con:</strong> First access is slow ("cold" cache).</li>
+    </ul>
+
+    <figure class="ch8-fig">
+      <div class="archd-seq" aria-label="Cache-aside flow">
+        <div class="archd-seq-step"><span class="num">1</span>App reads — check cache first</div>
+        <div class="archd-seq-row cols-2">
+          <div class="archd-node is-user"><span class="archd-icon">🧑‍💻</span><span>App</span></div>
+          <div class="archd-seq-arrow right"><span class="label">get(key)</span></div>
+          <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Cache</span></div>
+        </div>
+        <div class="archd-seq-step"><span class="num">2</span>Cache miss — fall through to DB</div>
+        <div class="archd-seq-row cols-2">
+          <div class="archd-node is-user"><span class="archd-icon">🧑‍💻</span><span>App</span></div>
+          <div class="archd-seq-arrow right"><span class="label">get(key) — miss</span></div>
+          <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+        </div>
+        <div class="archd-seq-step"><span class="num">3</span>App populates cache for next time</div>
+        <div class="archd-seq-row cols-2">
+          <div class="archd-node is-user"><span class="archd-icon">🧑‍💻</span><span>App</span></div>
+          <div class="archd-seq-arrow right"><span class="label">set(key, value)</span></div>
+          <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Cache</span></div>
+        </div>
+      </div>
+      <figcaption>Lazy Loading / Cache-Aside — app fetches on miss and populates cache</figcaption>
+    </figure>
+
+<pre><code class="language-python">def read(key):
+    value = cache.get(key)
+    if value is None:
+        value = db.get(key)
+        cache.set(key, value)
+    return value</code></pre>
+
+    <h4>4. Explicit / Manual Caching</h4>
+    <ul>
+      <li><strong>How it works:</strong> Developers decide explicitly when and what to cache.</li>
+      <li><strong>Pro:</strong> Maximum flexibility.</li>
+      <li><strong>Con:</strong> Higher complexity, risk of staleness if not managed well.</li>
+    </ul>
+
+    <h3>Cache Eviction Policies</h3>
+    <p>Caches have limited memory, so old or less useful data must be evicted.</p>
+
+    <figure class="ch8-fig">
+      <div class="ch8-evict-grid" aria-label="Cache eviction strategies visualized">
+        <div class="ch8-evict">
+          <h5>LRU — Least Recently Used</h5>
+          <div class="ch8-evict-row">
+            <div class="ch8-evict-cell">1m ago</div>
+            <div class="ch8-evict-cell">30m</div>
+            <div class="ch8-evict-cell">1h</div>
+            <div class="ch8-evict-cell">2h</div>
+            <div class="ch8-evict-cell evict">10h ✕</div>
+          </div>
+          <div class="ch8-evict-cap">Oldest access wins eviction</div>
+        </div>
+        <div class="ch8-evict">
+          <h5>LFU — Least Frequently Used</h5>
+          <div class="ch8-evict-row">
+            <div class="ch8-evict-cell evict">100× ✕</div>
+            <div class="ch8-evict-cell">300×</div>
+            <div class="ch8-evict-cell">500×</div>
+            <div class="ch8-evict-cell">1000×</div>
+            <div class="ch8-evict-cell">2000×</div>
+          </div>
+          <div class="ch8-evict-cap">Fewest hits wins eviction</div>
+        </div>
+        <div class="ch8-evict">
+          <h5>FIFO — First In, First Out</h5>
+          <div class="ch8-evict-row">
+            <div class="ch8-evict-cell evict">#1 ✕</div>
+            <div class="ch8-evict-cell">#2</div>
+            <div class="ch8-evict-cell">#3</div>
+            <div class="ch8-evict-cell">#4</div>
+            <div class="ch8-evict-cell fresh">#5 new</div>
+          </div>
+          <div class="ch8-evict-cap">Insertion order, ignores access</div>
+        </div>
+        <div class="ch8-evict">
+          <h5>TTL — Time To Live</h5>
+          <div class="ch8-evict-row">
+            <div class="ch8-evict-cell">60s</div>
+            <div class="ch8-evict-cell">45s</div>
+            <div class="ch8-evict-cell">30s</div>
+            <div class="ch8-evict-cell">5s</div>
+            <div class="ch8-evict-cell evict">0s ✕</div>
+          </div>
+          <div class="ch8-evict-cap">Expires after fixed lifespan</div>
+        </div>
+      </div>
+      <figcaption>Cache Eviction Strategies — who gets removed when the cache is full</figcaption>
+    </figure>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Policy</th><th>Description</th><th>When to Use</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>LRU (Least Recently Used)</strong></td><td>Remove the least recently accessed item</td><td>Default choice, general use</td></tr>
+          <tr><td><strong>LFU (Least Frequently Used)</strong></td><td>Remove item with fewest access hits</td><td>When some items are rarely used</td></tr>
+          <tr><td><strong>FIFO (First In, First Out)</strong></td><td>Remove oldest item added</td><td>Simplicity, but less intelligent</td></tr>
+          <tr><td><strong>TTL (Time To Live)</strong></td><td>Expire items after a fixed time</td><td>Time-sensitive data (API responses, sessions)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Redis: The Caching Powerhouse</h3>
+    <p><a href="https://redis.io/" target="_blank">Redis</a> is an open-source, in-memory key-value store, renowned for its blazing speed:</p>
+    <ul>
+      <li><strong>Ultra-fast access:</strong> Everything is in RAM.</li>
+      <li><strong>Supports TTL:</strong> Automatic expiry of keys.</li>
+      <li><strong>Persistence:</strong> Can save cache to disk for durability.</li>
+      <li><strong>Pub/Sub messaging:</strong> For real-time event systems.</li>
+      <li><strong>Versatile:</strong> Caching, queues, session storage, leaderboards.</li>
+    </ul>
+
+    <p><strong>Redis caching in Python:</strong></p>
+<pre><code class="language-python">import redis
+
+cache = redis.Redis(host='localhost', port=6379, db=0)
+
+def get_user_profile(user_id):
+    cached = cache.get(f"profile:{user_id}")
+    if cached:
+        return cached
+    profile = db_get_profile(user_id)
+    cache.setex(f"profile:{user_id}", 60, profile)  # 60s TTL
+    return profile</code></pre>
+
+    <p>A simpler version:</p>
+<pre><code class="language-python">import redis
+
+r = redis.Redis(host='localhost', port=6379, db=0)
+
+# Set cache with 10-minute TTL
+r.setex('user:123', 600, '{"name": "Alice", "age": 30}')
+
+# Get cache
+user_data = r.get('user:123')</code></pre>
+
+    <p><strong>LRU cache in Python (<code>functools</code>):</strong></p>
+<pre><code class="language-python">from functools import lru_cache
+
+@lru_cache(maxsize=128)
+def get_product(product_id):
+    # Simulate DB fetch
+    return fetch_product_from_db(product_id)</code></pre>
+
+    <p><strong>Redis caching in Node.js + Express:</strong></p>
+<pre><code class="language-javascript">const express = require('express');
+const redis = require('redis');
+const app = express();
+
+const redisClient = redis.createClient(); // default localhost:6379
+
+app.get('/api/product/:id', async (req, res) => {
+    const productId = req.params.id;
+
+    redisClient.get(`product:${productId}`, async (err, cached) => {
+        if (cached) {
+            return res.json(JSON.parse(cached)); // Cache hit
+        }
+
+        // Simulate DB fetch
+        const product = await fetchProductFromDB(productId);
+
+        // Cache with TTL of 10 minutes
+        redisClient.setex(`product:${productId}`, 600, JSON.stringify(product));
+
+        res.json(product);
+    });
+});
+
+function fetchProductFromDB(productId) {
+    return Promise.resolve({ id: productId, name: "Sample Product" });
+}
+
+app.listen(3000, () => console.log("Server running on port 3000"));</code></pre>
+
+    <h3>Real-World Caching Examples</h3>
+    <ul>
+      <li><strong>CDN:</strong> Static assets (images, JS, CSS) cached near users for instant load times.</li>
+      <li><strong>E-commerce:</strong> Product catalog queries cached to avoid repeated expensive DB hits.</li>
+      <li><strong>User sessions:</strong> Session data stored in Redis for quick login checks.</li>
+      <li><strong>Search:</strong> Frequently searched keywords/results cached to save compute cycles.</li>
+      <li><strong>Microservices:</strong> API responses cached to reduce downstream service load.</li>
+    </ul>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Use Case</th><th>Cache Type</th><th>Tool</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Static assets (images)</td><td>CDN</td><td>Cloudflare</td></tr>
+          <tr><td>User sessions</td><td>Server-side</td><td>Redis</td></tr>
+          <tr><td>Product page data</td><td>Server-side</td><td>Redis/Memcached</td></tr>
+          <tr><td>API responses</td><td>Server-side</td><td>Redis</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Caching — Tips &amp; Tricks</h3>
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Tips</div>
+        <ul>
+          <li><strong>Always measure:</strong> Use metrics to identify what should be cached (hot queries).</li>
+          <li><strong>Apply TTL smartly:</strong> Especially on volatile or time-sensitive data.</li>
+          <li><strong>Prevent cache stampede:</strong> Use locks or request coalescing to avoid thundering herd problems.</li>
+          <li><strong>Monitor cache health:</strong> Watch hit/miss rates, eviction rates, memory usage.</li>
+          <li><strong>Automate cache invalidation:</strong> Design carefully for dynamic content (on writes or updates).</li>
+          <li><strong>Choose the right cache layer:</strong> Not all data should be cached everywhere.</li>
+          <li><strong>Secure your caches:</strong> Protect against unauthorized access for sensitive data.</li>
+          <li><strong>Combine eviction policies:</strong> E.g., LRU + TTL for the best of both worlds.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2 id="messaging-and-queues">Messaging &amp; Queues for Decoupling</h2>
+    <p>Asynchronous messaging <strong>decouples</strong> services, boosts scalability, and enhances resilience.</p>
+
+    <h3>Why Use Asynchronous Messaging?</h3>
+    <p>Traditional synchronous calls force producers (e.g., APIs) to wait for consumers (e.g., email sender, payment processor) to finish their work. This <strong>tightly couples</strong> services and limits scalability.</p>
+
+    <figure class="ch8-fig">
+      <div class="ch8-syncasync" aria-label="Synchronous versus asynchronous timing comparison">
+        <div class="ch8-syncasync-col sync">
+          <h5>🔴 Synchronous — Producer waits</h5>
+          <div class="ch8-tl-row">
+            <span class="ch8-tl-label">Producer</span>
+            <div class="ch8-tl-bar">
+              <div class="seg work" style="left:0; width:18%">work</div>
+              <div class="seg wait" style="left:18%; width:64%">⏳ blocked waiting</div>
+              <div class="seg work" style="left:82%; width:18%">done</div>
+            </div>
+          </div>
+          <div class="ch8-tl-row">
+            <span class="ch8-tl-label">Consumer</span>
+            <div class="ch8-tl-bar">
+              <div class="seg idle" style="left:0; width:20%">idle</div>
+              <div class="seg consume" style="left:20%; width:60%">processing…</div>
+              <div class="seg idle" style="left:80%; width:20%">idle</div>
+            </div>
+          </div>
+          <p style="font-size:11.5px;color:var(--text-muted);margin:8px 0 0">Tightly coupled. Producer's response time = work + consumer time.</p>
+        </div>
+        <div class="ch8-syncasync-col async">
+          <h5>🟢 Asynchronous — Fire and forget</h5>
+          <div class="ch8-tl-row">
+            <span class="ch8-tl-label">Producer</span>
+            <div class="ch8-tl-bar">
+              <div class="seg work" style="left:0; width:18%">work</div>
+              <div class="seg queue" style="left:18%; width:8%">📤</div>
+              <div class="seg idle" style="left:26%; width:74%">free for next request</div>
+            </div>
+          </div>
+          <div class="ch8-tl-row">
+            <span class="ch8-tl-label">Queue</span>
+            <div class="ch8-tl-bar">
+              <div class="seg queue" style="left:26%; width:14%">✉ ✉ ✉</div>
+            </div>
+          </div>
+          <div class="ch8-tl-row">
+            <span class="ch8-tl-label">Consumer</span>
+            <div class="ch8-tl-bar">
+              <div class="seg consume" style="left:40%; width:55%">processes at own pace</div>
+            </div>
+          </div>
+          <p style="font-size:11.5px;color:var(--text-muted);margin:8px 0 0">Decoupled. Producer returns immediately; consumer scales independently.</p>
+        </div>
+      </div>
+      <figcaption>Synchronous vs Asynchronous — the producer's blocking time tells the story</figcaption>
+    </figure>
+
+    <p><strong>Asynchronous messaging decouples these components:</strong></p>
+    <ul>
+      <li><strong>Loose coupling:</strong> Producers and consumers don't need to know about each other.</li>
+      <li><strong>Performance:</strong> Producers can send messages and move on immediately.</li>
+      <li><strong>Scalability:</strong> Consumers can scale independently.</li>
+      <li><strong>Resilience:</strong> If a consumer fails, messages are not lost.</li>
+      <li><strong>Flexibility:</strong> Add new consumers without touching producers.</li>
+    </ul>
+
+    <h3>Core Concepts</h3>
+
+    <figure class="ch8-fig">
+      <div class="ch8-arch" aria-label="Producers, topic, queue, consumers architecture">
+        <div class="ch8-arch-col">
+          <div class="lbl">Producers</div>
+          <div class="ch8-arch-cube">📤 Order Svc</div>
+          <div class="ch8-arch-cube">📤 Catalog Svc</div>
+          <div class="ch8-arch-cube">📤 Inventory Svc</div>
+        </div>
+        <div class="arr-h">→<span class="label">publish</span></div>
+        <div class="ch8-arch-col">
+          <div class="lbl">Topic</div>
+          <div class="ch8-arch-cube topic">📡 events</div>
+        </div>
+        <div class="arr-h">→<span class="label">route</span></div>
+        <div class="ch8-arch-col">
+          <div class="lbl">Message Queue</div>
+          <div class="ch8-arch-cube queue">✉ ✉ ✉ ✉</div>
+          <div class="ch8-arch-cube queue">✉ ✉ ✉ ✉</div>
+        </div>
+        <div class="arr-h">→<span class="label">deliver</span></div>
+        <div class="ch8-arch-col">
+          <div class="lbl">Consumers</div>
+          <div class="ch8-arch-cube cons">📥 Basket</div>
+          <div class="ch8-arch-cube cons">📥 Billing</div>
+        </div>
+      </div>
+      <figcaption>Messaging Architecture — producers publish to topics; queues buffer for consumers</figcaption>
+    </figure>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Concept</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Message</strong></td><td>Packet of data (JSON, binary, etc.)</td></tr>
+          <tr><td><strong>Producer</strong></td><td>Sends message (e.g., order service)</td></tr>
+          <tr><td><strong>Consumer</strong></td><td>Receives and processes messages (e.g., inventory updater)</td></tr>
+          <tr><td><strong>Broker</strong></td><td>Middleware that stores and routes messages (RabbitMQ, Kafka)</td></tr>
+          <tr><td><strong>Queue/Topic</strong></td><td>Logical channel for delivery</td></tr>
+          <tr><td><strong>Ack</strong></td><td>Acknowledgement from consumer after successful processing</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Typical Flow</h3>
+    <div class="archd-seq" aria-label="Producer broker consumer flow">
+      <div class="archd-seq-step"><span class="num">1</span>Producer sends a message to the broker</div>
+      <div class="archd-seq-row">
+        <div class="archd-node"><span class="archd-icon">📤</span><span>Producer</span></div>
+        <div class="archd-seq-arrow right"><span class="label">"OrderPlaced"</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Broker</span></div>
+        <div class="archd-seq-arrow right"><span class="label">deliver</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📥</span><span>Consumer</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Consumer acks after processing</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Broker</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Ack</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📥</span><span>Consumer</span></div>
+      </div>
+    </div>
+
+    <p>For a <strong>pub/sub event bus</strong>:</p>
+    <div class="archd" aria-label="Pub-sub event bus diagram">
+      <div class="archd-node"><span class="archd-icon">📤</span><span>Producer (Catalog Service)</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Publish Event</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Event Bus (e.g., Kafka)</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Subscribed</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🛒</span><span>Basket Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">💳</span><span>Billing Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📊</span><span>Analytics Service</span></div>
+      </div>
+    </div>
+
+    <p>A simpler view:</p>
+    <div class="archd" aria-label="Simple producer to multiple consumers diagram">
+      <div class="archd-node"><span class="archd-icon">📤</span><span>Producer</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Sends Message</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Message Broker / Queue</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Delivers</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">📥</span><span>Consumer 1</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📥</span><span>Consumer 2</span></div>
+      </div>
+    </div>
+
+    <h3>Real-World Example: Decoupled Order Processing</h3>
+
+    <figure class="ch8-fig">
+      <div class="ch8-decoupled" aria-label="Decoupled price update propagation">
+        <div class="ch8-decoupled-row">
+          <div class="ch8-svc">🛒 Catalog Service<span class="sub">1. UpdatePrice<br>2. DB write<br>3. Publish event</span></div>
+          <div class="arr-h">→<span class="label">PriceUpdated</span></div>
+          <div class="ch8-svc bus">📡 Event Bus<span class="sub">Pub/Sub channel<br>Kafka / RabbitMQ</span></div>
+          <div class="arr-h">→<span class="label">fan-out</span></div>
+          <div class="ch8-fanout">
+            <div class="ch8-fanout-item">🧺 Basket Service — update cart items</div>
+            <div class="ch8-fanout-item">💳 Billing Service — recalc invoices</div>
+            <div class="ch8-fanout-item">📊 Analytics — log price change</div>
+          </div>
+        </div>
+      </div>
+      <figcaption>Decoupled Architecture — one event triggers many independent reactions</figcaption>
+    </figure>
+
+    <ol>
+      <li><strong>Catalog Service</strong> updates a product price.</li>
+      <li>After DB update, it publishes a <code>PriceUpdated</code> event to the broker.</li>
+      <li><strong>Basket Service</strong> receives the event and updates any cart items with the old price.</li>
+      <li><strong>Billing</strong> and <strong>Analytics</strong> services also subscribe to the event and trigger their own logic.</li>
+      <li>If any consumer is down, the message stays in the queue until it's back.</li>
+    </ol>
+
+    <p><strong>Benefits:</strong></p>
+    <ul>
+      <li><strong>No direct calls</strong> between services = no tight coupling.</li>
+      <li><strong>Downstream failures</strong> don't block the producer.</li>
+      <li><strong>Easy to add new consumers</strong> (e.g., promotions service).</li>
+    </ul>
+
+    <h3>When to Use Queues?</h3>
+    <ul>
+      <li><strong>Bursty workloads:</strong> Traffic spikes (flash sales), batch imports.</li>
+      <li><strong>Background jobs:</strong> Emails, processing, report generation, exports.</li>
+      <li><strong>Rate limiting / expensive ops:</strong> Spreading out heavy API calls or processing.</li>
+      <li><strong>Buffering:</strong> Smoothing out peaks to avoid overloading downstream systems.</li>
+      <li><strong>Decoupling between services.</strong></li>
+    </ul>
+
+    <h3>Popular Message Brokers: RabbitMQ vs. Kafka</h3>
+
+    <h4>RabbitMQ — Traditional Message Broker</h4>
+    <ul>
+      <li>Built on AMQP, designed for reliable message delivery.</li>
+      <li>Follows a <strong>push-based model:</strong> messages are pushed to consumers.</li>
+      <li>Supports acknowledgements, retries, and dead-letter queues.</li>
+      <li>Great for task distribution, background jobs, and real-time notifications.</li>
+      <li>Focuses on <strong>routing flexibility</strong> (direct, topic, fanout exchanges).</li>
+      <li>Messages are <strong>removed after consumption.</strong></li>
+    </ul>
+
+    <h4>Kafka — Distributed Event Streaming Platform</h4>
+    <ul>
+      <li>Built for <strong>high-throughput</strong>, durable, distributed event logs.</li>
+      <li>Uses a <strong>pull-based model:</strong> consumers read at their own pace.</li>
+      <li>Stores messages in <strong>partitioned logs;</strong> supports message replay.</li>
+      <li>Ideal for <strong>event sourcing</strong>, <strong>real-time analytics</strong>, and <strong>stream processing</strong>.</li>
+      <li>Highly <strong>scalable and fault-tolerant.</strong></li>
+      <li>Messages are <strong>retained for configurable durations</strong> (even after consumption).</li>
+    </ul>
+
+    <h4>RabbitMQ vs Kafka</h4>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>RabbitMQ</th><th>Kafka</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Type</strong></td><td>Message broker (AMQP)</td><td>Event streaming platform</td></tr>
+          <tr><td><strong>Model</strong></td><td>Push-based</td><td>Pull-based</td></tr>
+          <tr><td><strong>Delivery</strong></td><td>Messages delivered to consumers</td><td>Consumers fetch from log</td></tr>
+          <tr><td><strong>Use Case</strong></td><td>Task queues, notifications, jobs</td><td>Event sourcing, analytics, ETL</td></tr>
+          <tr><td><strong>Retention</strong></td><td>Message gone after consumption</td><td>Retained for days; supports replay</td></tr>
+          <tr><td><strong>Routing</strong></td><td>Flexible (direct, topic, fanout)</td><td>Partitioned topics</td></tr>
+          <tr><td><strong>Scale</strong></td><td>Good</td><td>Excellent (built for high throughput)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Delivery Guarantees</h3>
+    <ul>
+      <li><strong>At-least-once</strong> (default): Message retried until acknowledged; possible duplicates. <em>Consumer must be idempotent.</em></li>
+      <li><strong>At-most-once:</strong> Message delivered only once (no retries); possible loss.</li>
+      <li><strong>Exactly-once:</strong> Processed once and only once; hardest to implement, supported by Kafka under constraints.</li>
+    </ul>
+
+    <h3>Sample Code: Publishing &amp; Consuming Messages</h3>
+
+    <h4>Example 1: RabbitMQ (Python with <code>pika</code>)</h4>
+
+    <p><strong>Producer:</strong></p>
+<pre><code class="language-python">import pika
+
+connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+channel = connection.channel()
+channel.queue_declare(queue='tasks')
+channel.basic_publish(exchange='', routing_key='tasks', body='Hello World!')
+connection.close()</code></pre>
+
+    <p>A second producer variant:</p>
+<pre><code class="language-python">import pika
+
+connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+channel = connection.channel()
+channel.queue_declare(queue='orders')
+
+channel.basic_publish(exchange='', routing_key='orders', body='{"order_id": 123}')
+print("Sent order message.")
+connection.close()</code></pre>
+
+    <p><strong>Consumer (auto-ack):</strong></p>
+<pre><code class="language-python">def callback(ch, method, properties, body):
+    print(f"Received {body}")
+
+channel.basic_consume(queue='tasks', on_message_callback=callback, auto_ack=True)
+channel.start_consuming()</code></pre>
+
+    <p><strong>Consumer (with explicit ack):</strong></p>
+<pre><code class="language-python">import pika
+
+def callback(ch, method, properties, body):
+    print(f"Received {body}")
+    # process order...
+    ch.basic_ack(delivery_tag=method.delivery_tag)
+
+connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+channel = connection.channel()
+channel.queue_declare(queue='orders')
+channel.basic_consume(queue='orders', on_message_callback=callback)
+
+print('Waiting for messages...')
+channel.start_consuming()</code></pre>
+
+    <p><strong>Consumer with durable queue:</strong></p>
+<pre><code class="language-python">import pika
+
+def callback(ch, method, properties, body):
+    print("Received %r" % body)
+    ch.basic_ack(delivery_tag=method.delivery_tag)
+
+connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+channel = connection.channel()
+channel.queue_declare(queue='task_queue', durable=True)
+channel.basic_consume(queue='task_queue', on_message_callback=callback)
+channel.start_consuming()</code></pre>
+
+    <h4>Example 2: Kafka (Node.js with <code>kafkajs</code>)</h4>
+
+    <p><strong>Producer:</strong></p>
+<pre><code class="language-javascript">const { Kafka } = require('kafkajs');
+const kafka = new Kafka({ clientId: 'producer', brokers: ['localhost:9092'] });
+
+const producer = kafka.producer();
+await producer.connect();
+await producer.send({
+  topic: 'order-events',
+  messages: [{ value: JSON.stringify({ orderId: 123 }) }],
+});
+await producer.disconnect();</code></pre>
+
+    <p><strong>Consumer:</strong></p>
+<pre><code class="language-javascript">const { Kafka } = require('kafkajs');
+const kafka = new Kafka({ clientId: 'consumer', brokers: ['localhost:9092'] });
+
+const consumer = kafka.consumer({ groupId: 'order-group' });
+await consumer.connect();
+await consumer.subscribe({ topic: 'order-events', fromBeginning: true });
+
+await consumer.run({
+  eachMessage: async ({ message }) => {
+    const order = JSON.parse(message.value.toString());
+    console.log('Received order:', order);
+    // process order...
+  }
+});</code></pre>
+
+    <h3>Messaging — Best Practices</h3>
+    <ul>
+      <li><strong>Idempotent consumers:</strong> Ensure re-processing a message doesn't cause incorrect results.</li>
+      <li><strong>Dead-letter queues (DLQ):</strong> Capture and inspect messages that fail multiple times.</li>
+      <li><strong>Monitor queues:</strong> Track length and processing time to detect bottlenecks.</li>
+      <li><strong>Graceful retries:</strong> Use exponential backoff or circuit breakers.</li>
+      <li><strong>Choose guarantees wisely:</strong> At-least-once is common, but know your requirements.</li>
+      <li><strong>Security:</strong> Encrypt messages, use authentication &amp; authorization.</li>
+    </ul>
+
+    <h3>Messaging — Tips &amp; Tricks</h3>
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Tips</div>
+        <ul>
+          <li><strong>Make operations idempotent:</strong> Store processed message IDs or use database upserts.</li>
+          <li><strong>Use DLQs:</strong> Never silently drop or lose failing messages.</li>
+          <li><strong>Monitor and alert:</strong> Set up alerts for queue length, processing failures, and latency.</li>
+          <li><strong>Don't block consumers:</strong> Design consumers to be fast and non-blocking.</li>
+          <li><strong>Automate scaling:</strong> Use auto-scaling for consumer groups based on queue depth.</li>
+          <li><strong>Tune prefetch/batch sizes:</strong> For RabbitMQ, set channel prefetch; for Kafka, tune consumer batch size.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2 id="concurrency-and-parallelism">Concurrency &amp; Parallelism</h2>
+    <p>Unlocking performance often means handling <strong>many tasks at once</strong> — but how?</p>
+
+    <h3>Concurrency vs. Parallelism</h3>
+
+    <figure class="ch8-fig">
+      <div class="ch8-cp" aria-label="Concurrency versus parallelism timing">
+        <div class="ch8-cp-panel">
+          <h5>Concurrency — Interleaved on one CPU</h5>
+          <div class="ch8-cp-lane">
+            <span class="ch8-tl-label">Task A</span>
+            <div class="ch8-cp-bar">
+              <div class="blk a" style="left:0; width:12%"></div>
+              <div class="blk a" style="left:40%; width:14%"></div>
+              <div class="blk a" style="left:78%; width:10%"></div>
+            </div>
+          </div>
+          <div class="ch8-cp-lane">
+            <span class="ch8-tl-label">Task B</span>
+            <div class="ch8-cp-bar">
+              <div class="blk b" style="left:14%; width:12%"></div>
+              <div class="blk b" style="left:56%; width:18%"></div>
+            </div>
+          </div>
+          <div class="ch8-cp-lane">
+            <span class="ch8-tl-label">Task C</span>
+            <div class="ch8-cp-bar">
+              <div class="blk c" style="left:28%; width:10%"></div>
+              <div class="blk c" style="left:90%; width:8%"></div>
+            </div>
+          </div>
+          <div class="ch8-cp-axis">execution time →</div>
+          <p style="font-size:11.5px;color:var(--text-muted);margin:8px 0 0">Tasks share a single core via context-switching.</p>
+        </div>
+        <div class="ch8-cp-panel">
+          <h5>Parallelism — True simultaneous on N cores</h5>
+          <div class="ch8-cp-lane">
+            <span class="ch8-tl-label">Core 1: A</span>
+            <div class="ch8-cp-bar"><div class="blk a" style="left:0; width:100%"></div></div>
+          </div>
+          <div class="ch8-cp-lane">
+            <span class="ch8-tl-label">Core 2: B</span>
+            <div class="ch8-cp-bar"><div class="blk b" style="left:0; width:100%"></div></div>
+          </div>
+          <div class="ch8-cp-lane">
+            <span class="ch8-tl-label">Core 3: C</span>
+            <div class="ch8-cp-bar"><div class="blk c" style="left:0; width:100%"></div></div>
+          </div>
+          <div class="ch8-cp-axis">execution time →</div>
+          <p style="font-size:11.5px;color:var(--text-muted);margin:8px 0 0">All tasks progress at the same wall-clock moment.</p>
+        </div>
+      </div>
+      <figcaption>Concurrency vs Parallelism — interleaving on one core vs simultaneous on many</figcaption>
+    </figure>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Aspect</th><th>Concurrency</th><th>Parallelism</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Definition</td><td>Multiple tasks start/run/complete in overlapping time</td><td>Multiple tasks executed <em>simultaneously</em></td></tr>
+          <tr><td>Hardware</td><td>Single or multi-core</td><td>Multi-core required</td></tr>
+          <tr><td>Focus</td><td>Task management (responsiveness)</td><td>Task execution (throughput)</td></tr>
+          <tr><td>Example</td><td>Async web server</td><td>Matrix computation on threads</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Concurrency</strong> is about <em>managing</em> multiple tasks at the same time. These tasks may overlap in their execution, but do not necessarily run simultaneously. It allows a system to handle multiple things at once, improving responsiveness, even on a single CPU core.</p>
+    <ul>
+      <li>Task management, not simultaneous execution.</li>
+      <li>Can be achieved on a single-core CPU.</li>
+      <li>Gives the <em>illusion</em> of doing many things at once by rapidly switching context.</li>
+    </ul>
+
+    <p><strong>Example:</strong> A web server handling multiple HTTP requests using asynchronous I/O.</p>
+<pre><code class="language-python"># Python asyncio concurrent server (single-threaded, concurrent)
+import asyncio
+
+async def handle_request(reader, writer):
+    data = await reader.read(100)
+    message = data.decode()
+    print(f"Received {message}")
+    writer.write(data)
+    await writer.drain()
+    writer.close()
+
+async def main():
+    server = await asyncio.start_server(handle_request, '127.0.0.1', 8888)
+    async with server:
+        await server.serve_forever()
+
+asyncio.run(main())</code></pre>
+
+    <p><strong>Parallelism</strong> is about <em>executing</em> multiple tasks at the same time. It requires multiple CPU cores. The goal is to increase <em>throughput</em> and speed.</p>
+    <ul>
+      <li>Actual simultaneous execution.</li>
+      <li>Requires multi-core CPUs.</li>
+      <li>Improves throughput and computational speed.</li>
+    </ul>
+
+    <p><strong>Example:</strong> Parallel matrix computation.</p>
+<pre><code class="language-python">from multiprocessing import Pool
+
+def compute_square(x):
+    return x * x
+
+if __name__ == '__main__':
+    with Pool(4) as p:  # 4 parallel processes
+        results = p.map(compute_square, [1,2,3,4,5,6,7,8])
+    print(results)</code></pre>
+
+    <p><strong>Concurrency vs. Parallelism ASCII:</strong></p>
+<pre><code class="language-bash">Concurrency (Task Management)        Parallelism (Task Execution)
++------------------------------+     +--------------------------+
+| Task A  | Task B | Task C    |     | Task A | Task B | Task C |
+|========&gt;|========|=========&gt; |     |========|========|========|
+|    (Interleaved, Overlapping)|     |(Executed Simultaneously)|
++------------------------------+     +--------------------------+</code></pre>
+
+    <h3>Processes vs. Threads</h3>
+
+    <figure class="ch8-fig">
+      <div class="ch8-pt" aria-label="Single-threaded versus multi-threaded process memory layout">
+        <div class="ch8-pt-box">
+          <h5>Single-Threaded Process</h5>
+          <div class="ch8-pt-shared">
+            <div class="ch8-pt-tag code">Code</div>
+            <div class="ch8-pt-tag data">Data</div>
+            <div class="ch8-pt-tag files">Files</div>
+          </div>
+          <div class="ch8-pt-threads">
+            <div class="ch8-pt-thread">
+              Registers + Stack
+              <span class="stk"></span>
+              Thread 1
+            </div>
+          </div>
+          <p style="font-size:11.5px;color:var(--text-muted);text-align:center;margin:10px 0 0">One execution flow. Heavy to spawn another process.</p>
+        </div>
+        <div class="ch8-pt-box">
+          <h5>Multi-Threaded Process</h5>
+          <div class="ch8-pt-shared">
+            <div class="ch8-pt-tag code">Code</div>
+            <div class="ch8-pt-tag data">Data</div>
+            <div class="ch8-pt-tag files">Files</div>
+          </div>
+          <div class="ch8-pt-threads">
+            <div class="ch8-pt-thread">Registers + Stack<span class="stk"></span>Thread 1</div>
+            <div class="ch8-pt-thread">Registers + Stack<span class="stk"></span>Thread 2</div>
+            <div class="ch8-pt-thread">Registers + Stack<span class="stk"></span>Thread 3</div>
+          </div>
+          <p style="font-size:11.5px;color:var(--text-muted);text-align:center;margin:10px 0 0">Threads share code/data/files; only stack &amp; registers are per-thread.</p>
+        </div>
+      </div>
+      <figcaption>Process vs Thread Memory — what's shared, what's isolated</figcaption>
+    </figure>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th></th><th>Process</th><th>Thread</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Memory</strong></td><td>Own memory space</td><td>Shared memory within process</td></tr>
+          <tr><td><strong>Creation</strong></td><td>Heavy, slow</td><td>Lightweight, fast</td></tr>
+          <tr><td><strong>Isolation</strong></td><td>Fully isolated</td><td>Less isolated, share data</td></tr>
+          <tr><td><strong>Safety</strong></td><td>Safer, one crash ≠ all crash</td><td>Prone to race conditions</td></tr>
+          <tr><td><strong>Use Case</strong></td><td>Separate apps (browser, editor)</td><td>Multiple tasks in app</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Examples:</strong></p>
+    <ul>
+      <li><strong>Processes:</strong> Chrome and Word, each with its memory.</li>
+      <li><strong>Threads:</strong> Multiple HTTP request handlers in a web server, sharing cache.</li>
+    </ul>
+
+    <h3>Thread Pools &amp; Worker Models</h3>
+
+    <h4>Thread Pools</h4>
+    <ul>
+      <li><strong>What:</strong> Pre-created pool of threads reused for multiple tasks.</li>
+      <li><strong>Why:</strong> Avoids the overhead of creating/destroying threads per task.</li>
+      <li><strong>Where:</strong> Web servers (ASP.NET Core, Java, Python), database connection pooling.</li>
+    </ul>
+
+<pre><code class="language-javascript">ExecutorService pool = Executors.newFixedThreadPool(8);
+pool.submit(() -&gt; {
+    // handle request
+});</code></pre>
+
+<pre><code class="language-python">from concurrent.futures import ThreadPoolExecutor
+
+def process_task(task_id):
+    print(f"Processing {task_id}")
+
+with ThreadPoolExecutor(max_workers=4) as executor:
+    for i in range(10):
+        executor.submit(process_task, i)</code></pre>
+
+    <p>A simpler variant for a request handler:</p>
+<pre><code class="language-python">from concurrent.futures import ThreadPoolExecutor
+
+def process_request(request):
+    # Handle request
+    pass
+
+with ThreadPoolExecutor(max_workers=10) as executor:
+    for req in incoming_requests:
+        executor.submit(process_request, req)</code></pre>
+
+    <h4>Worker Model</h4>
+    <ul>
+      <li><strong>What:</strong> Tasks are distributed to idle workers from a shared queue.</li>
+      <li><strong>Why:</strong> Improves scalability and balances CPU utilization.</li>
+      <li><strong>Where:</strong> Background job processing, e.g., RabbitMQ workers.</li>
+    </ul>
+
+<pre><code class="language-javascript">const { Worker } = require('worker_threads');
+const tasks = [/* ... */]; // some task list
+
+tasks.forEach(task =&gt; {
+  const worker = new Worker('./worker.js', { workerData: task });
+  worker.on('message', result =&gt; console.log(result));
+});</code></pre>
+
+    <h3>Asynchronous Processing</h3>
+
+    <p><strong>Why Async?</strong></p>
+    <ul>
+      <li>Avoids blocking threads on I/O (file, DB, network).</li>
+      <li>Boosts throughput, keeps system responsive.</li>
+    </ul>
+
+    <p><strong>Techniques:</strong></p>
+    <ul>
+      <li>Async/await (C#, JS, Python).</li>
+      <li>Promises/Futures.</li>
+      <li>Message Queues (RabbitMQ, Kafka).</li>
+    </ul>
+
+<pre><code class="language-javascript">async function getUserData(id) {
+  const user = await db.findUserById(id); // Non-blocking I/O
+  return user;
+}</code></pre>
+
+    <h3>Concurrency in Web Servers</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Traditional Servers</th><th>Modern Servers</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Spawn thread/process/request</td><td>Use async / non-blocking I/O</td></tr>
+          <tr><td>High resource usage</td><td>Event loop or thread pool models</td></tr>
+          <tr><td>Hard to scale</td><td>Efficient, handles more with less</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Modern examples:</strong></p>
+    <ul>
+      <li><strong>Node.js:</strong> Event-loop, non-blocking I/O.</li>
+      <li><strong>ASP.NET Core / Nginx:</strong> Thread pools + async I/O.</li>
+    </ul>
+
+    <h3>Common Pitfalls: Race Conditions &amp; Deadlocks</h3>
+
+    <h4>Race Condition</h4>
+    <ul>
+      <li>Occurs when multiple threads access/modify shared data unsafely.</li>
+      <li>Can corrupt data or cause unpredictable bugs.</li>
+      <li><strong>Fix:</strong> Synchronize access (locks, mutexes).</li>
+    </ul>
+
+<pre><code class="language-python">import threading
+
+counter = 0
+lock = threading.Lock()
+
+def increment():
+    global counter
+    for _ in range(1000):
+        with lock:
+            counter += 1</code></pre>
+
+    <h4>Deadlock</h4>
+    <ul>
+      <li>Threads stuck waiting for each other's resources.</li>
+      <li>System can freeze.</li>
+      <li><strong>Fix:</strong> Lock ordering, timeouts, avoiding nested locks.</li>
+    </ul>
+
+    <h3>Concurrency — Best Practices</h3>
+    <ul>
+      <li>Prefer async/non-blocking I/O for I/O-bound tasks.</li>
+      <li>Use thread pools for CPU-bound work, not raw threads.</li>
+      <li>Always synchronize access to shared data.</li>
+      <li>Detect &amp; avoid deadlocks (consistent lock ordering).</li>
+      <li>Monitor performance with appropriate metrics.</li>
+    </ul>
+
+    <p><strong>Real-world scenarios:</strong></p>
+    <ul>
+      <li>Web servers (Node.js/ASP.NET): Thread pool + async I/O.</li>
+      <li>Background jobs (RabbitMQ, Kafka): Worker model.</li>
+      <li>Parallel image rendering: Each frame on different core.</li>
+    </ul>
+
+    <h3>Concurrency — Summary Table</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Concept</th><th>Purpose</th><th>Typical Tools/Techniques</th><th>Example</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Concurrency</td><td>Task management</td><td>Async/await, event loop, coros</td><td>Node.js HTTP server</td></tr>
+          <tr><td>Parallelism</td><td>Task execution</td><td>Thread pool, multiprocessing</td><td>Java ThreadPool, Python Pool</td></tr>
+          <tr><td>Thread Pool</td><td>Reduce overhead</td><td>Executors, Pool, Task queue</td><td>ASP.NET Core, Java Executors</td></tr>
+          <tr><td>Worker Model</td><td>Distribute workload</td><td>Queues + workers</td><td>RabbitMQ, Celery, Sidekiq</td></tr>
+          <tr><td>Async Processing</td><td>Non-blocking I/O</td><td>Promises, Futures, async/await</td><td>JS async functions, C# await</td></tr>
+          <tr><td>Synchronization</td><td>Prevent race bugs</td><td>Locks, mutexes, semaphores</td><td>threading.Lock (Python)</td></tr>
+          <tr><td>Deadlock Avoidance</td><td>System stability</td><td>Lock ordering, timeouts</td><td>Consistent lock strategy</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Event Loop (Simplified)</h3>
+    <div class="archd" aria-label="Event loop architecture">
+      <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Incoming HTTP Requests</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🔁</span><span>Event Loop</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Async I/O, Callbacks</span></div>
+      <div class="archd-node is-service"><span class="archd-icon">🧵</span><span>Thread Pool for CPU tasks</span></div>
+    </div>
+
+    <h2 id="database-performance-optimization">Database Performance Optimization Techniques</h2>
+
+    <h3>1. Replication</h3>
+    <p><strong>Replication</strong> is the process of copying and maintaining database objects in multiple places. Critical for:</p>
+    <ul>
+      <li><strong>High availability:</strong> If one node fails, replicas ensure continued service.</li>
+      <li><strong>Load balancing:</strong> Distribute read traffic among replicas.</li>
+      <li><strong>Disaster recovery:</strong> Data is safe even if a site goes down.</li>
+    </ul>
+
+    <p><strong>Types of replication:</strong></p>
+    <ul>
+      <li><strong>Master-Slave Replication:</strong> One primary (master) handles writes, read-only slaves handle queries.</li>
+      <li><strong>Master-Master Replication:</strong> Multiple primaries handle reads and writes, offering redundancy.</li>
+    </ul>
+
+    <figure class="ch8-fig">
+      <div class="ch8-repl" aria-label="Master-slave versus master-master replication">
+        <div class="ch8-repl-panel">
+          <h5>Master-Slave Replication</h5>
+          <div class="ch8-repl-nodes">
+            <div class="ch8-db master"><span class="ic">🗄️</span>Master<br><span style="font-size:10px;font-weight:500;color:var(--text-muted)">writes</span></div>
+          </div>
+          <div class="ch8-repl-arrows"><span class="a-down">↓ replicate ↓ replicate ↓ replicate</span></div>
+          <div class="ch8-repl-nodes">
+            <div class="ch8-db slave"><span class="ic">🗄️</span>Slave 1<br><span style="font-size:10px;font-weight:500;color:var(--text-muted)">reads</span></div>
+            <div class="ch8-db slave"><span class="ic">🗄️</span>Slave 2<br><span style="font-size:10px;font-weight:500;color:var(--text-muted)">reads</span></div>
+            <div class="ch8-db slave"><span class="ic">🗄️</span>Slave 3<br><span style="font-size:10px;font-weight:500;color:var(--text-muted)">reads</span></div>
+          </div>
+          <p style="font-size:11.5px;color:var(--text-muted);margin:10px 0 0">Single writer; slaves scale reads. Simple, eventually consistent.</p>
+        </div>
+        <div class="ch8-repl-panel">
+          <h5>Master-Master Replication</h5>
+          <div class="ch8-repl-nodes">
+            <div class="ch8-db master"><span class="ic">🗄️</span>Master A<br><span style="font-size:10px;font-weight:500;color:var(--text-muted)">read+write</span></div>
+            <div class="ch8-db master"><span class="ic">🗄️</span>Master B<br><span style="font-size:10px;font-weight:500;color:var(--text-muted)">read+write</span></div>
+          </div>
+          <div class="ch8-repl-arrows"><span class="a-bi">⇄ bi-directional sync ⇄</span></div>
+          <div class="ch8-repl-nodes">
+            <div class="ch8-db master"><span class="ic">🗄️</span>Master C<br><span style="font-size:10px;font-weight:500;color:var(--text-muted)">read+write</span></div>
+          </div>
+          <p style="font-size:11.5px;color:var(--text-muted);margin:10px 0 0">All nodes accept writes; HA &amp; failover — but watch for conflicts.</p>
+        </div>
+      </div>
+      <figcaption>Master-Slave vs Master-Master — single-writer scale-out vs multi-writer HA</figcaption>
+    </figure>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Tip</div>
+        <p>Use master-slave for simple read scaling; master-master for HA and fault tolerance, but beware of write conflicts.</p>
+      </div>
+    </div>
+
+    <h3>2. Sharding &amp; Partitioning</h3>
+
+    <h4>Sharding</h4>
+    <p><strong>Sharding</strong> splits large datasets across multiple servers (shards), each holding a subset of the data. Enables horizontal scaling.</p>
+
+    <p><strong>Example:</strong> Users partitioned by geographic region.</p>
+    <div class="archd" aria-label="Sharding by region diagram">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Shard 1: US</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Shard 2: EU</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Shard 3: ASIA</span></div>
+      </div>
+    </div>
+
+    <h4>Partitioning</h4>
+    <p><strong>Partitioning</strong> divides data inside a single database:</p>
+    <ul>
+      <li><strong>Range partitioning:</strong> e.g., Orders partitioned by order date.</li>
+      <li><strong>Hash partitioning:</strong> Each record assigned to a partition based on a hash of a key (e.g., user_id).</li>
+    </ul>
+
+<pre><code class="language-sql">-- Example: Range Partitioning by Order Date (Postgres)
+CREATE TABLE orders (
+  id serial PRIMARY KEY,
+  created_at date NOT NULL
+) PARTITION BY RANGE (created_at);
+
+CREATE TABLE orders_2023 PARTITION OF orders
+  FOR VALUES FROM ('2023-01-01') TO ('2023-12-31');</code></pre>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Tip</div>
+        <p>Sharding is for scaling <em>across servers</em>; partitioning is for organizing data <em>within a server</em>.</p>
+      </div>
+    </div>
+
+    <h3>3. CAP Theorem (Performance Perspective)</h3>
+    <p>The <strong>CAP Theorem</strong> states that in a distributed system, you can only guarantee two of:</p>
+    <ul>
+      <li><strong>Consistency:</strong> All nodes see the same data at the same time.</li>
+      <li><strong>Availability:</strong> Every request gets a response (even if not the latest).</li>
+      <li><strong>Partition Tolerance:</strong> System works even if network splits occur.</li>
+    </ul>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Type</th><th>Guarantees</th><th>Use When…</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>CP</td><td>Consistency + Partition Tolerance</td><td>Banking, strong consistency needed</td></tr>
+          <tr><td>AP</td><td>Availability + Partition Tolerance</td><td>Social feeds, eventual consistency OK</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Performance Note</div>
+        <p>Prioritizing availability (AP) often improves performance at scale but may introduce temporary inconsistencies.</p>
+      </div>
+    </div>
+
+    <h3>4. Indexes</h3>
+    <p>An <strong>index</strong> is a data structure (like a B-tree or hash table) that lets the database quickly find data without scanning every row.</p>
+
+    <p><strong>Types of indexes:</strong></p>
+    <ul>
+      <li><strong>B-Tree:</strong> Default in most DBs; supports range and exact queries.</li>
+      <li><strong>Hash:</strong> Fast for equality lookups; no range support.</li>
+      <li><strong>Full-Text:</strong> For searching large blocks of text.</li>
+      <li><strong>Bitmap:</strong> Efficient for columns with few unique values (low cardinality).</li>
+    </ul>
+
+    <figure class="ch8-fig">
+      <div class="ch8-idx-grid" aria-label="Index types visualized">
+        <div class="ch8-idx">
+          <h5>🌳 B-Tree</h5>
+          <p>Sorted balanced tree — range scans &amp; equality. Default in Postgres/MySQL.</p>
+          <div class="ch8-idx-vis">
+            <div class="ch8-btree">
+              <div class="row"><span class="nd">15</span></div>
+              <div class="row"><span class="nd">5,10</span><span class="nd">20,25</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="ch8-idx">
+          <h5>#️⃣ Hash</h5>
+          <p>Hash function → bucket. O(1) equality lookups only — no ranges.</p>
+          <div class="ch8-idx-vis">
+            <div class="ch8-hash">
+              <span class="pill">key</span>
+              <span class="arr">→</span>
+              <span class="pill">h(x)</span>
+              <span class="arr">→</span>
+              <span class="pill">bucket</span>
+            </div>
+          </div>
+        </div>
+        <div class="ch8-idx">
+          <h5>🔎 Full-Text</h5>
+          <p>Inverted index of tokens. Powers search across large text blocks.</p>
+          <div class="ch8-idx-vis">
+            <div class="ch8-ft">
+              <div><span class="tok">fast</span><span class="tok">cache</span></div>
+              <div><span class="tok">redis</span><span class="tok">queue</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="ch8-idx">
+          <h5>🗂️ Bitmap</h5>
+          <p>One bit per row per value. Excellent for low-cardinality columns.</p>
+          <div class="ch8-idx-vis">
+            <div class="ch8-bitmap">
+              <div class="bm"><span class="bit on">1</span><span class="bit">0</span><span class="bit on">1</span><span class="bit">0</span><span class="bit on">1</span></div>
+              <div class="bm"><span class="bit">0</span><span class="bit on">1</span><span class="bit">0</span><span class="bit on">1</span><span class="bit">0</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption>Index Types — pick the right structure for the access pattern</figcaption>
+    </figure>
+
+    <p><strong>When to use:</strong></p>
+    <ul>
+      <li><strong>Read-heavy operations:</strong> Indexes speed up query performance.</li>
+      <li><strong>Write-heavy systems:</strong> Be cautious — indexes can slow down inserts and updates.</li>
+    </ul>
+
+<pre><code class="language-sql">-- B-Tree index (default)
+CREATE INDEX idx_user_id ON users (id);
+
+-- Hash index (Postgres)
+CREATE INDEX idx_user_email_hash ON users USING hash (email);
+
+-- Full text (Postgres)
+CREATE INDEX idx_article_content ON articles USING GIN (to_tsvector('english', content));
+
+-- Adding a regular email index
+CREATE INDEX idx_user_email ON users(email);</code></pre>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Tip</div>
+        <p>Indexes accelerate reads but slow down writes. Use them judiciously.</p>
+      </div>
+    </div>
+
+    <h3>5. Normalization vs. Denormalization</h3>
+
+    <figure class="ch8-fig">
+      <div class="ch8-norm" aria-label="Normalized versus denormalized schema">
+        <div class="ch8-norm-panel left">
+          <h5>Normalized — Two related tables</h5>
+          <div class="ch8-tbl">
+            <div class="ch8-tbl-hdr">MEMBER</div>
+            <ul>
+              <li><strong>email</strong> (PK)</li>
+              <li>password</li>
+              <li>fname, lname, phone</li>
+            </ul>
+          </div>
+          <div class="ch8-norm-join">↕ JOIN on email</div>
+          <div class="ch8-tbl">
+            <div class="ch8-tbl-hdr">VISIT</div>
+            <ul>
+              <li><strong>id</strong> (PK)</li>
+              <li>member$email (FK)</li>
+              <li>date_time_in, date_time_out</li>
+            </ul>
+          </div>
+          <p style="font-size:11.5px;color:var(--text-muted);margin:8px 0 0;text-align:center">No duplication — joins on every read.</p>
+        </div>
+        <div class="ch8-norm-panel right">
+          <h5>Denormalized — One wide table</h5>
+          <div class="ch8-tbl">
+            <div class="ch8-tbl-hdr">MEMBERVISIT</div>
+            <ul>
+              <li><strong>id</strong> (PK)</li>
+              <li>email, password</li>
+              <li>fname, lname, phone</li>
+              <li>date_time_in, date_time_out</li>
+            </ul>
+          </div>
+          <p style="font-size:11.5px;color:var(--text-muted);margin:8px 0 0;text-align:center">Member fields duplicated per visit — no joins, fast reads.</p>
+        </div>
+      </div>
+      <figcaption>Normalized vs Denormalized — write-friendly OLTP vs read-friendly OLAP</figcaption>
+    </figure>
+
+    <h4>Normalization</h4>
+    <ul>
+      <li><strong>Goal:</strong> Reduce data redundancy by organizing data into tables.</li>
+      <li><strong>Benefits:</strong> Minimizes storage costs and eliminates anomalies.</li>
+      <li><strong>Drawback:</strong> Can lead to complex joins and slower read performance.</li>
+      <li>Splits data into related tables to reduce redundancy. Ideal for transactional (OLTP) systems.</li>
+    </ul>
+
+    <h4>Denormalization</h4>
+    <ul>
+      <li><strong>Goal:</strong> Introduce redundancy to reduce join operations and speed up reads.</li>
+      <li><strong>Benefits:</strong> Faster read performance.</li>
+      <li><strong>Drawback:</strong> Increased storage and potential data anomalies.</li>
+      <li>Best for reporting/analytics (OLAP).</li>
+    </ul>
+
+    <h4>When to Use Each</h4>
+    <ul>
+      <li><strong>Normalization:</strong> For transactional systems (OLTP).</li>
+      <li><strong>Denormalization:</strong> For reporting systems or read-heavy workloads.</li>
+    </ul>
+
+    <p><strong>Example:</strong></p>
+    <ul>
+      <li><em>Normalized:</em> Separate <code>users</code> and <code>orders</code> tables, joined by <code>user_id</code>.</li>
+      <li><em>Denormalized:</em> Store user info directly in <code>orders</code> for faster reporting.</li>
+    </ul>
+
+<pre><code class="language-sql">-- Normalized
+SELECT u.name, o.amount
+FROM users u
+JOIN orders o ON u.id = o.user_id;
+
+-- Denormalized: No join needed
+SELECT customer_name, amount
+FROM orders_denormalized;</code></pre>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Tip</div>
+        <p>Normalize for consistency; denormalize for read performance (especially in reporting / data warehouse scenarios).</p>
+      </div>
+    </div>
+
+    <h3>6. Connection Pooling</h3>
+    <p><strong>Definition:</strong> A technique to manage database connections efficiently by <strong>reusing established connections</strong> instead of creating new ones each time.</p>
+
+    <figure class="ch8-fig">
+      <div class="ch8-pool" aria-label="Connection pool sharing DB connections among clients">
+        <div class="ch8-pool-col">
+          <div class="ch8-pool-cli">👤 Client 1</div>
+          <div class="ch8-pool-cli">👤 Client 2</div>
+          <div class="ch8-pool-cli idle">👤 Client 3</div>
+          <div class="ch8-pool-cli">👤 Client 4</div>
+        </div>
+        <div class="ch8-pool-arr">⇄</div>
+        <div class="ch8-pool-box">
+          <div class="lbl">Connection Pool</div>
+          <div class="ch8-pool-conn">conn A</div>
+          <div class="ch8-pool-conn">conn B</div>
+          <div class="ch8-pool-conn">conn C</div>
+        </div>
+        <div class="ch8-pool-arr">⇄</div>
+        <div class="ch8-pool-db"><span class="ic">🗄️</span>Database</div>
+      </div>
+      <figcaption>Connection Pool — N clients share M long-lived connections to the DB</figcaption>
+    </figure>
+
+    <p><strong>Why use it?</strong></p>
+    <ul>
+      <li><strong>Reduces overhead</strong> caused by frequent connection creation and teardown.</li>
+      <li><strong>Helps handle</strong> a large number of concurrent connections effectively.</li>
+    </ul>
+
+<pre><code class="language-python"># Python with SQLAlchemy
+from sqlalchemy import create_engine
+engine = create_engine(
+    'postgresql://user:pass@localhost/db',
+    pool_size=20, max_overflow=0
+)</code></pre>
+
+    <p>A <code>psycopg2</code> example:</p>
+<pre><code class="language-python">from psycopg2 import pool
+
+db_pool = pool.SimpleConnectionPool(1, 20, user='user', password='pass', database='db')
+
+def get_conn():
+    return db_pool.getconn()</code></pre>
+
+    <p>A Node.js + Postgres example:</p>
+<pre><code class="language-javascript">const { Pool } = require('pg');
+const pool = new Pool({ max: 10 });
+
+pool.query('SELECT * FROM products', (err, res) =&gt; { /* ... */ });</code></pre>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Tip</div>
+        <p>Always use connection pooling for web apps and microservices to avoid exhausting DB resources under load.</p>
+      </div>
+    </div>
+
+    <h3>7. Query Optimization</h3>
+    <p>Techniques to make queries run faster:</p>
+    <ul>
+      <li><strong>Use indexes</strong> (as above).</li>
+      <li><strong>Avoid N+1 queries:</strong> Fetch all needed data in one query using joins or batching.</li>
+      <li><strong>Optimize joins:</strong> Join only necessary tables, and ensure join columns are indexed.</li>
+    </ul>
+
+<pre><code class="language-sql">-- Bad: N+1
+SELECT * FROM orders WHERE user_id = 123;
+-- Then for each order...
+SELECT * FROM order_items WHERE order_id = ?;
+
+-- Good: Use JOIN
+SELECT o.*, oi.*
+FROM orders o
+JOIN order_items oi ON o.id = oi.order_id
+WHERE o.user_id = 123;</code></pre>
+
+    <h3>8. Materialized Views</h3>
+    <p><strong>Definition:</strong> A precomputed query result stored as a table.</p>
+
+    <figure class="ch8-fig">
+      <div class="ch8-matview" aria-label="Materialized view derived from source tables">
+        <div class="ch8-matview-side src">
+          <h5>Source Tables (truth)</h5>
+          <div class="ch8-mini-tbl">
+            <div class="tbl-hd">orders</div>
+            <div>1 → A</div><div>2 → B</div>
+          </div>
+          <div class="ch8-mini-tbl">
+            <div class="tbl-hd">items</div>
+            <div>30 Shirts 120</div><div>31 Pants 143</div>
+          </div>
+          <div class="ch8-mini-tbl">
+            <div class="tbl-hd">order_items</div>
+            <div>1 · 30 · qty 2</div><div>1 · 31 · qty 3</div><div>2 · 30 · qty 2</div>
+          </div>
+        </div>
+        <div class="arr-h">→<span class="label">precompute</span></div>
+        <div class="ch8-matview-side dst">
+          <h5>Materialized View (read-only)</h5>
+          <div class="ch8-mini-tbl">
+            <div class="tbl-hd">sales_summary</div>
+            <div>30 · Shirts · total 4</div>
+            <div>31 · Pants · total 3</div>
+          </div>
+          <p style="font-size:11.5px;color:var(--text-muted);margin:6px 0 0;text-align:center">Refresh on schedule; query in O(1).</p>
+        </div>
+      </div>
+      <figcaption>Materialized View — precomputed snapshot of an expensive query</figcaption>
+    </figure>
+
+    <p><strong>Benefits:</strong></p>
+    <ul>
+      <li><strong>Speeds up query performance</strong> by avoiding real-time computation.</li>
+      <li>Useful in <strong>reporting</strong> and <strong>data warehousing</strong>.</li>
+    </ul>
+
+    <p><strong>Use cases:</strong></p>
+    <ul>
+      <li>Data aggregation or summary data that doesn't change frequently.</li>
+      <li>Reporting systems where fast retrieval is critical.</li>
+    </ul>
+
+<pre><code class="language-sql">CREATE MATERIALIZED VIEW sales_summary AS
+SELECT region, SUM(total)
+FROM sales
+GROUP BY region;
+
+-- Refresh periodically as needed
+REFRESH MATERIALIZED VIEW sales_summary;</code></pre>
+
+    <h3>9. Batching &amp; Pagination</h3>
+
+    <h4>Batching</h4>
+    <ul>
+      <li><strong>Definition:</strong> Sending multiple operations in a single request or transaction to reduce overhead.</li>
+      <li><strong>Use case:</strong> Bulk inserts or updates.</li>
+    </ul>
+
+    <h4>Pagination</h4>
+    <ul>
+      <li><strong>Definition:</strong> Breaking large sets of data into smaller chunks for efficient retrieval.</li>
+      <li><strong>Prevents</strong> large queries that could lead to timeouts or memory issues.</li>
+      <li><strong>Ensures</strong> responsive UI by fetching data incrementally.</li>
+    </ul>
+
+<pre><code class="language-sql">-- Batch Insert (Postgres)
+INSERT INTO users (name, email)
+VALUES
+  ('Alice', 'alice@example.com'),
+  ('Bob', 'bob@example.com');
+
+-- Pagination
+SELECT * FROM products ORDER BY id LIMIT 50 OFFSET 100;</code></pre>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Tip</div>
+        <p>Always paginate API and UI queries to prevent performance bottlenecks.</p>
+      </div>
+    </div>
+
+    <h3>Database Optimization — Quick Reference</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Technique</th><th>Use For</th><th>Caution / Trade-off</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Replication</td><td>HA, load balancing</td><td>Data sync lag, write conflicts (multi-master)</td></tr>
+          <tr><td>Sharding</td><td>Scale-out large datasets</td><td>Complexity in resharding, cross-shard queries</td></tr>
+          <tr><td>Indexing</td><td>Fast reads</td><td>Slower writes, increased storage</td></tr>
+          <tr><td>Normalization</td><td>Consistency, OLTP</td><td>Slower complex reads</td></tr>
+          <tr><td>Denormalization</td><td>Fast analytics/OLAP</td><td>Data redundancy, integrity risk</td></tr>
+          <tr><td>Connection Pooling</td><td>Reducing connection overhead</td><td>Pool exhaustion under huge spikes</td></tr>
+          <tr><td>Query Optimization</td><td>Fast queries</td><td>Over-optimization can add complexity</td></tr>
+          <tr><td>Materialized Views</td><td>Fast reporting queries</td><td>Stale data unless refreshed</td></tr>
+          <tr><td>Batching</td><td>Bulk inserts/updates</td><td>Transaction size limits</td></tr>
+          <tr><td>Pagination</td><td>UI, API data navigation</td><td>Inaccurate results on data change</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Database Optimization — Layered Architecture Diagram</h3>
+    <div class="archd" aria-label="Layered DB architecture diagram">
+      <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Client / API</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🔗</span><span>Connection Pool</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node"><span class="archd-icon">🖥️</span><span>App Server</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🔁</span><span>Replication / Sharding</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">📑</span><span>Indexes</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🧩</span><span>Partitioning</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">📊</span><span>Materialized Views</span></div>
+      </div>
+    </div>
+
+    <h2 id="performance-anti-patterns">Performance Anti-Patterns (and How to Fix Them)</h2>
+
+    <h3>1. Cache Stampede / Thundering Herd</h3>
+    <p>A popular key expires. <strong>1,000 concurrent requests</strong> all miss the cache simultaneously and all hit the database. The DB falls over.</p>
+
+    <p><strong>Fixes (in order of complexity):</strong></p>
+    <ol>
+      <li><strong>Randomized TTL</strong> — instead of <code>TTL = 60s</code>, use <code>TTL = 60s ± 5s</code> so keys don't all expire at the same moment.</li>
+      <li><strong>Lock on regeneration</strong> — first request that misses takes a lock, regenerates the value, others wait. Use Redis SETNX or distributed locks.</li>
+      <li><strong>Probabilistic early expiration</strong> — regenerate slightly before expiry, in the background. Avoids the cliff entirely.</li>
+    </ol>
+
+    <h3>2. N+1 Query Problem</h3>
+    <p>You fetch 100 users, then loop and run <code>SELECT * FROM orders WHERE user_id = ?</code> for each. That's <strong>1 + 100 = 101 queries</strong> instead of 1.</p>
+
+<pre><code class="language-python"># BAD
+users = db.query("SELECT * FROM users LIMIT 100")
+for user in users:
+    user.orders = db.query("SELECT * FROM orders WHERE user_id = ?", user.id)
+
+# GOOD — single JOIN
+results = db.query("""
+    SELECT u.*, o.*
+    FROM users u LEFT JOIN orders o ON u.id = o.user_id
+    LIMIT 100
+""")</code></pre>
+
+    <div class="callout callout-warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-content">
+        <div class="callout-title">Watch Out</div>
+        <p><strong>Most ORMs make this easy to hit accidentally.</strong> Use eager loading (<code>.includes</code> in Rails, <code>selectinload</code> in SQLAlchemy, <code>Include</code> in EF).</p>
+      </div>
+    </div>
+
+    <h3>3. Database Connection Pool Sized Wrong</h3>
+    <p>Common mistake: setting pool size to a huge number like 500, assuming "more is better."</p>
+
+    <p><strong>Reality:</strong> PostgreSQL recommends <code>connections ≈ ((core_count × 2) + effective_spindle_count)</code>. For an 8-core SSD-backed DB that's about <strong>20 connections.</strong> Past that, context-switching overhead and lock contention slow things down.</p>
+
+    <p><strong>Use a pooler</strong> (PgBouncer, ProxySQL) if you have many app servers. App-level pool stays small; pooler multiplexes.</p>
+
+    <h3>4. Blocking I/O on Hot Path</h3>
+    <p>A 5 ms log-to-disk call doesn't sound bad — until you do it on every request and your p99 doubles.</p>
+
+    <p><strong>Fix:</strong> offload I/O to a background queue or async logger. The hot path should <em>never</em> block on disk/network for non-essential work.</p>
+
+    <h3>5. Synchronous Calls in a Chain</h3>
+    <p>Service A → Service B → Service C, all synchronous. Total latency = sum of all three; failure of any one fails the whole request.</p>
+
+    <p><strong>Fix:</strong> parallelize where possible (call B and C concurrently); make non-essential calls async; use circuit breakers.</p>
+
+    <h2 id="cache-patterns-full-picture">Cache Patterns — The Full Picture</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Pattern</th><th>How it works</th><th>Use when</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Cache-aside</strong> (lazy loading)</td><td>App reads cache; on miss, reads DB and populates cache</td><td>Default for read-heavy data with infrequent writes</td></tr>
+          <tr><td><strong>Read-through</strong></td><td>App always reads cache; cache itself fetches from DB on miss</td><td>When you want app code to not know about the DB</td></tr>
+          <tr><td><strong>Write-through</strong></td><td>Writes go to cache and DB at the same time</td><td>Strong consistency requirement; OK with write latency</td></tr>
+          <tr><td><strong>Write-back</strong> (write-behind)</td><td>Writes go to cache; DB updated async</td><td>Write-heavy; can tolerate data loss on cache crash</td></tr>
+          <tr><td><strong>Write-around</strong></td><td>Writes go directly to DB, bypassing cache</td><td>Writes rarely re-read soon (cold data)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Default Recommendation</div>
+        <p><strong>For most apps, cache-aside is the right default.</strong> Simple, predictable, doesn't require special cache libraries.</p>
+      </div>
+    </div>
+
+    <h2 id="combined-tips-and-tricks">Combined Tips &amp; Tricks</h2>
+    <p>A consolidated master list drawn from all sections.</p>
+
+    <h3>Monitoring &amp; Metrics</h3>
+    <ul>
+      <li><strong>Always monitor:</strong> Use tools like Prometheus, Grafana, DataDog.</li>
+      <li><strong>Set SLOs/SLAs:</strong> Make performance measurable and accountable.</li>
+      <li><strong>Track percentiles:</strong> P95 and P99 are often more important than the average.</li>
+      <li><strong>Watch for bottlenecks:</strong> They often hide until your system is under stress.</li>
+      <li><strong>Document your performance strategy:</strong> Make it part of your architecture, not an afterthought.</li>
+    </ul>
+
+    <h3>Testing</h3>
+    <ul>
+      <li><strong>Test under real conditions:</strong> Simulate both steady load and traffic spikes.</li>
+      <li><strong>Test under load:</strong> Locust, JMeter, k6 to simulate concurrency issues before production.</li>
+    </ul>
+
+    <h3>Caching</h3>
+    <ul>
+      <li><strong>Cache wisely:</strong> Cache only what's expensive or slow to compute, and ensure consistency.</li>
+      <li><strong>Apply TTL smartly:</strong> Especially on volatile or time-sensitive data.</li>
+      <li><strong>Prevent cache stampede:</strong> Use locks or request coalescing.</li>
+      <li><strong>Automate cache invalidation:</strong> Design carefully for dynamic content.</li>
+    </ul>
+
+    <h3>Messaging</h3>
+    <ul>
+      <li><strong>Design for failure:</strong> Ensure your queue/message broker can handle spikes and outages.</li>
+      <li><strong>Make consumers idempotent:</strong> Especially in queuing systems with at-least-once delivery.</li>
+    </ul>
+
+    <h3>Concurrency</h3>
+    <ul>
+      <li><strong>Use thread pools:</strong> Avoid creating/destroying threads for each task.</li>
+      <li><strong>Async for I/O-bound, thread pool for CPU-bound.</strong></li>
+      <li><strong>Always use locks for shared data:</strong> Protect shared variables with mutexes/locks.</li>
+      <li><strong>Avoid nested locks:</strong> Keep locking hierarchy simple to reduce deadlock risk.</li>
+      <li><strong>Prefer async/non-blocking I/O:</strong> Especially for I/O-bound tasks.</li>
+    </ul>
+
+    <h3>Database</h3>
+    <ul>
+      <li><strong>Tune your DB:</strong> Indexes, sharding, connection pooling, and query optimization all matter.</li>
+      <li><strong>Use prepared statements:</strong> Prevent SQL injection and improve plan caching.</li>
+      <li><strong>Minimize data transfer:</strong> Fetch only required columns.</li>
+      <li><strong>Use connection pools:</strong> For efficient database access.</li>
+      <li><strong>Batch writes:</strong> Aggregate writes where possible to reduce DB round-trips.</li>
+      <li><strong>Async processing:</strong> Offload heavy/slow tasks to background workers.</li>
+      <li><strong>Paginate large datasets:</strong> Never fetch "all" in production APIs.</li>
+      <li><strong>Profile &amp; test:</strong> Use <code>EXPLAIN</code> in SQL to analyze query plans.</li>
+      <li><strong>Automate index management:</strong> Remove unused indexes and tune existing ones.</li>
+    </ul>
+
+    <h2 id="sample-interview-questions">Sample Interview Questions</h2>
+    <ol>
+      <li>What is the difference between latency and throughput?</li>
+      <li>Explain SLAs, SLOs, and SLIs. Why use P95/P99 instead of average?</li>
+      <li>What are the four main caching strategies? Compare them.</li>
+      <li>Compare LRU, LFU, FIFO, and TTL eviction policies.</li>
+      <li>Why use asynchronous messaging? When would you use queues?</li>
+      <li>Compare RabbitMQ and Kafka. When to use which?</li>
+      <li>Explain at-least-once, at-most-once, and exactly-once delivery.</li>
+      <li>How do queues improve scalability and fault tolerance?</li>
+      <li>How would you design an order processing system with queues?</li>
+      <li>How do you ensure idempotency in consumers?</li>
+      <li>What is the difference between concurrency and parallelism?</li>
+      <li>How do threads differ from processes?</li>
+      <li>What is a thread pool, and why is it preferred over creating new threads?</li>
+      <li>How would you design a web server for thousands of concurrent requests?</li>
+      <li>What is a race condition? How do you prevent it?</li>
+      <li>How do you debug and resolve a deadlock?</li>
+      <li>How does the event loop work in Node.js?</li>
+      <li>Explain master-slave vs. master-master replication trade-offs.</li>
+      <li>How does sharding differ from partitioning?</li>
+      <li>When would you denormalize a database schema?</li>
+      <li>Why use connection pooling?</li>
+      <li>When would you use a materialized view?</li>
+    </ol>
+
+    <h2 id="summary-key-takeaways">Summary &amp; Key Takeaways</h2>
+    <ul>
+      <li>Performance = speed, scalability, and efficiency under real-world load.</li>
+      <li>Use <strong>caching</strong> to reduce latency and load.</li>
+      <li>Employ <strong>asynchronous messaging</strong> for decoupling and resilience.</li>
+      <li>Harness <strong>concurrency and parallelism</strong> for better resource usage.</li>
+      <li>Optimize <strong>database</strong> layers with replication, sharding, indexing, and smart queries.</li>
+      <li><strong>Monitor, test, and prioritize performance</strong> at every stage.</li>
+      <li><strong>Concurrency ≠ Parallelism:</strong> Concurrency manages tasks; parallelism executes them simultaneously.</li>
+      <li><strong>Use the right tool:</strong> Async for I/O-bound, thread pool for CPU-bound.</li>
+      <li><strong>Threads are lighter than processes</strong> but require careful handling (race conditions, deadlocks).</li>
+    </ul>
+
+    <blockquote><strong>Performance isn't a luxury. It's a core feature for modern, user-friendly, and scalable systems.</strong></blockquote>
+
+    <h2 id="further-reading">📚 Further Reading</h2>
+    <ul>
+      <li><a href="https://www.amazon.com/System-Design-Interview-insiders-Second/dp/B08CMF2CQF" target="_blank">System Design Interview – Alex Xu</a></li>
+      <li><a href="https://sre.google/sre-book/service-level-objectives/" target="_blank">Google SRE Book: SLIs, SLOs, SLAs</a></li>
+      <li><a href="https://redis.io/documentation" target="_blank">Redis Documentation</a></li>
+      <li><a href="https://www.rabbitmq.com/documentation.html" target="_blank">RabbitMQ Docs</a></li>
+      <li><a href="https://kafka.apache.org/documentation/" target="_blank">Apache Kafka Docs</a></li>
+      <li><a href="https://www.cloudamqp.com/blog/when-to-use-rabbitmq-or-apache-kafka.html" target="_blank">RabbitMQ vs Kafka</a></li>
+      <li><a href="https://martinfowler.com/articles/201701-event-driven.html" target="_blank">Martin Fowler: Event-Driven Architecture</a></li>
+      <li><a href="https://docs.python.org/3/library/asyncio.html" target="_blank">Python asyncio docs</a></li>
+      <li><a href="https://docs.oracle.com/javase/tutorial/essential/concurrency/" target="_blank">Java Concurrency (Oracle)</a></li>
+      <li><a href="https://nodejs.dev/learn/the-nodejs-event-loop" target="_blank">Node.js Event Loop</a></li>
+      <li><a href="https://en.wikipedia.org/wiki/Thread_pool_pattern" target="_blank">Thread Pool Pattern</a></li>
+      <li><a href="https://www.rabbitmq.com/tutorials/tutorial-two-python.html" target="_blank">RabbitMQ Worker Model</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/architecture/patterns/cache-aside" target="_blank">Cache-Aside Pattern — Microsoft docs</a></li>
+      <li><a href="https://www.postgresql.org/docs/current/indexes.html" target="_blank">PostgreSQL Indexing Documentation</a></li>
+      <li><a href="https://docs.microsoft.com/en-us/azure/architecture/patterns/sharding" target="_blank">Database Sharding Patterns</a></li>
+      <li><a href="https://martin.kleppmann.com/2012/04/09/cap-theorem.html" target="_blank">CAP Theorem Explained (Martin Kleppmann)</a></li>
+    </ul>
+
+    <nav class="chapter-nav">
+      <a class="chapter-nav-card" href="7 - Storage - Database and Storage.html">
+        <div class="chapter-nav-label">← Previous</div>
+        <div class="chapter-nav-title">Chapter 7 — Storage</div>
+      </a>
+      <a class="chapter-nav-card next" href="9 - Reliability, Availability %26 Disaster Recovery.html">
+        <div class="chapter-nav-label">Next chapter →</div>
+        <div class="chapter-nav-title">Chapter 9 — Reliability</div>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../assets/system-design.js"></script>
+
+</body>
+</html>

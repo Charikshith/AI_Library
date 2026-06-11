@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chapter 22 — E-Commerce (Amazon)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<link rel="stylesheet" href="../assets/system-design.css">
+</head>
+<body><a href="../../../notes.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;z-index:99999;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600;background:#0f172a;color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.28)">&#8592; AI Library</a>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">
+    <span class="brand-icon">SD</span>
+    <span>Mastering System Design</span>
+  </a>
+  <div class="topbar-actions">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Chapter 22 — On This Page</h3>
+    <ul class="toc-list" id="tocList">
+      <li><a href="#learning-outcomes">Learning Outcomes</a></li>
+      <li><a href="#what-are-we-building">What Are We Building?</a></li>
+      <li><a href="#functional-requirements">Functional Requirements</a></li>
+      <li><a href="#non-functional-requirements">Non-Functional Requirements</a></li>
+      <li><a href="#core-system-design-challenges">Core System Design Challenges</a></li>
+      <li><a href="#assumptions-constraints">Assumptions &amp; Constraints</a></li>
+      <li><a href="#scale-estimation-bottlenecks">Scale Estimation &amp; Bottlenecks</a></li>
+      <li><a href="#service-decomposition-apis">Service Decomposition &amp; APIs</a></li>
+      <li><a href="#service-communication-patterns">Service Communication Patterns</a></li>
+      <li><a href="#database-storage-choices">Database &amp; Storage Choices</a></li>
+      <li><a href="#caching-queueing-strategies">Caching &amp; Queueing Strategies</a></li>
+      <li><a href="#tech-stack-infra-decisions">Tech Stack &amp; Infra Decisions</a></li>
+      <li><a href="#architecture-diagrams">Architecture Diagrams</a></li>
+      <li><a href="#sample-code-api-flows">Sample Code &amp; API Flows</a></li>
+      <li><a href="#beyond-mvp">Beyond MVP — Senior Designer</a></li>
+      <li><a href="#tips-tricks">Tips &amp; Tricks</a></li>
+      <li><a href="#conclusion">Conclusion</a></li>
+      <li><a href="#further-reading">Further Reading</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <span class="chapter-label">Chapter 22 · Case Study</span>
+      <h1>Designing a Scalable E-Commerce Marketplace Platform (Amazon)</h1>
+      <p class="hero-subtitle">
+        Architect a high-scale multi-vendor marketplace like Amazon — from catalog and cart to a checkout Saga, multi-warehouse inventory, recommendations, and real-time fraud detection — without a distributed transaction in sight.
+      </p>
+      <div class="hero-author">By Charikshith</div>
+    </section>
+
+    <p>Designing a high-scale <strong>multi-vendor e-commerce marketplace</strong> — think Amazon or Flipkart — requires a deep understanding of system design principles, from functional and non-functional requirements to architecture, scaling, and operational challenges. In this case study, we'll walk through the end-to-end process of designing such a platform.</p>
+
+    <h2 id="learning-outcomes">🎯 Learning Outcomes</h2>
+    <p>After working through this case study, you'll be able to:</p>
+    <ol class="outcomes-list">
+      <li><span class="outcome-num">1</span><span>Design <strong>multi-warehouse inventory</strong> that prevents overselling across distribution centers.</span></li>
+      <li><span class="outcome-num">2</span><span>Implement the <strong>checkout Saga</strong> — coordinating cart, inventory, payment, shipping without a distributed transaction.</span></li>
+      <li><span class="outcome-num">3</span><span>Build <strong>product search</strong> with faceted filtering, ranking, and personalization.</span></li>
+      <li><span class="outcome-num">4</span><span>Outline a <strong>recommendation system</strong> for "Customers also bought" and personalized homepage.</span></li>
+      <li><span class="outcome-num">5</span><span>Handle <strong>returns and refunds</strong> as a first-class workflow.</span></li>
+    </ol>
+
+    <h2 id="what-are-we-building">What Are We Building?</h2>
+    <p>A <strong>multi-vendor e-commerce platform</strong> for buyers and sellers. Core functionalities include:</p>
+    <ul>
+      <li>Browsing and searching products.</li>
+      <li>Managing inventory and product listings.</li>
+      <li>Shopping cart and secure checkout.</li>
+      <li>Payment processing and fraud detection.</li>
+    </ul>
+    <p><strong>Non-negotiable attributes:</strong> Scalable, secure, consistent.</p>
+
+    <h2 id="functional-requirements">Functional Requirements</h2>
+    <ul>
+      <li><strong>User registration &amp; authentication</strong> (Buyers/Sellers, with MFA).</li>
+      <li><strong>Product catalog management</strong> (CRUD for products).</li>
+      <li><strong>Inventory consistency during checkout</strong> (avoid overselling).</li>
+      <li><strong>Shopping cart &amp; order management</strong> (persistent carts, order lifecycle).</li>
+      <li><strong>Secure payment processing</strong> (PCI-compliant integration).</li>
+      <li><strong>Basic fraud detection &amp; alerts</strong> (rule-based checks, admin/user notifications).</li>
+      <li><strong>Seller dashboard</strong> (sales, product management, payouts).</li>
+      <li><strong>Administrator tools</strong> (moderation, platform health, disputes).</li>
+    </ul>
+
+    <p><strong>Users &amp; roles:</strong></p>
+    <ul>
+      <li><strong>Buyers:</strong> Search, browse, cart, checkout, track orders.</li>
+      <li><strong>Sellers:</strong> List/manage products, handle orders, track earnings.</li>
+      <li><strong>Administrators:</strong> Content moderation, system health, dispute resolution.</li>
+    </ul>
+
+    <h2 id="non-functional-requirements">Non-Functional Requirements</h2>
+    <ul>
+      <li><strong>Performance:</strong> &lt;300ms latency for common queries.</li>
+      <li><strong>Scalability:</strong> Start with 10,000 concurrent users, elastic growth.</li>
+      <li><strong>Availability:</strong> 99.9% uptime, fault-tolerant services.</li>
+      <li><strong>Security:</strong> OAuth2/JWT, PCI-DSS for payments, encrypted storage.</li>
+      <li><strong>Consistency:</strong> Strong consistency for inventory updates.</li>
+      <li><strong>Maintainability:</strong> Modular microservices, easy onboarding.</li>
+    </ul>
+
+    <h2 id="core-system-design-challenges">Core System Design Challenges</h2>
+    <ul>
+      <li><strong>Inventory accuracy:</strong> Prevent overselling (real-time updates, distributed locks).</li>
+      <li><strong>High availability:</strong> Resilient to failures, auto-scaling, load balancing.</li>
+      <li><strong>Secure payments:</strong> Sensitive data handling, fraud detection.</li>
+      <li><strong>System scalability:</strong> Sharding, partitioning, stateless services.</li>
+      <li><strong>Efficient search:</strong> Fast, relevant search over millions of products (indexing, caching).</li>
+    </ul>
+
+    <h2 id="assumptions-constraints">Assumptions &amp; Constraints</h2>
+
+    <h3>Assumptions</h3>
+    <ul>
+      <li>Users have stable internet (no offline mode).</li>
+      <li>Payments via third-party gateway (Stripe/Razorpay).</li>
+      <li>Sellers handle shipping/logistics.</li>
+      <li>Initial catalog: ~500,000 products.</li>
+      <li>Basic, rule-based fraud detection.</li>
+    </ul>
+
+    <h3>Constraints</h3>
+    <ul>
+      <li>MVP launch in 3–4 months.</li>
+      <li>Cloud services preferred (budget).</li>
+      <li>Minimal DevOps/SRE support.</li>
+      <li>Limited personalization (no ML recommendations).</li>
+      <li>Regulatory compliance: PCI-DSS, GDPR.</li>
+    </ul>
+
+    <h2 id="scale-estimation-bottlenecks">Scale Estimation &amp; Bottlenecks</h2>
+
+    <h3>Scale Numbers</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>Initial Estimate</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Registered Users</td><td>1,000,000</td></tr>
+          <tr><td>Daily Active Users (DAU)</td><td>10,000</td></tr>
+          <tr><td>Peak Traffic</td><td>100 requests/sec (sales events)</td></tr>
+          <tr><td>Product Catalog Size</td><td>500,000 products</td></tr>
+          <tr><td>Orders/Day</td><td>1,000</td></tr>
+          <tr><td>Active Sellers</td><td>5,000</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <blockquote>
+      While these numbers are for launch, design must anticipate growth — seamless scaling is non-negotiable.
+    </blockquote>
+
+    <h3>Critical Bottlenecks</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Bottleneck</th><th>Why It's Painful</th><th>Solution</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Search Latency</td><td>&lt;300ms for 500K+ products</td><td>Elasticsearch, Redis caching</td></tr>
+          <tr><td>Inventory Consistency</td><td>Simultaneous purchases can oversell</td><td>DB transactions, locks, message queues</td></tr>
+          <tr><td>Checkout Flows</td><td>Reliable orders during peaks</td><td>Async event-driven, external payments</td></tr>
+          <tr><td>Database Hotspots</td><td>Heavy reads/writes on popular products</td><td>Sharding, caching, read replicas</td></tr>
+          <tr><td>Fraud Detection</td><td>Suspicious transactions in real-time</td><td>Rule-based engine, event-based scaling</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Example: Fast Product Search</h3>
+<pre><code class="language-python">def search_products(query):
+    # Try cache first for popular queries
+    results = redis.get(f"search:{query}")
+    if results:
+        return results
+    # Fallback to Elasticsearch
+    results = elasticsearch.search(index="products", q=query)
+    redis.set(f"search:{query}", results, ex=60)
+    return results</code></pre>
+
+    <h3>Example: Atomic Stock Reservation</h3>
+<pre><code class="language-sql">BEGIN;
+SELECT stock FROM inventory WHERE product_id=123 FOR UPDATE;
+UPDATE inventory SET stock = stock - 1 WHERE product_id=123 AND stock > 0;
+COMMIT;</code></pre>
+
+    <h3>Example: Rule-Based Fraud Detection</h3>
+<pre><code class="language-python">def is_fraudulent(order):
+    if order.amount > 1000 and order.user.orders_today > 3:
+        return True
+    if order.card in BLOCKLISTED_CARDS:
+        return True
+    return False</code></pre>
+
+    <h3>Checkout Flow Diagram</h3>
+    <div class="archd" aria-label="Checkout flow diagram">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">POST /checkout</span></div>
+      <div class="archd-node is-service"><span class="archd-icon">🛒</span><span>Order Service</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Order Placed Event</span></div>
+      <div class="archd-node is-service"><span class="archd-icon">💳</span><span>Payment Service (async)</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Payment Success / Failure Event</span></div>
+      <div class="archd-node is-service"><span class="archd-icon">📣</span><span>Notification Service</span></div>
+    </div>
+
+    <h3>Bottleneck Diagram</h3>
+    <div class="archd" aria-label="Bottleneck diagram">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User Request</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Service Layer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">🔎</span><span>Catalog / Search</span></div>
+        <div class="archd-node"><span class="archd-icon">📦</span><span>Inventory</span></div>
+        <div class="archd-node"><span class="archd-icon">🧾</span><span>Orders</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🔍</span><span>Elasticsearch</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Postgres + Locks</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Queue</span></div>
+      </div>
+    </div>
+
+    <h2 id="service-decomposition-apis">Service Decomposition &amp; APIs</h2>
+
+    <h3>Core Services</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Service</th><th>Responsibility</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>User Service</strong></td><td>Registration, login, authentication (OAuth2/JWT), profile.</td></tr>
+          <tr><td><strong>Product Catalog</strong></td><td>Product CRUD, category, price, image, search.</td></tr>
+          <tr><td><strong>Inventory Service</strong></td><td>Real-time stock level management, stock reservation during checkout.</td></tr>
+          <tr><td><strong>Order Service</strong></td><td>Shopping cart, checkout, order lifecycle, price calculation, discounts.</td></tr>
+          <tr><td><strong>Payment Service</strong></td><td>Secure payment processing, retries, basic fraud detection.</td></tr>
+          <tr><td><strong>Notification Service</strong></td><td>Email/SMS notification on events.</td></tr>
+          <tr><td><strong>Admin Service</strong></td><td>Seller/product moderation, platform health monitoring, admin controls.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Example API Endpoints</h3>
+
+    <p><strong>User Service:</strong></p>
+<pre><code class="language-bash">POST /api/v1/users/register
+POST /api/v1/users/login
+GET  /api/v1/users/profile</code></pre>
+
+    <p><strong>Catalog Service:</strong></p>
+<pre><code class="language-bash">GET  /api/v1/products
+GET  /api/v1/products/{id}
+POST /api/v1/products</code></pre>
+
+    <p><strong>Inventory Service:</strong></p>
+<pre><code class="language-bash">GET  /api/v1/inventory/{productId}
+POST /api/v1/inventory/reserve
+POST /api/v1/reserve-stock</code></pre>
+
+    <p><strong>Order Service:</strong></p>
+<pre><code class="language-bash">POST /api/v1/cart/add
+POST /api/v1/checkout
+GET  /api/v1/orders/{orderId}</code></pre>
+
+    <p><strong>Payment Service:</strong></p>
+<pre><code class="language-bash">POST /api/v1/payments/initiate
+POST /api/v1/payments/verify</code></pre>
+
+    <p><strong>APIs should be:</strong> RESTful, stateless, versioned (<code>/api/v1/...</code>).</p>
+
+    <h2 id="service-communication-patterns">Service Communication Patterns</h2>
+    <p>A hybrid model:</p>
+
+    <h3>Synchronous (HTTP REST)</h3>
+    <p>For real-time flows (e.g., validating inventory during checkout):</p>
+
+    <div class="archd-seq" aria-label="Synchronous add to cart flow">
+      <div class="archd-seq-step"><span class="num">1</span>Add to Cart (POST /cart/add)</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">POST /cart/add</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🛒</span><span>Order Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">GET /inventory/{id}</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Inventory Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Stock OK — return to user</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Added to Cart</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🛒</span><span>Order Service</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Stock OK</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Inventory Service</span></div>
+      </div>
+    </div>
+
+    <h3>Asynchronous (Event-Driven)</h3>
+    <p>For non-blocking flows (e.g., notifications, background updates):</p>
+
+    <div class="archd-seq" aria-label="Async order placed event flow">
+      <div class="archd-seq-step"><span class="num">1</span>Order Service publishes "OrderPlaced"</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🛒</span><span>Order Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">publish OrderPlaced</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Message Queue</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Inventory Service subscribes, updates stock</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Message Queue</span></div>
+        <div class="archd-seq-arrow right"><span class="label">consume → update stock</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Inventory Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Notification Service subscribes, sends email/SMS</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Message Queue</span></div>
+        <div class="archd-seq-arrow right"><span class="label">consume → email/SMS</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📣</span><span>Notification Service</span></div>
+      </div>
+    </div>
+
+    <p><strong>Tech:</strong> Kafka, RabbitMQ, AWS SQS.</p>
+
+    <h2 id="database-storage-choices">Database &amp; Storage Choices</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Data Type</th><th>Primary Store</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>User Data</td><td>PostgreSQL</td><td>Strong consistency</td></tr>
+          <tr><td>Product Catalog</td><td>Elasticsearch + PostgreSQL</td><td>Search-optimized + backup</td></tr>
+          <tr><td>Inventory</td><td>PostgreSQL</td><td>Strict consistency on stock</td></tr>
+          <tr><td>Orders</td><td>PostgreSQL</td><td>Transactional</td></tr>
+          <tr><td>Payments</td><td>PostgreSQL</td><td>Encrypted fields</td></tr>
+          <tr><td>Logs/Events</td><td>Object Storage</td><td>E.g., AWS S3</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>In-memory stores:</strong> Redis for caching, session management, fast stock reads.</p>
+
+    <h3>Example: Create Orders Table</h3>
+<pre><code class="language-sql">CREATE TABLE orders (
+  id SERIAL PRIMARY KEY,
+  user_id INT REFERENCES users(id),
+  product_id INT REFERENCES products(id),
+  quantity INT NOT NULL,
+  status VARCHAR(20),
+  created_at TIMESTAMP DEFAULT NOW()
+);</code></pre>
+
+    <h3>Example: Elasticsearch Product Mapping</h3>
+<pre><code class="language-json">PUT /products
+{
+  "mappings": {
+    "properties": {
+      "name":        { "type": "text" },
+      "description": { "type": "text" },
+      "category":    { "type": "keyword" },
+      "price":       { "type": "float" }
+    }
+  }
+}</code></pre>
+
+    <h2 id="caching-queueing-strategies">Caching &amp; Queueing Strategies</h2>
+
+    <h3>Caching (Redis)</h3>
+    <ul>
+      <li>Hot product data (popular products, categories).</li>
+      <li>User session tokens.</li>
+      <li>Stock levels (read-heavy optimization).</li>
+    </ul>
+
+<pre><code class="language-python">import redis, json
+
+r = redis.Redis(host='localhost', port=6379, db=0)
+
+# Cache product details
+r.setex(f"product:{product_id}", 3600, json.dumps(product_data))  # Expires in 1 hour
+
+# Get cached product
+cached = r.get(f"product:{product_id}")
+if cached:
+    product = json.loads(cached)
+else:
+    # Fetch from DB and cache
+    pass</code></pre>
+
+    <p>A simpler example:</p>
+
+<pre><code class="language-python">import redis
+r = redis.Redis(host='localhost', port=6379, db=0)
+product_id = 1234
+product_data = {"name": "T-shirt", "stock": 52}
+r.set(f"product:{product_id}", str(product_data), ex=300)  # expires in 5 mins</code></pre>
+
+    <h3>Queues (Kafka/SQS/RabbitMQ)</h3>
+    <ul>
+      <li>Order placement events → inventory update.</li>
+      <li>Payment success events → order confirmation, notification.</li>
+      <li>Asynchronous email/SMS notification.</li>
+    </ul>
+
+<pre><code class="language-python">from kafka import KafkaProducer
+producer = KafkaProducer(bootstrap_servers=['localhost:9092'])
+producer.send('order-events', b'{"order_id":123, "status":"PLACED"}')
+producer.close()</code></pre>
+
+    <p><strong>Sample event (Order Placed):</strong></p>
+<pre><code class="language-json">{
+  "eventType": "OrderPlaced",
+  "orderId": "12345",
+  "userId": "u789",
+  "timestamp": "2024-06-11T10:11:12Z"
+}</code></pre>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Summary</div>
+        <ul>
+          <li><strong>Caching = speed up reads.</strong></li>
+          <li><strong>Queues = decouple heavy async tasks.</strong></li>
+        </ul>
+      </div>
+    </div>
+
+    <h2 id="tech-stack-infra-decisions">Tech Stack &amp; Infra Decisions</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Layer</th><th>Tech Choice</th><th>Rationale</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Database</td><td>PostgreSQL</td><td>Transactional, ACID, relational</td></tr>
+          <tr><td>Search</td><td>Elasticsearch</td><td>Fast full-text search</td></tr>
+          <tr><td>Caching</td><td>Redis</td><td>In-memory, fast reads</td></tr>
+          <tr><td>Message Queue</td><td>Kafka (preferred), AWS SQS, RabbitMQ</td><td>Decouple async flows</td></tr>
+          <tr><td>Cloud</td><td>AWS/GCP/Azure managed services</td><td>Reduce ops overhead</td></tr>
+          <tr><td>Auth</td><td>OAuth2/OpenID Connect, JWT</td><td>Stateless, secure</td></tr>
+          <tr><td>Payments</td><td>Stripe/Razorpay</td><td>PCI compliance, secure</td></tr>
+          <tr><td>Comms</td><td>REST APIs, event-driven for async</td><td>Hybrid pattern</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>JWT Token Example</h3>
+<pre><code class="language-bash">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMjM0fQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c</code></pre>
+
+    <h3>Stripe Payment Intent</h3>
+<pre><code class="language-python">import stripe
+stripe.api_key = "sk_test_..."
+intent = stripe.PaymentIntent.create(
+  amount=5000,
+  currency='usd',
+  payment_method_types=['card'],
+)</code></pre>
+
+    <h2 id="architecture-diagrams">Architecture Diagrams</h2>
+
+    <h3>High-Level Architecture</h3>
+    <div class="archd" aria-label="High-level e-commerce architecture">
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">🧑‍💻</span><span>User API</span></div>
+        <div class="archd-node"><span class="archd-icon">📚</span><span>Catalog API</span></div>
+        <div class="archd-node"><span class="archd-icon">🧾</span><span>Order API</span></div>
+        <div class="archd-node"><span class="archd-icon">💳</span><span>Payment API</span></div>
+        <div class="archd-node"><span class="archd-icon">🛡️</span><span>Admin API</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">👤</span><span>User Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Catalog Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🗃️</span><span>Inventory Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🛒</span><span>Order Service</span></div>
+      </div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">💳</span><span>Payment Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📣</span><span>Notification Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🛡️</span><span>Admin Service</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🐘</span><span>PostgreSQL</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🔍</span><span>Elasticsearch</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">⚡</span><span>Redis Cache</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">☁️</span><span>S3 Object Storage</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Async events</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Kafka / SQS</span></div>
+        <div class="archd-node is-external"><span class="archd-icon">💱</span><span>Stripe / Razorpay</span></div>
+      </div>
+    </div>
+
+    <h3>Detailed Architecture (with DBs per service)</h3>
+    <div class="archd" aria-label="Detailed e-commerce architecture with per-service databases">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User (Web/App)</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">REST API</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">👤</span><span>User Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Product Catalog Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🗃️</span><span>Inventory Service</span></div>
+      </div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🛒</span><span>Order Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">💳</span><span>Payment Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📣</span><span>Notification Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🛡️</span><span>Admin Service</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>User DB (Postgres)</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Product DB (Postgres)</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🔍</span><span>Search DB (Elasticsearch)</span></div>
+      </div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Inventory DB (Postgres)</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Order DB (Postgres)</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Payment DB (Postgres)</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Redis Cache</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Events</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Message Queue (Kafka/SQS)</span></div>
+        <div class="archd-node is-external"><span class="archd-icon">💱</span><span>Payment Gateway (Stripe/Razorpay)</span></div>
+        <div class="archd-node is-external"><span class="archd-icon">📧</span><span>Email/SMS Provider</span></div>
+      </div>
+    </div>
+
+    <h3>Service Communication Diagram</h3>
+    <div class="archd-seq" aria-label="Service communication sequence">
+      <div class="archd-seq-step"><span class="num">1</span>User Service → Catalog Service (Registers/Login)</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">👤</span><span>User Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Registers / Login</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Catalog Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Catalog Service → Inventory Service (Product Info)</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Catalog Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Product Info</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🗃️</span><span>Inventory Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Inventory Service → Order Service (Stock Check)</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🗃️</span><span>Inventory Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Stock Check</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🛒</span><span>Order Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Order Service ↔ Payment Service</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🛒</span><span>Order Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Create Order</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">💳</span><span>Payment Service</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🛒</span><span>Order Service</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Payment Status</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">💳</span><span>Payment Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">5</span>Order Service → Notification Service (Order Events)</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🛒</span><span>Order Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Order Events</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📣</span><span>Notification Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">6</span>Admin Service → Catalog Service (Moderation)</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🛡️</span><span>Admin Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Moderation</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Catalog Service</span></div>
+      </div>
+    </div>
+
+    <h2 id="sample-code-api-flows">Sample Code &amp; API Flows</h2>
+
+    <h3>Reserve Stock (Inventory Service)</h3>
+<pre><code class="language-python"># Flask-like pseudocode
+@app.route('/api/v1/reserve-stock', methods=['POST'])
+def reserve_stock():
+    data = request.get_json()
+    product_id = data['product_id']
+    quantity = data['quantity']
+    with db.transaction():
+        current = db.get_stock(product_id)
+        if current < quantity:
+            return {"error": "Insufficient stock"}, 409
+        db.update_stock(product_id, current - quantity)
+    # Emit event to Kafka for order processing
+    kafka.produce('order_stock_reserved', {'product_id': product_id, 'quantity': quantity})
+    return {"status": "reserved"}</code></pre>
+
+    <h3>Order Placement (Order Service)</h3>
+<pre><code class="language-python">@app.route('/api/v1/checkout', methods=['POST'])
+def checkout():
+    order_data = request.get_json()
+    # Validate cart, reserve stock via Inventory Service
+    reserve_resp = requests.post('http://inventory/api/v1/reserve-stock', json=order_data['cart'])
+    if reserve_resp.status_code != 200:
+        return {"error": "Stock unavailable"}, 409
+    # Proceed with payment
+    payment_resp = requests.post('http://payment/api/v1/payments/initiate', json=order_data['payment'])
+    if payment_resp.status_code != 200:
+        return {"error": "Payment failed"}, 402
+    # Save order, emit async events
+    db.save_order(order_data)
+    kafka.produce('order_placed', order_data)
+    return {"status": "order placed"}</code></pre>
+
+    <h3>User Registration (Node.js)</h3>
+<pre><code class="language-javascript">app.post('/api/v1/users/register', async (req, res) => {
+  const { email, password } = req.body;
+  const hash = await bcrypt.hash(password, 12);
+  await db.users.insert({ email, password_hash: hash });
+  res.status(201).json({ success: true });
+});</code></pre>
+
+    <h3>Product Search Handler (Node.js)</h3>
+<pre><code class="language-javascript">app.get('/api/v1/products', async (req, res) => {
+  const { search, category } = req.query;
+  const cacheKey = `products:${search}:${category}`;
+  let products = await redis.get(cacheKey);
+  if (!products) {
+    products = await elasticsearch.search({ query: { match: { name: search } } });
+    await redis.set(cacheKey, JSON.stringify(products), 'EX', 60 * 5);
+  }
+  res.json(JSON.parse(products));
+});</code></pre>
+
+    <h3>Kafka Event Publishing &amp; Consumption (Node.js)</h3>
+<pre><code class="language-javascript">// Publish event
+await kafka.produce('order-placed', { orderId, productId, quantity });
+
+// Inventory Service consumes event
+kafka.consume('order-placed', async (msg) => {
+  await db.inventory.update({ productId: msg.productId }, { $inc: { stock: -msg.quantity } });
+});</code></pre>
+
+    <h3>Checkout Flow Steps</h3>
+    <ol>
+      <li>API Gateway routes request to Order Service.</li>
+      <li>Order Service checks stock via Inventory Service.</li>
+      <li>If available, creates order and triggers Payment Service.</li>
+      <li>Payment Service processes via external gateway (Stripe/Razorpay).</li>
+      <li>On payment success, events are published to Message Queue for:
+        <ul>
+          <li>Inventory update (reserve stock).</li>
+          <li>Notification dispatch (email/SMS).</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h2 id="beyond-mvp">Beyond MVP — What a Senior Designer Adds</h2>
+
+    <h3>The Checkout Saga (Distributed Transaction Without 2PC)</h3>
+    <p>Checkout touches multiple services: cart, inventory, payment, shipping. You can't wrap them in a DB transaction. Use a <strong>Saga</strong> (see Chapter 4):</p>
+
+    <div class="archd-seq" aria-label="Checkout Saga sequence with compensation">
+      <div class="archd-seq-step"><span class="num">1</span>Reserve inventory → success</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🧭</span><span>Saga Orchestrator</span></div>
+        <div class="archd-seq-arrow right"><span class="label">reserve</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Inventory Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Charge payment → success</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🧭</span><span>Saga Orchestrator</span></div>
+        <div class="archd-seq-arrow right"><span class="label">charge</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">💳</span><span>Payment Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Create order → success</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🧭</span><span>Saga Orchestrator</span></div>
+        <div class="archd-seq-arrow right"><span class="label">create</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🛒</span><span>Order Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Notify shipping → success</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🧭</span><span>Saga Orchestrator</span></div>
+        <div class="archd-seq-arrow right"><span class="label">notify</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🚚</span><span>Shipping Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">5</span>Send confirmation → success (commit)</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🧭</span><span>Saga Orchestrator</span></div>
+        <div class="archd-seq-arrow right"><span class="label">confirm</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📣</span><span>Notification Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">!</span>If step 2 fails → compensate(1): release inventory, then abort</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🧭</span><span>Saga Orchestrator</span></div>
+        <div class="archd-seq-arrow left"><span class="label">compensate: release</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Inventory Service</span></div>
+      </div>
+    </div>
+
+    <p>Implement with a <strong>Saga orchestrator</strong> service (or a workflow engine like Temporal / AWS Step Functions). Each step must be <strong>idempotent</strong> so retries don't double-charge.</p>
+
+    <h3>Multi-Warehouse Inventory</h3>
+    <p>Real Amazon ships from hundreds of warehouses. A product isn't "in stock" globally — it's in stock <em>in specific warehouses</em>. Checkout needs to:</p>
+    <ol>
+      <li>Find warehouses with the item.</li>
+      <li>Pick the closest/cheapest to the user.</li>
+      <li>Reserve from that specific warehouse.</li>
+    </ol>
+    <p>If the chosen warehouse runs out between checkout and shipment, <strong>route to another warehouse</strong> automatically.</p>
+    <p><strong>Data model:</strong> <code>inventory(item_id, warehouse_id, count)</code> instead of <code>inventory(item_id, count)</code>.</p>
+
+    <h3>Search &amp; Faceted Filtering</h3>
+    <p>E-commerce search is largely about filtering. Users search "laptop" then filter by brand, price, RAM, screen size, rating, etc. Each filter must update results instantly.</p>
+    <p><strong>Implementation:</strong> Elasticsearch with <strong>aggregations</strong> — same query returns matching docs <em>and</em> facet counts (e.g., "MacBook: 142, Dell: 87, HP: 65"). Pre-compute popular facets in Redis to speed up first paint.</p>
+
+    <h3>Recommendation Engine</h3>
+    <p>Two main types:</p>
+    <ul>
+      <li><strong>Item-to-item:</strong> "Customers who bought X also bought Y." Collaborative filtering. Computed offline; cached per item.</li>
+      <li><strong>User-to-item:</strong> "Recommended for you." Combines user history, embeddings, and demographic signals. Updated nightly or real-time depending on freshness needs.</li>
+    </ul>
+    <p>For freshness-sensitive items (news, fashion trends), use real-time updates from a stream processor (Flink, Spark Streaming).</p>
+
+    <h3>Reviews &amp; Ratings</h3>
+    <p>Heavily skewed: most ratings are 5-star. Show average + count, but also:</p>
+    <ul>
+      <li><strong>Most helpful review</strong> (community-upvoted).</li>
+      <li><strong>Critical review</strong> highlighted alongside positive.</li>
+      <li><strong>Verified purchase</strong> badge to reduce fake reviews.</li>
+      <li><strong>Anti-spam:</strong> detect review velocity, IP clusters, language similarity to known fake review patterns.</li>
+    </ul>
+
+    <h3>Returns &amp; Refunds Workflow</h3>
+    <p>Often more complex than the order itself:</p>
+    <ol>
+      <li>User requests return → eligibility check (within window, condition).</li>
+      <li>Generate return label → email to user.</li>
+      <li>User ships item back → tracking starts.</li>
+      <li>Warehouse receives → quality check.</li>
+      <li>Refund to original payment method (or store credit).</li>
+      <li>Update inventory (resellable items go back, damaged ones go to liquidation).</li>
+    </ol>
+    <p>This is a multi-day Saga with manual steps. Underinvested by most early-stage e-commerce platforms.</p>
+
+    <h3>Personalization &amp; Homepage</h3>
+    <p>The Amazon homepage is different for every user. Each card (deals, recently viewed, recommendations, restock) is rendered from a different service. <strong>Use a BFF</strong> (Chapter 4) that composes the page from microservice calls in parallel; each card has its own SLA so a slow service doesn't block the page.</p>
+
+    <h3>Internationalization</h3>
+    <p>Multi-currency, multi-language, multi-warehouse-region. Often modeled as <strong>separate logical stores</strong> sharing some infrastructure (catalog, sellers) but with region-specific pricing, tax, shipping rules.</p>
+
+    <h3>Fraud Detection</h3>
+    <p>Real-time evaluation at checkout: device fingerprint, velocity (5 orders to different addresses in 10 minutes?), card BIN reputation, address risk. ML model scores each order; high-risk orders go to manual review or step-up verification (3D Secure).</p>
+
+    <h2 id="tips-tricks">💡 Tips &amp; Tricks</h2>
+
+    <h3>Consistency</h3>
+    <ul>
+      <li><strong>Strong consistency for inventory:</strong> Use DB transactions with row-level locking or atomic operations to prevent overselling. For high-scale, consider distributed locks (Redis Redlock) or event-sourcing.</li>
+      <li><strong>Use eventual consistency</strong> for non-critical flows (notifications).</li>
+      <li><strong>Design idempotent endpoints</strong> for order and payment flows to handle retries gracefully.</li>
+    </ul>
+
+    <h3>Search</h3>
+    <ul>
+      <li><strong>Search scaling:</strong> Use Elasticsearch or Redisearch for fast, full-text product search. Periodically sync with primary DB to avoid stale indexes.</li>
+      <li><strong>Regularly re-index</strong> product data.</li>
+    </ul>
+
+    <h3>Caching</h3>
+    <ul>
+      <li><strong>Cache hot products, categories, and stock levels.</strong> Use short TTLs for inventory to reduce staleness.</li>
+      <li><strong>Monitor cache hit rates</strong> — if Redis hit rate drops, you may be caching the wrong data.</li>
+    </ul>
+
+    <h3>Async Processing</h3>
+    <ul>
+      <li><strong>Async processing:</strong> Offload non-critical user flows (emails, notifications, analytics) to message queues.</li>
+      <li><strong>Decouple with message queues:</strong> Use queues for non-blocking, asynchronous operations.</li>
+    </ul>
+
+    <h3>API Design</h3>
+    <ul>
+      <li><strong>Always version your APIs</strong> (<code>/v1/...</code>) for backward compatibility.</li>
+      <li><strong>Separate read/write models</strong> (CQRS) for heavy modules like catalog and orders if scaling further.</li>
+      <li><strong>Modular services:</strong> Decompose by business capability (catalog, inventory, orders), not by technical layer.</li>
+    </ul>
+
+    <h3>Security</h3>
+    <ul>
+      <li><strong>Payment security:</strong> Never store raw card data. Integrate with PCI-compliant providers; always encrypt sensitive fields at rest.</li>
+      <li><strong>Use HTTPS everywhere.</strong></li>
+      <li><strong>Store credentials/secrets</strong> out of code.</li>
+      <li><strong>PCI-DSS &amp; GDPR compliance:</strong> Offload payment handling; encrypt user/payment data.</li>
+      <li><strong>Rate limiting and abuse detection</strong> at the API gateway.</li>
+    </ul>
+
+    <h3>Operations</h3>
+    <ul>
+      <li><strong>Monitoring &amp; alerts:</strong> Instrument services for latency, error rates, inventory anomalies, payment failures.</li>
+      <li><strong>Graceful degradation:</strong> If a service (e.g., recommendations) is down, the system should still allow core flows.</li>
+      <li><strong>Automated tests:</strong> Especially for inventory, checkout, payments — simulate race conditions and failures.</li>
+      <li><strong>Use managed services:</strong> Cloud-managed DBs, queues, storage to cut operational overhead.</li>
+    </ul>
+
+    <h3>Disaster Recovery</h3>
+    <ul>
+      <li><strong>Plan for DR:</strong> Regularly backup relational DBs and object storage.</li>
+      <li><strong>Horizontal scalability:</strong> Design all stateless services to scale out.</li>
+    </ul>
+
+    <h2 id="conclusion">Conclusion</h2>
+    <p>By breaking the e-commerce platform into modular, independently scalable services with clear API contracts, robust caching, and resilient async flows, you set the foundation for a system that can grow with your user base and business demands. The architecture above ensures <strong>performance</strong>, <strong>consistency</strong>, and <strong>security</strong> — all while keeping the system maintainable and developer-friendly.</p>
+    <p>With this modular, event-driven architecture, you can build a <strong>robust, scalable, and fault-tolerant e-commerce marketplace.</strong></p>
+
+    <h2 id="further-reading">📚 Further Reading</h2>
+    <ul>
+      <li><a href="https://github.com/donnemartin/system-design-primer" target="_blank">System Design Primer</a></li>
+      <li><a href="https://aws.amazon.com/architecture/microservices/" target="_blank">AWS Architecture Center: Microservices</a></li>
+      <li><a href="https://www.elastic.co/guide/" target="_blank">Elasticsearch Official Docs</a></li>
+      <li><a href="https://www.postgresql.org/docs/current/tutorial-transactions.html" target="_blank">PostgreSQL Transactions</a></li>
+      <li><a href="https://aws.amazon.com/sqs/" target="_blank">AWS SQS Queues</a></li>
+      <li><a href="https://redis.io/docs/" target="_blank">Redis Caching Patterns</a></li>
+    </ul>
+
+    <nav class="chapter-nav">
+      <a class="chapter-nav-card" href="21 - Design a Search Engine(aka Google).html">
+        <div class="chapter-nav-label">← Previous</div>
+        <div class="chapter-nav-title">Chapter 21 — Search Engine (Google)</div>
+      </a>
+      <a class="chapter-nav-card next" href="23 - Design a Taxi Hailing App (aka Uber).html">
+        <div class="chapter-nav-label">Next chapter →</div>
+        <div class="chapter-nav-title">Chapter 23 — Taxi App (Uber)</div>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="../assets/system-design.js"></script>
+
+</body>
+</html>

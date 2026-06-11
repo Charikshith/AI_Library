@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chapter 9 — Reliability, Availability & Disaster Recovery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<link rel="stylesheet" href="../assets/system-design.css">
+</head>
+<body><a href="../../../notes.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;z-index:99999;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600;background:#0f172a;color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.28)">&#8592; AI Library</a>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">
+    <span class="brand-icon">SD</span>
+    <span>Mastering System Design</span>
+  </a>
+  <div class="topbar-actions">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Chapter 9 — On This Page</h3>
+    <ul class="toc-list" id="tocList">
+      <li><a href="#learning-outcomes">Learning Outcomes</a></li>
+      <li><a href="#introduction-to-system-reliability">Introduction to System Reliability</a></li>
+      <li><a href="#core-concepts">Core Concepts</a></li>
+      <li><a href="#key-metrics">Key Metrics: MTBF, MTTR, SLAs</a></li>
+      <li><a href="#reliability-in-distributed-cloud">Reliability in Distributed & Cloud-Native</a></li>
+      <li><a href="#high-availability-fault-tolerance-failover">HA, Fault Tolerance & Failover</a></li>
+      <li><a href="#graceful-degradation">Graceful Degradation</a></li>
+      <li><a href="#high-availability-patterns">High Availability Patterns</a></li>
+      <li><a href="#designing-for-redundancy">Designing for Redundancy</a></li>
+      <li><a href="#health-monitoring-self-healing">Health Monitoring & Self-Healing</a></li>
+      <li><a href="#backup-recovery-strategies">Backup & Recovery Strategies</a></li>
+      <li><a href="#disaster-recovery-in-practice">Disaster Recovery in Practice</a></li>
+      <li><a href="#nines-of-availability">The 9s of Availability</a></li>
+      <li><a href="#retry-patterns">Retry Patterns Done Right</a></li>
+      <li><a href="#idempotency-keys">Idempotency Keys</a></li>
+      <li><a href="#active-active-vs-active-passive">Active-Active vs Active-Passive</a></li>
+      <li><a href="#chaos-engineering">Chaos Engineering</a></li>
+      <li><a href="#combined-tips-tricks">Combined Tips & Tricks</a></li>
+      <li><a href="#sample-interview-questions">Sample Interview Questions</a></li>
+      <li><a href="#summary-key-takeaways">Summary & Key Takeaways</a></li>
+      <li><a href="#further-reading">Further Reading</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <span class="chapter-label">Chapter 9</span>
+      <h1>Reliability, Availability & Disaster Recovery</h1>
+      <p class="hero-subtitle">
+        From the nine 9s of availability and retry-with-backoff to idempotency keys, active-active vs active-passive topologies, chaos engineering, and RTO/RPO — the patterns that keep modern systems standing when things go wrong.
+      </p>
+      <div class="hero-author">By Charikshith</div>
+    </section>
+
+    <p>Welcome to one of the most critical aspects of modern system design: <strong>Reliability, Availability, and Disaster Recovery</strong>. Whether you're designing a high-traffic web application, building cloud-native microservices, or architecting distributed platforms at scale, ensuring your systems can withstand failures and recover gracefully is paramount.</p>
+
+    <p>This chapter covers:</p>
+    <ul>
+      <li>Core concepts of system reliability (MTBF, MTTR, SLAs)</li>
+      <li>High availability, fault tolerance, and failover mechanisms</li>
+      <li>Backup and recovery strategies</li>
+      <li>Disaster recovery in practice</li>
+      <li>Real-world patterns, trade-offs, and actionable tips</li>
+    </ul>
+
+    <blockquote>
+      <em>"Systems fail. Reliability is how gracefully they handle it."</em>
+    </blockquote>
+
+    <h2 id="learning-outcomes">🎯 Learning Outcomes</h2>
+    <p>After reading this chapter, you'll be able to:</p>
+    <ol class="outcomes-list">
+      <li><span class="outcome-num">1</span><span>Compute the <strong>9s of availability</strong> and translate "99.99% uptime" into hours of allowed downtime.</span></li>
+      <li><span class="outcome-num">2</span><span>Pick <strong>RTO and RPO targets</strong> based on business needs and design backups accordingly.</span></li>
+      <li><span class="outcome-num">3</span><span>Apply <strong>retry-with-backoff, circuit breakers, bulkheads, and idempotency keys</strong> correctly.</span></li>
+      <li><span class="outcome-num">4</span><span>Distinguish <strong>active-active vs active-passive</strong> and when each is right.</span></li>
+      <li><span class="outcome-num">5</span><span>Run a <strong>chaos engineering</strong> experiment and explain what it would prove.</span></li>
+    </ol>
+
+    <h2 id="introduction-to-system-reliability">Introduction to System Reliability</h2>
+    <p>Modern users expect systems to be <strong>always available, consistent, and trustworthy</strong>. Any downtime can result in financial loss, reputational damage, and erosion of user trust. Reliability isn't just about preventing failures — it's about how quickly and gracefully a system can recover when something does go wrong.</p>
+
+    <h2 id="core-concepts">Core Concepts: Reliability, Availability & Durability</h2>
+
+    <h3>What is System Reliability?</h3>
+    <p>Reliability is a system's ability to <strong>operate continuously without failure</strong>. It encompasses:</p>
+    <ul>
+      <li><strong>Correctness:</strong> The system performs its intended function without errors.</li>
+      <li><strong>Consistency:</strong> Predictable, repeatable behavior across requests and over time.</li>
+      <li><strong>Fault Tolerance:</strong> The ability to withstand failures without total disruption.</li>
+      <li><strong>Availability / Uptime:</strong> The percentage of time the system is working and accessible.</li>
+    </ul>
+
+    <h3>Availability vs. Durability</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Concept</th><th>Description</th><th>Example</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Availability</strong></td><td>System is accessible and responsive</td><td>Can query a database anytime</td></tr>
+          <tr><td><strong>Durability</strong></td><td>Data is safe and not lost (even after failures)</td><td>Data remains after system crash</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="archd" aria-label="Availability vs Durability flow">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User Query</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🟢</span><span>System Up? (Available?)</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">🛡️</span><span>Data Safe? (Durability)</span></div>
+    </div>
+
+    <h2 id="key-metrics">Key Metrics: MTBF, MTTR, SLAs</h2>
+    <ul>
+      <li><strong>MTBF (Mean Time Between Failures):</strong> Average time a system runs before encountering a failure. <em>Higher MTBF = more stable system.</em></li>
+      <li><strong>MTTR (Mean Time To Recovery):</strong> Average time to recover from a failure. <em>Lower MTTR = faster recovery.</em></li>
+    </ul>
+
+<pre><code class="language-bash">High MTBF + Low MTTR = High Reliability</code></pre>
+
+    <div class="archd-seq" aria-label="MTBF and MTTR cycle">
+      <div class="archd-seq-step"><span class="num">1</span>System Running → Failure</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>System Running</span></div>
+        <div class="archd-seq-arrow right"><span class="label">MTBF</span></div>
+        <div class="archd-node"><span class="archd-icon">⚠️</span><span>Failure Occurs</span></div>
+        <div class="archd-seq-arrow right"><span class="label">MTTR</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔧</span><span>System Recovered</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Cycle Repeats</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔧</span><span>System Recovered</span></div>
+        <div class="archd-seq-arrow right"><span class="label">MTBF</span></div>
+        <div class="archd-node"><span class="archd-icon">⚠️</span><span>Next Failure</span></div>
+        <div class="archd-seq-arrow right"><span class="label">MTTR</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔧</span><span>Recovered Again</span></div>
+      </div>
+    </div>
+
+    <h3>SLAs (Service Level Agreements)</h3>
+    <p>Contractual guarantees about system performance (e.g., 99.9% uptime, response time, error rate).</p>
+
+    <blockquote>
+      99.9% uptime = ~8.76 hours downtime/year.
+    </blockquote>
+
+    <p>Common metrics: availability, response time, error rate.</p>
+
+    <h3>Code Example: MTBF/MTTR Calculation</h3>
+<pre><code class="language-python">import statistics
+
+failure_times = [100, 120, 95, 110]    # uptime between failures in hours
+recovery_times = [2, 1.5, 3, 2.5]      # recovery durations in hours
+
+mtbf = statistics.mean(failure_times)
+mttr = statistics.mean(recovery_times)
+
+print(f"MTBF: {mtbf} hrs, MTTR: {mttr} hrs")</code></pre>
+
+    <h2 id="reliability-in-distributed-cloud">Reliability in Distributed & Cloud-Native Systems</h2>
+
+    <h3>Impact of Reliability on System Design</h3>
+    <p>Design decisions that affect reliability:</p>
+    <ul>
+      <li><strong>Redundancy:</strong> Multiple instances, failover setups.</li>
+      <li><strong>Health checks and monitoring.</strong></li>
+      <li><strong>Retry mechanisms and circuit breakers.</strong></li>
+      <li><strong>Distributed design patterns:</strong> Replication, quorum.</li>
+    </ul>
+
+    <h3>Reliability in Distributed Systems</h3>
+    <p><strong>Challenges:</strong></p>
+    <ul>
+      <li>Network partitions.</li>
+      <li>Node failures.</li>
+      <li>Eventual consistency.</li>
+    </ul>
+
+    <p><strong>Solutions:</strong></p>
+    <ul>
+      <li>Use <strong>CAP-aware design.</strong></li>
+      <li>Ensure <strong>fault isolation.</strong></li>
+      <li>Implement <strong>replication</strong> & <strong>consensus algorithms</strong> (e.g., Paxos, Raft).</li>
+    </ul>
+
+    <h3>Reliability in Cloud-Native Systems</h3>
+    <p>Cloud infrastructure is inherently unreliable.</p>
+
+    <p><strong>Design for:</strong></p>
+    <ul>
+      <li><strong>Transient failures.</strong></li>
+      <li><strong>Auto-scaling and self-healing.</strong></li>
+      <li><strong>Chaos engineering</strong> to test resilience.</li>
+    </ul>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Tip</div>
+        <p><em>"Design for failure"</em> is the <strong>cloud-native mindset.</strong></p>
+      </div>
+    </div>
+
+    <h2 id="high-availability-fault-tolerance-failover">High Availability, Fault Tolerance & Failover</h2>
+
+    <h3>Redundancy</h3>
+    <p>Redundancy prevents single points of failure. Types include:</p>
+    <ul>
+      <li><strong>Hardware:</strong> Multiple servers/storage devices.</li>
+      <li><strong>Network:</strong> Multiple data centers, network connections, routers, paths.</li>
+      <li><strong>Service:</strong> Replicated microservices/databases.</li>
+    </ul>
+
+    <div class="archd" aria-label="Basic redundancy: client to multiple servers via load balancer">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">⚖️</span><span>Load Balancer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server 1</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server 2</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server 3</span></div>
+      </div>
+    </div>
+
+    <h3>Redundancy Strategies</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Strategy</th><th>Description</th><th>Use Case</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>N+1</strong></td><td>One extra instance for failover</td><td>3 servers for 2 needed</td></tr>
+          <tr><td><strong>Active-Active</strong></td><td>Multiple nodes handle requests together</td><td>Load balancing across regions</td></tr>
+          <tr><td><strong>Active-Passive</strong></td><td>One active node, standby nodes activated on failure</td><td>Standby backup DB or service</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4>N+1 Redundancy</h4>
+    <ul>
+      <li>One more instance than needed (e.g., 3 servers for a 2-server load).</li>
+      <li>If any one fails, the system remains available.</li>
+    </ul>
+
+<pre><code class="language-bash">Required    = N
+Provisioned = N+1
+If one fails, N remain to serve traffic.</code></pre>
+
+    <h4>Active-Active</h4>
+    <ul>
+      <li>All nodes are active, sharing the workload.</li>
+      <li>High availability and load distribution.</li>
+      <li>Requires robust load balancing and state synchronization.</li>
+    </ul>
+
+    <div class="archd" aria-label="Active-Active topology">
+      <div class="archd-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client 1</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client 2</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">⚖️</span><span>Load Balancer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🟢</span><span>Active Node 1</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🟢</span><span>Active Node 2</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🟢</span><span>Active Node 3</span></div>
+      </div>
+    </div>
+
+    <p>ASCII view:</p>
+<pre><code class="language-bash">Active-Active:
+User --> [LB] --> Node A (active)
+                    |--> Node B (active)
+                    |--> Node C (active)</code></pre>
+
+    <h4>Active-Passive</h4>
+    <ul>
+      <li>Only one node is active; others are on standby.</li>
+      <li>On failure, a passive node becomes active.</li>
+      <li>Simpler, but less load-efficient and has failover latency.</li>
+    </ul>
+
+    <div class="archd" aria-label="Active-Passive topology">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">⚖️</span><span>Load Balancer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🟢</span><span>Active Node</span></div>
+        <div class="archd-node is-external"><span class="archd-icon">💤</span><span>Passive Node 1</span></div>
+        <div class="archd-node is-external"><span class="archd-icon">💤</span><span>Passive Node 2</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">failover</span></div>
+      <div class="archd-node is-service"><span class="archd-icon">🔄</span><span>Promoted on failure</span></div>
+    </div>
+
+    <p>ASCII view:</p>
+<pre><code class="language-bash">Active-Passive:
+User --> [LB] --> Node A (active)
+                    |--> Node B (standby)</code></pre>
+
+    <h2 id="graceful-degradation">Graceful Degradation</h2>
+    <p>Graceful degradation is about keeping <strong>core functionality alive</strong> during partial failures, even if some features are unavailable.</p>
+    <ul>
+      <li><strong>Definition:</strong> System still operates at a reduced capacity during failures.</li>
+      <li>Example: During high traffic, disable non-essential features.</li>
+      <li>Helps maintain <strong>user experience</strong> even when full service isn't possible.</li>
+      <li>Critical for ensuring users still benefit from some <strong>functionality during outages.</strong></li>
+    </ul>
+
+    <p><strong>Example:</strong> If a recommendation engine fails on an e-commerce site, the main shopping and checkout features remain operational.</p>
+
+<pre><code class="language-python">def handle_request(request):
+    if not essential_feature_available():
+        # Disable non-essential feature
+        return minimal_viable_response(request)
+    return full_feature_response(request)</code></pre>
+
+<pre><code class="language-python"># Pseudocode for graceful degradation in a Flask app
+@app.route('/recommendations')
+def recommendations():
+    try:
+        return get_recommendations(user_id)
+    except RecommendationServiceError:
+        # Degrade gracefully: show popular items instead
+        return get_popular_items()</code></pre>
+
+    <p>A simpler form:</p>
+
+<pre><code class="language-python">def handle_request():
+    try:
+        return full_service()
+    except ServiceOverloadError:
+        return degraded_service()  # e.g., disable image uploads</code></pre>
+
+    <h2 id="high-availability-patterns">High Availability Patterns</h2>
+
+    <h3>Load Balancing</h3>
+    <p>Distribute traffic evenly across backend nodes. Essential for removing bottlenecks and handling node failures.</p>
+
+<pre><code class="language-bash">upstream backend {
+    server backend1.example.com;
+    server backend2.example.com;
+    server backend3.example.com;
+}
+server {
+    listen 80;
+    location / {
+        proxy_pass http://backend;
+    }
+}</code></pre>
+
+    <h3>Replication</h3>
+    <p>Replicate data across nodes/data centers for availability and durability.</p>
+    <ul>
+      <li><strong>Synchronous replication:</strong> Zero data loss, but higher latency.</li>
+      <li><strong>Asynchronous replication:</strong> Lower latency, but possible data loss on failure.</li>
+    </ul>
+
+    <h3>Failover</h3>
+    <p>Automatically switches to a backup node if a primary fails.</p>
+
+<pre><code class="language-bash"># Kubernetes deployment with readiness/liveness probes for failover
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  initialDelaySeconds: 3
+  periodSeconds: 3</code></pre>
+
+    <h3>High Availability Diagram</h3>
+    <div class="archd" aria-label="High availability with standby failover">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">⚖️</span><span>Load Balancer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server 1</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server 2</span></div>
+        <div class="archd-node is-external"><span class="archd-icon">💤</span><span>Server 3 (Standby)</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">failover</span></div>
+      <div class="archd-node is-service"><span class="archd-icon">🔄</span><span>Standby promoted</span></div>
+    </div>
+
+    <h2 id="designing-for-redundancy">Designing for Redundancy</h2>
+
+    <h3>Redundant Components</h3>
+    <p>Design with multiple instances of key components (servers, databases, etc.) to avoid single points of failure.</p>
+
+    <h3>Geographical Redundancy</h3>
+    <ul>
+      <li>Use <strong>multiple data centers</strong> or <strong>cloud regions</strong> for disaster recovery.</li>
+      <li>Ensures high availability and resilience during regional outages.</li>
+      <li>Distribute components across multiple regions to handle data center/region outages.</li>
+    </ul>
+
+    <h3>Automated Failover</h3>
+    <ul>
+      <li>Ensure <strong>failover happens automatically</strong> without manual intervention.</li>
+      <li>Enables seamless service continuity when a primary system fails.</li>
+    </ul>
+
+    <p><strong>Example architecture:</strong> A client application connects to a database driver, which handles connections to a primary database. The primary replicates data to secondary databases, ensuring redundancy and quick recovery during failure.</p>
+
+    <div class="archd" aria-label="Primary database with replicating secondaries">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client Application</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🔌</span><span>Database Driver</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Writes & Reads</span></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Primary Database</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Replication</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🗃️</span><span>Secondary DB</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗃️</span><span>Secondary DB</span></div>
+      </div>
+    </div>
+
+    <p><strong>Automation:</strong> Use health checks; orchestration tools like Kubernetes, AWS Auto Scaling, Azure Availability Sets.</p>
+
+    <h2 id="health-monitoring-self-healing">Health Monitoring & Self-Healing Systems</h2>
+
+    <h3>Health Monitoring</h3>
+    <ul>
+      <li>Track server uptime, API responses, error rates, CPU/memory usage.</li>
+      <li>Alert on anomalies before users notice.</li>
+    </ul>
+
+    <h3>Self-Healing</h3>
+    <ul>
+      <li>Systems that <strong>automatically recover</strong> (restart, redeploy, reroute).</li>
+      <li>E.g., Kubernetes restarts crashed pods automatically.</li>
+    </ul>
+
+<pre><code class="language-bash"># Kubernetes pod auto-restart example
+restartPolicy: Always</code></pre>
+
+<pre><code class="language-bash">livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10</code></pre>
+
+    <h2 id="backup-recovery-strategies">Backup & Recovery Strategies</h2>
+
+    <h3>What and Why</h3>
+    <ul>
+      <li><strong>Backup:</strong> Creating copies of data to protect against loss.</li>
+      <li><strong>Recovery:</strong> Restoring data after failure/corruption.</li>
+      <li>Critical for: disaster recovery, ransomware protection, compliance, human error.</li>
+    </ul>
+
+    <p><strong>Scenarios demanding backup & recovery:</strong></p>
+    <ul>
+      <li>Hardware or software failure.</li>
+      <li>Human error (accidental deletion).</li>
+      <li>Cyber attacks (ransomware).</li>
+      <li>Natural disasters (fire, flood).</li>
+      <li>Compliance & legal retention requirements.</li>
+    </ul>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Remember</div>
+        <p>Backup and recovery <strong>complement</strong> redundancy and replication; they're not substitutes.</p>
+      </div>
+    </div>
+
+    <h3>Backup Types</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Type</th><th>Description</th><th>Pros</th><th>Cons</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Full</strong></td><td>Copies all data</td><td>Simple restore</td><td>High storage & time</td></tr>
+          <tr><td><strong>Incremental</strong></td><td>Changes since last backup</td><td>Fast backup</td><td>Slower restore</td></tr>
+          <tr><td><strong>Differential</strong></td><td>Changes since last full backup</td><td>Faster restore</td><td>Larger than incremental</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="archd-seq" aria-label="Backup types over a week">
+      <div class="archd-seq-step"><span class="num">1</span>Backup Types Over a Week</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Monday: Full Backup</span></div>
+        <div class="archd-seq-arrow right"><span class="label">next day</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">➕</span><span>Tuesday: Incremental 1</span></div>
+      </div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-service"><span class="archd-icon">➕</span><span>Wednesday: Incremental 2</span></div>
+        <div class="archd-seq-arrow right"><span class="label">next day</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">📦</span><span>Thursday: Differential 1</span></div>
+      </div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-infra"><span class="archd-icon">📦</span><span>Thursday: Differential 1</span></div>
+        <div class="archd-seq-arrow right"><span class="label">next day</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">➕</span><span>Friday: Incremental 3</span></div>
+      </div>
+    </div>
+
+    <p><strong>Hybrid approach example:</strong> Weekly full backups, daily incremental backups.</p>
+
+    <h3>Recovery Models: Cold, Warm, Hot</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Resources Provisioned</th><th>Downtime</th><th>Cost</th><th>Use Case</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Cold</strong></td><td>None / backups offline</td><td>Hours to days</td><td>Low</td><td>Non-critical apps</td></tr>
+          <tr><td><strong>Warm</strong></td><td>Some / pre-provisioned</td><td>Minutes to hours</td><td>Medium</td><td>Business apps</td></tr>
+          <tr><td><strong>Hot</strong></td><td>Full (always ready)</td><td>Seconds or less</td><td>High</td><td>Mission-critical systems</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="archd" aria-label="Recovery models relationships">
+      <div class="archd-node is-data"><span class="archd-icon">🏢</span><span>Primary Data Center</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Replication / Sync</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🌤️</span><span>Warm Standby</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔥</span><span>Hot Standby</span></div>
+        <div class="archd-node is-external"><span class="archd-icon">🧊</span><span>Offline Backups (Cold)</span></div>
+      </div>
+    </div>
+
+    <h3>Key Metrics: RTO & RPO</h3>
+    <ul>
+      <li><strong>RTO (Recovery Time Objective):</strong> How quickly can you recover? (e.g., 1 hour)</li>
+      <li><strong>RPO (Recovery Point Objective):</strong> How much data loss is acceptable? (e.g., 15 minutes)</li>
+    </ul>
+
+    <div class="callout callout-warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-content">
+        <div class="callout-title">Warning</div>
+        <p><strong>Shorter RTO/RPO = higher cost and complexity.</strong></p>
+      </div>
+    </div>
+
+    <h4>Real-World Mapping</h4>
+    <ul>
+      <li><strong>Banking system:</strong> RTO = 5 minutes, RPO = near zero.</li>
+      <li><strong>Internal tool:</strong> RTO = 1 day, RPO = 12 hours.</li>
+    </ul>
+
+    <div class="archd-seq" aria-label="Backup and recovery timeline">
+      <div class="archd-seq-step"><span class="num">1</span>Normal operation (00:00 → 04:00)</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-service"><span class="archd-icon">🟢</span><span>Uptime</span></div>
+        <div class="archd-seq-arrow right"><span class="label">4 hrs</span></div>
+        <div class="archd-node"><span class="archd-icon">⏱️</span><span>04:00</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Failure & recovery (04:00 → 05:30)</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node"><span class="archd-icon">⚠️</span><span>Failure Detected (00:30)</span></div>
+        <div class="archd-seq-arrow right"><span class="label">RTO ~1hr</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔧</span><span>Recovery in Progress</span></div>
+      </div>
+    </div>
+
+    <h3>Designing Your Backup & Recovery Strategy</h3>
+    <p><strong>Key trade-offs:</strong></p>
+    <ul>
+      <li><strong>Cost vs. recovery speed:</strong> Faster recovery usually means more redundancy and higher storage/infra spend.</li>
+      <li><strong>Complexity:</strong> More frequent backups = more management overhead.</li>
+      <li><strong>Business criticality:</strong> Mission-critical? Invest more.</li>
+      <li><strong>Compliance:</strong> Are there legal retention or encryption needs?</li>
+      <li><strong>Infrastructure maturity:</strong> Can your team automate and manage complex strategies?</li>
+    </ul>
+
+    <p><strong>Sample hybrid strategy:</strong></p>
+    <ul>
+      <li><strong>Full backup:</strong> Sunday 2 AM.</li>
+      <li><strong>Incremental:</strong> Daily at 2 AM.</li>
+      <li><strong>Retention:</strong> 30 days on disk, 1 year in cloud cold storage.</li>
+    </ul>
+
+    <h3>Best Practices: The 3-2-1 Rule</h3>
+    <ul>
+      <li><strong>3</strong> copies of your data (primary + 2 backups).</li>
+      <li><strong>2</strong> different storage media (e.g., disk, cloud).</li>
+      <li><strong>1</strong> backup offsite (remote/cloud).</li>
+    </ul>
+
+    <p><strong>Other best practices:</strong></p>
+    <ul>
+      <li><strong>Automate everything:</strong> Automate both backup creation and restore testing. Monitor backup jobs and alert on failures.</li>
+      <li><strong>Encrypt data:</strong> Use strong encryption at rest (AES-256) and in transit (TLS).</li>
+    </ul>
+
+    <h3>Sample Backup Automation Code</h3>
+    <p><strong>Automated daily database backup with AWS S3 (Python):</strong></p>
+
+<pre><code class="language-python">import boto3
+import subprocess
+import datetime
+
+def backup_postgres(db_name, s3_bucket, s3_prefix):
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"/tmp/{db_name}_backup_{timestamp}.sql.gz"
+    # Dump and compress the database
+    subprocess.run([
+        "pg_dump", db_name,
+        "--no-owner", "--no-acl"
+    ], stdout=subprocess.PIPE)
+    subprocess.run(["gzip", "-c"], stdin=subprocess.PIPE, stdout=open(filename, 'wb'))
+
+    # Upload to S3
+    s3 = boto3.client('s3')
+    s3.upload_file(filename, s3_bucket, f"{s3_prefix}/{filename}")
+    print(f"Backup uploaded to s3://{s3_bucket}/{s3_prefix}/{filename}")
+
+# Usage
+backup_postgres("mydb", "my-backup-bucket", "db-backups")</code></pre>
+
+    <p><strong>Restore example:</strong></p>
+
+<pre><code class="language-bash"># Download from S3
+aws s3 cp s3://my-backup-bucket/db-backups/mydb_backup_20230601_020000.sql.gz .
+gunzip mydb_backup_20230601_020000.sql.gz
+psql mydb &lt; mydb_backup_20230601_020000.sql</code></pre>
+
+    <p><strong>Linux cron backup:</strong></p>
+
+<pre><code class="language-bash"># Automated daily backup (cronjob)
+0 2 * * * tar -czf /backups/app-$(date +\%F).tar.gz /data/app</code></pre>
+
+    <h2 id="disaster-recovery-in-practice">Disaster Recovery in Practice</h2>
+
+    <p>In today's digital world, downtime is expensive — not just in dollars, but also in lost trust and missed opportunities. Mission-critical systems in finance, healthcare, e-commerce, and beyond must be designed to recover gracefully from disasters — hardware failures, cyberattacks, or entire regional outages.</p>
+
+    <h3>Why Disaster Recovery REALLY Matters</h3>
+    <ul>
+      <li><strong>Downtime costs money & trust:</strong> Even a few minutes of outage can mean lost revenue and broken user trust.</li>
+      <li><strong>Beyond backups:</strong> DR is not just about saving data; it's about keeping the <em>whole system</em> resilient and available.</li>
+      <li><strong>Compliance:</strong> For regulated industries (finance, healthcare), DR is a legal requirement, not just a best practice.</li>
+    </ul>
+
+    <blockquote>
+      DR builds on your backup strategy but focuses on <em>system-level</em> recovery — bringing apps, services, and infrastructure <em>all back online</em>.
+    </blockquote>
+
+    <h3>DR for Mission-Critical Applications</h3>
+    <p><strong>Example targets:</strong></p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>System Type</th><th>Target RTO</th><th>Target RPO</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Bank Core</td><td>&lt; 5 minutes</td><td>&lt; 1 minute</td></tr>
+          <tr><td>E-commerce Cart</td><td>&lt; 15 min</td><td>&lt; 5 minutes</td></tr>
+          <tr><td>Social Media</td><td>&lt; 1 hour</td><td>&lt; 15 minutes</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>DR Architecture: Key Layers of Redundancy</h3>
+    <ul>
+      <li><strong>Compute redundancy:</strong> Multiple servers/VMs/containers.</li>
+      <li><strong>Storage redundancy:</strong> Replicated databases, distributed storage.</li>
+      <li><strong>Network redundancy:</strong> Multiple paths, routers, ISPs.</li>
+      <li><strong>Geo-redundancy:</strong> Multiple regions/data centers.</li>
+    </ul>
+
+    <h3>Backup vs. Failover: Why You Need Both</h3>
+    <ul>
+      <li><strong>Backup:</strong> Restores <em>data</em> after corruption, deletion, or ransomware.</li>
+      <li><strong>Failover:</strong> Keeps <em>services</em> running by switching to healthy infrastructure during a failure.</li>
+    </ul>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Backup Only</th><th>Failover Only</th><th>Combined (Best)</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Data recovery, but no service continuity</td>
+            <td>Service continuity, but not data loss</td>
+            <td>Both service continuity and data integrity</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Diagram: DR Coverage</strong></p>
+    <div class="archd" aria-label="DR coverage combining backup and failover">
+      <div class="archd-node"><span class="archd-icon">💥</span><span>Disaster Event</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Data Loss</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">⚙️</span><span>Infra Outage</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">💾</span><span>Backup</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔄</span><span>Failover</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-service"><span class="archd-icon">🛡️</span><span>Complete Resilience</span></div>
+    </div>
+
+    <h3>Recovery Automation and Testing</h3>
+    <blockquote>
+      <em>"If you haven't tested your DR plan, you don't really have one."</em>
+    </blockquote>
+
+    <p><strong>Automate key actions:</strong></p>
+    <ul>
+      <li>Failover switching (primary &lt;-&gt; secondary).</li>
+      <li>Data validation after restore.</li>
+      <li>Notifications and logging.</li>
+    </ul>
+
+    <p><strong>Regularly run DR drills:</strong> Simulate failures to test team readiness and system behavior.</p>
+
+    <p><strong>Sample pseudocode: Automated Failover</strong></p>
+
+<pre><code class="language-python">def disaster_recovery_monitor():
+    while True:
+        if not is_primary_healthy():
+            promote_secondary()
+            notify_team()
+            log_event("Failover occurred at {}".format(datetime.now()))
+        sleep(10)
+
+def promote_secondary():
+    # Switch DNS, reconfigure load balancer, etc.
+    # Example for AWS Route53:
+    subprocess.run([
+        "aws", "route53", "change-resource-record-sets",
+        "--hosted-zone-id", "<zone-id>",
+        "--change-batch", "file://failover.json"
+    ])</code></pre>
+
+    <h3>Circuit Breaker Pattern</h3>
+<pre><code class="language-python">class CircuitBreaker:
+    def __init__(self, failure_threshold):
+        self.failure_threshold = failure_threshold
+        self.failure_count = 0
+        self.open = False
+
+    def call(self, func, *args, **kwargs):
+        if self.open:
+            raise Exception("Circuit is open!")
+        try:
+            return func(*args, **kwargs)
+        except Exception:
+            self.failure_count += 1
+            if self.failure_count >= self.failure_threshold:
+                self.open = True
+            raise
+
+    def reset(self):
+        self.failure_count = 0
+        self.open = False</code></pre>
+
+    <h3>Geo-Distributed Systems: DR Challenges</h3>
+    <p>Geo-distribution increases resilience but also complexity:</p>
+    <ul>
+      <li><strong>Data consistency across regions:</strong> Updates must be synchronized without conflict.</li>
+      <li><strong>Latency:</strong> Failover to distant regions can introduce delays.</li>
+      <li><strong>Regulatory constraints:</strong> Laws like GDPR may restrict where data can be stored.</li>
+      <li><strong>Coordinated multi-region failover:</strong> Avoiding split-brain and ensuring quorum is vital.</li>
+    </ul>
+
+    <h3>Geo-Redundancy & Quorum-Based Design</h3>
+
+    <p><strong>Geo-Redundancy:</strong></p>
+    <p>Deploy services across multiple physical locations/regions.</p>
+
+    <div class="archd" aria-label="Geo-redundancy across three regions">
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🌎</span><span>Region A</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🌍</span><span>Region B</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🌏</span><span>Region C</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">bidirectional sync</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Users (A)</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Users (B)</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Users (C)</span></div>
+      </div>
+    </div>
+
+    <p>If one region fails, others continue serving requests.</p>
+
+    <p><strong>Quorum-Based Design:</strong></p>
+    <p><strong>Quorum:</strong> Minimum number of nodes that must agree for an operation to be considered successful.</p>
+    <p><strong>Why:</strong> Prevents "split-brain" scenarios and ensures consistency.</p>
+
+    <p><strong>Example: Write operation in a distributed DB</strong></p>
+    <ul>
+      <li>5 nodes, quorum = 3.</li>
+      <li>Operation succeeds if at least 3 nodes acknowledge the write.</li>
+    </ul>
+
+<pre><code class="language-python">def write_with_quorum(data, nodes, quorum=3):
+    acks = 0
+    for node in nodes:
+        if node.write(data):
+            acks += 1
+        if acks >= quorum:
+            return True
+    return False</code></pre>
+
+    <div class="archd" aria-label="Primary and secondary region with quorum">
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🏢</span><span>Primary Region</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🏢</span><span>Secondary Region</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">sync</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🗳️</span><span>Quorum (majority nodes)</span></div>
+    </div>
+
+    <h3>Testing Your DR Plan: Example DR Drill</h3>
+    <ol>
+      <li><strong>Simulate failure:</strong> Shut down a region or primary database.</li>
+      <li><strong>Observe automation:</strong> Ensure failover scripts trigger; monitoring and alerting fire.</li>
+      <li><strong>Validate data:</strong> Run integrity checks on restored data.</li>
+      <li><strong>Review logs:</strong> Confirm timelines, actions, and gaps.</li>
+    </ol>
+
+    <h2 id="nines-of-availability">The 9s of Availability — What "Five Nines" Actually Means</h2>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Availability</th><th>Allowed downtime per year</th><th>Per month</th><th>Per day</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>99%</td><td>3.65 days</td><td>7.2 hours</td><td>14.4 minutes</td></tr>
+          <tr><td>99.9%</td><td>8.77 hours</td><td>43.8 minutes</td><td>1.44 minutes</td></tr>
+          <tr><td>99.95%</td><td>4.38 hours</td><td>21.9 minutes</td><td>43.2 seconds</td></tr>
+          <tr><td>99.99%</td><td>52.6 minutes</td><td>4.38 minutes</td><td>8.64 seconds</td></tr>
+          <tr><td>99.999%</td><td>5.26 minutes</td><td>26.3 seconds</td><td>0.86 seconds</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-content">
+        <div class="callout-title">Reality Check</div>
+        <p>"Five nines" (99.999%) means <strong>less than 6 minutes of downtime per year.</strong> That includes deploys, patches, and unforeseen incidents. Achieving it requires multi-region active-active, automated failover, no single points of failure anywhere, and rigorous testing. It's <em>expensive</em>.</p>
+        <p>Most products live at 99.9% (three nines) and that's usually fine.</p>
+      </div>
+    </div>
+
+    <h3>Compounding: System ≠ Component Availability</h3>
+    <p>If your service depends on 3 things, each 99.9% available:</p>
+    <p><code>0.999 × 0.999 × 0.999 ≈ 0.997</code> = 99.7% (about 26 hours of downtime/year).</p>
+    <p><strong>Lesson:</strong> the more dependencies, the lower your composite availability. Either make each component <em>more</em> reliable, or design to <strong>work in degraded mode</strong> when a dependency is down.</p>
+
+    <h2 id="retry-patterns">Retry Patterns Done Right</h2>
+    <p>Retries are the #1 way to convert a single transient failure into a system-wide outage. Done wrong, they're an amplifier. Done right, they're a lifesaver.</p>
+
+    <h3>The Five Rules of Retries</h3>
+    <ol>
+      <li><strong>Only retry idempotent operations.</strong> Retrying a non-idempotent POST can double-charge a credit card.</li>
+      <li><strong>Exponential backoff</strong> — <code>delay = base × 2^attempt</code>. Not constant delay.</li>
+      <li><strong>Add jitter</strong> — <code>delay = random(0, base × 2^attempt)</code>. Without jitter, retries from many clients synchronize and stampede.</li>
+      <li><strong>Cap the retries.</strong> Usually 3-5. Past that, give up and report failure.</li>
+      <li><strong>Respect <code>Retry-After</code> and <code>429</code>.</strong> If the server tells you when to retry, listen.</li>
+    </ol>
+
+    <h3>Example</h3>
+<pre><code class="language-python">import random, time
+
+def with_retry(fn, max_attempts=4, base=0.1):
+    for attempt in range(max_attempts):
+        try:
+            return fn()
+        except TransientError:
+            if attempt == max_attempts - 1:
+                raise
+            delay = random.uniform(0, base * (2 ** attempt))  # exponential + jitter
+            time.sleep(delay)</code></pre>
+
+    <h2 id="idempotency-keys">Idempotency Keys</h2>
+    <p>Even with retries done right, network failures can leave you unsure whether a request succeeded. The fix: <strong>idempotency keys.</strong></p>
+
+    <p>Client generates a unique key (UUID) per logical operation. Server stores <code>(key → result)</code>. On retry, server returns the cached result instead of executing again.</p>
+
+<pre><code class="language-bash">POST /payments
+Idempotency-Key: 6f7d3e4a-9b2c-4f1d-8e3a-1c2b3d4e5f60
+{
+  "amount": 100,
+  "user_id": 42
+}</code></pre>
+
+    <p>Stripe, PayPal, and modern payment APIs all use this. <strong>You should too</strong> for any non-idempotent operation.</p>
+
+    <h2 id="active-active-vs-active-passive">Active-Active vs Active-Passive</h2>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Mode</th><th>Behavior</th><th>Pros</th><th>Cons</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Active-Active</strong></td>
+            <td>All regions serve traffic simultaneously; data replicated bidirectionally</td>
+            <td>Zero failover time; uses all capacity</td>
+            <td>Conflict resolution required; complex</td>
+          </tr>
+          <tr>
+            <td><strong>Active-Passive</strong></td>
+            <td>One region serves; other(s) on standby, take over on failure</td>
+            <td>Simpler; clean failover</td>
+            <td>Standby capacity is paid for and idle</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="archd" aria-label="Active-Active across regions">
+      <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Global Traffic</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">geo DNS</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🟢</span><span>Region US (active)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🟢</span><span>Region EU (active)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🟢</span><span>Region APAC (active)</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">bi-directional replication</span></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Multi-master data layer</span></div>
+    </div>
+
+    <div class="archd" aria-label="Active-Passive across regions">
+      <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Global Traffic</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">DNS / failover</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🟢</span><span>Region US (active)</span></div>
+        <div class="archd-node is-external"><span class="archd-icon">💤</span><span>Region EU (standby)</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">async replication</span></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Primary → Replica</span></div>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Rule of Thumb</div>
+        <p>Active-active is the right answer for read-heavy systems where eventual consistency is OK (social feeds, content delivery). Active-passive is simpler for transactional systems (banking, ticketing) where conflict resolution would be a nightmare.</p>
+      </div>
+    </div>
+
+    <h2 id="chaos-engineering">Chaos Engineering — Failure as a Practice</h2>
+    <p>You don't know if your reliability mechanisms work until you actually break things in production. <strong>Chaos engineering</strong> = deliberately injecting failures (kill pods, drop network packets, fail dependencies) to verify the system survives.</p>
+
+    <p><strong>Famous tools:</strong></p>
+    <ul>
+      <li><strong>Chaos Monkey</strong> (Netflix) — kills random EC2 instances.</li>
+      <li><strong>Gremlin</strong> — broader fault injection: CPU, memory, network, dependencies.</li>
+      <li><strong>LitmusChaos</strong> (CNCF) — Kubernetes-native chaos experiments.</li>
+    </ul>
+
+    <p><strong>Start small:</strong></p>
+    <ol>
+      <li>Pick a non-critical service in staging.</li>
+      <li>Hypothesize what will happen ("if I kill this pod, traffic shifts to others, p99 stays under 200ms").</li>
+      <li>Inject the failure.</li>
+      <li>Measure. If you were wrong, fix the system <em>before</em> it happens for real.</li>
+    </ol>
+
+    <div class="callout callout-warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-content">
+        <div class="callout-title">Rule</div>
+        <p>If you've never killed a database in staging, you don't know if your failover works. <strong>Reliability is a measurable claim, not a feeling.</strong></p>
+      </div>
+    </div>
+
+    <h2 id="combined-tips-tricks">Combined Tips & Tricks</h2>
+    <p>A consolidated master list drawn from all sections.</p>
+
+    <h3>Design Philosophy</h3>
+    <ul>
+      <li><strong>Design for failure:</strong> Assume components/services will fail; plan accordingly. Use retries, circuit breakers, fallback logic.</li>
+      <li><strong>Cloud-native mindset:</strong> Leverage managed services' redundancy and auto-healing (AWS RDS Multi-AZ, GCP Cloud SQL HA).</li>
+      <li><strong>Balance cost vs. risk:</strong> Higher SLAs and lower RTO/RPO mean higher cost and complexity. Align with business needs.</li>
+    </ul>
+
+    <h3>Automation</h3>
+    <ul>
+      <li><strong>Automate everything:</strong> Backups, failover, health checks, restore tests.</li>
+      <li><strong>Use circuit breakers and retries:</strong> Prevent cascading failures due to repeated calls to failing services.</li>
+    </ul>
+
+    <h3>Testing</h3>
+    <ul>
+      <li><strong>Test regularly:</strong> Run DR drills, test backups, simulate failures (chaos engineering).</li>
+      <li><strong>Test your DR plan:</strong> <em>If you haven't tested it, you don't have it.</em></li>
+      <li><strong>Test across regions:</strong> Don't assume multi-region just "works" — validate failover and data consistency.</li>
+    </ul>
+
+    <h3>Monitoring</h3>
+    <ul>
+      <li><strong>Monitor key metrics:</strong> Track MTBF, MTTR, availability, error rates, backup status.</li>
+      <li><strong>Monitor and alert:</strong> Don't just collect metrics — act on them.</li>
+      <li><strong>Implement the 3-2-1 backup rule:</strong> 3 copies, 2 different media, 1 offsite.</li>
+    </ul>
+
+    <h3>User Experience</h3>
+    <ul>
+      <li><strong>Gracefully degrade:</strong> Prioritize core features; design for partial service during failures.</li>
+      <li><strong>Document SLAs and recovery objectives:</strong> Explicitly define and communicate RTO/RPO.</li>
+    </ul>
+
+    <h3>Documentation</h3>
+    <ul>
+      <li><strong>Document and review:</strong> Keep disaster recovery and backup plans up to date and review them periodically.</li>
+      <li><strong>Document your DR plan:</strong> Ensure everyone knows the process and their role.</li>
+    </ul>
+
+    <h3>Backup-Specific</h3>
+    <ul>
+      <li><strong>Test restores regularly:</strong> A backup you've never restored is a backup you don't have.</li>
+      <li><strong>Monitor success & failures:</strong> Set up dashboards/alerts.</li>
+      <li><strong>Cloud backups:</strong> Use object storage with lifecycle policies for cost savings.</li>
+      <li><strong>Immutable backups:</strong> Protect against ransomware by making backups write-once, read-many (WORM).</li>
+      <li><strong>Geo-redundancy:</strong> For mission-critical data, store backups in different regions.</li>
+      <li><strong>Automate cleanup:</strong> Use scripts or cloud policies to prune old backups.</li>
+    </ul>
+
+    <h2 id="sample-interview-questions">Sample Interview Questions</h2>
+    <ul>
+      <li>How would you design a system for 99.99% availability?</li>
+      <li>What's the difference between backup and failover?</li>
+      <li>How do you optimize RTO and RPO in a distributed environment?</li>
+      <li>How would you design DR for a high-traffic web app?</li>
+      <li>What are RTO and RPO, and how do you optimize them?</li>
+      <li>What are the challenges with geo-distributed DR systems?</li>
+      <li>Explain quorum-based design in distributed recovery.</li>
+      <li>How do you ensure high availability across multiple regions?</li>
+      <li>Compare active-active and active-passive redundancy.</li>
+      <li>What is graceful degradation? Provide an example.</li>
+      <li>How do you detect and recover from failures automatically?</li>
+    </ul>
+
+    <h2 id="summary-key-takeaways">Summary & Key Takeaways</h2>
+    <ul>
+      <li><strong>Reliability is foundational</strong> — measured by metrics like MTBF, MTTR, and SLAs.</li>
+      <li><strong>Design choices must anticipate and tolerate failure.</strong></li>
+      <li><strong>Redundancy</strong> (hardware, network, service) prevents single points of failure.</li>
+      <li>Patterns like <strong>N+1, active-active, and active-passive</strong> support high availability.</li>
+      <li><strong>Graceful degradation</strong> keeps core user experience intact during partial failures.</li>
+      <li><strong>Load balancing, replication, automated failover, and self-healing</strong> are critical patterns in real-world HA systems.</li>
+      <li><strong>Backup and disaster recovery</strong> strategies require regular testing, automation, and a clear understanding of RTO/RPO trade-offs.</li>
+      <li><strong>Geographical redundancy and quorum-based designs</strong> support resilience in distributed and cloud-native environments.</li>
+      <li><strong>DR is more than backups</strong> — it's about <em>system continuity.</em></li>
+      <li><strong>Combine failover + backup</strong> for true resilience.</li>
+      <li><strong>DR is core architecture</strong> for mission-critical systems, not an afterthought.</li>
+    </ul>
+
+    <h2 id="further-reading">📚 Further Reading</h2>
+    <ul>
+      <li><a href="https://sre.google/sre-book/reliability/" target="_blank">Google SRE Book: Reliability</a></li>
+      <li><a href="https://sre.google/sre-book/" target="_blank">Google SRE Book: Reliability and Recovery</a></li>
+      <li><a href="https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/welcome.html" target="_blank">AWS Well-Architected Framework: Reliability Pillar</a></li>
+      <li><a href="https://aws.amazon.com/whitepapers/disaster-recovery/" target="_blank">AWS Disaster Recovery Whitepaper</a></li>
+      <li><a href="https://docs.aws.amazon.com/backup/latest/devguide/best-practices.html" target="_blank">AWS Backup Best Practices</a></li>
+      <li><a href="https://www.postgresql.org/docs/current/backup.html" target="_blank">PostgreSQL Backup & Restore Docs</a></li>
+      <li><a href="https://cloud.google.com/architecture/disaster-recovery-cookbook" target="_blank">Google Cloud: Disaster Recovery Planning Guide</a></li>
+      <li><a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-lifetime" target="_blank">Kubernetes Documentation: Self-Healing</a></li>
+      <li><a href="https://en.wikipedia.org/wiki/CAP_theorem" target="_blank">CAP Theorem in Distributed Systems</a></li>
+    </ul>
+
+    <p><strong>Next Up:</strong> <a href="10 - Security in System Design %E2%80%93 Principles%2C Practices %26 Protocols.html">Chapter 10 — Security in System Design →</a> — protect your reliable systems from modern threats.</p>
+
+    <nav class="chapter-nav">
+      <a class="chapter-nav-card" href="8 - Performance - Concepts, Tools %26 Techniques.html">
+        <div class="chapter-nav-label">← Previous</div>
+        <div class="chapter-nav-title">Chapter 8 — Performance</div>
+      </a>
+      <a class="chapter-nav-card next" href="10 - Security in System Design %E2%80%93 Principles%2C Practices %26 Protocols.html">
+        <div class="chapter-nav-label">Next chapter →</div>
+        <div class="chapter-nav-title">Chapter 10 — Security</div>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../assets/system-design.js"></script>
+
+</body>
+</html>

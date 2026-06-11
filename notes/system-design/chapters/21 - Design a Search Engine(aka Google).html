@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chapter 21 — Search Engine (Google)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<link rel="stylesheet" href="../assets/system-design.css">
+</head>
+<body><a href="../../../notes.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;z-index:99999;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600;background:#0f172a;color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.28)">&#8592; AI Library</a>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">
+    <span class="brand-icon">SD</span>
+    <span>Mastering System Design</span>
+  </a>
+  <div class="topbar-actions">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Chapter 21 — On This Page</h3>
+    <ul class="toc-list" id="tocList">
+      <li><a href="#learning-outcomes">Learning Outcomes</a></li>
+      <li><a href="#what-are-we-building">What Are We Building?</a></li>
+      <li><a href="#functional-requirements">Functional Requirements</a></li>
+      <li><a href="#non-functional-requirements">Non-Functional Requirements</a></li>
+      <li><a href="#architecture-overview">Architecture Overview</a></li>
+      <li><a href="#core-components">Core Components</a></li>
+      <li><a href="#scale-estimation">Scale Estimation</a></li>
+      <li><a href="#bottlenecks-solutions">Bottlenecks &amp; Solutions</a></li>
+      <li><a href="#data-indexing-architecture">Data &amp; Indexing Architecture</a></li>
+      <li><a href="#end-to-end-workflow">End-to-End Workflow</a></li>
+      <li><a href="#data-models">Data Models</a></li>
+      <li><a href="#component-deep-dives">Component Deep Dives &amp; Code</a></li>
+      <li><a href="#ranking-algorithms">Ranking Algorithms</a></li>
+      <li><a href="#tech-infrastructure-decisions">Tech &amp; Infrastructure Decisions</a></li>
+      <li><a href="#scaling-fault-tolerance">Scaling &amp; Fault Tolerance</a></li>
+      <li><a href="#beyond-mvp">Beyond MVP</a></li>
+      <li><a href="#tips-tricks">Tips &amp; Tricks</a></li>
+      <li><a href="#conclusion">Conclusion</a></li>
+      <li><a href="#further-reading">Further Reading</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <span class="chapter-label">Chapter 21 · Case Study</span>
+      <h1>Designing a Large-Scale Search Engine (Google)</h1>
+      <p class="hero-subtitle">
+        From distributed crawling and inverted indexes to PageRank, query understanding, autocomplete, and learned ranking — this case study walks through architecting a web-scale search engine that serves billions of pages in under 200 ms.
+      </p>
+      <div class="hero-author">By Charikshith</div>
+    </section>
+
+    <p>Building a search engine is one of the pinnacles of system design — where distributed computing, data engineering, and algorithmic ranking collide.</p>
+
+    <p>In this case study, we'll walk through designing a search engine from first principles: crawling, indexing, ranking, querying. We'll cover architecture, scale estimation, bottlenecks, sample code (SimHash dedup, inverted index, TF-IDF, PageRank), and infrastructure decisions.</p>
+
+    <h2 id="learning-outcomes">🎯 Learning Outcomes</h2>
+    <p>After working through this case study, you'll be able to:</p>
+    <ol class="outcomes-list">
+      <li><span class="outcome-num">1</span><span>Design a <strong>distributed crawler</strong> that respects politeness and avoids hammering sites.</span></li>
+      <li><span class="outcome-num">2</span><span>Build an <strong>inverted index</strong> that scales to billions of documents via sharding.</span></li>
+      <li><span class="outcome-num">3</span><span>Combine <strong>TF-IDF + PageRank + freshness + ML signals</strong> into a ranking function.</span></li>
+      <li><span class="outcome-num">4</span><span>Implement <strong>autocomplete</strong> with sub-100ms latency at scale.</span></li>
+      <li><span class="outcome-num">5</span><span>Outline the difference between <strong>lexical search</strong> (keywords) and <strong>semantic search</strong> (embeddings/vector DB).</span></li>
+    </ol>
+
+    <h2 id="what-are-we-building">What Are We Building?</h2>
+    <p><strong>Goal:</strong> A search engine that can crawl and index billions of web pages, serve keyword-based queries in real-time, and keep results fresh and relevant.</p>
+
+    <p><strong>Key users:</strong></p>
+    <ul>
+      <li><strong>General users:</strong> Seeking fast, relevant search results.</li>
+      <li><strong>Internal analytics teams:</strong> Querying data for insights and improvements.</li>
+    </ul>
+
+    <h2 id="functional-requirements">Functional Requirements</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Component</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>Web Crawling</td><td>Discover and fetch web pages at internet scale.</td></tr>
+          <tr><td>2</td><td>Indexing</td><td>Extract, normalize, and structure text for fast querying.</td></tr>
+          <tr><td>3</td><td>Keyword Search</td><td>Accept keyword queries; retrieve relevant documents.</td></tr>
+          <tr><td>4</td><td>Ranking</td><td>Score and sort results by relevance (TF-IDF, PageRank, freshness).</td></tr>
+          <tr><td>5</td><td>Re-indexing</td><td>Periodically refresh index to keep content up-to-date.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="non-functional-requirements">Non-Functional Requirements</h2>
+    <ul>
+      <li><strong>Performance:</strong> &lt; 200ms query response time.</li>
+      <li><strong>Scalability:</strong> Billions of pages, 50,000 QPS.</li>
+      <li><strong>Freshness:</strong> Update index within hours of content changes.</li>
+      <li><strong>Fault tolerance:</strong> No single point of failure.</li>
+      <li><strong>Storage efficiency:</strong> Deduplication, compression for petabytes of data.</li>
+    </ul>
+
+    <h2 id="architecture-overview">Architecture Overview</h2>
+
+    <h3>High-Level Component Diagram</h3>
+    <div class="archd" aria-label="Search engine high-level architecture diagram">
+      <div class="archd-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User / API</span></div>
+        <div class="archd-node"><span class="archd-icon">🔎</span><span>Query Layer</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗂️</span><span>Index Storage</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Cache Layer</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🏆</span><span>Ranking Engine</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">📚</span><span>Forward / Inverted Indexes</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🕷️</span><span>Crawler Service</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🔗</span><span>URL Frontier</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Document Store</span></div>
+      </div>
+    </div>
+
+    <h3>Mermaid Architecture</h3>
+    <div class="archd" aria-label="Mermaid-style themed architecture diagram">
+      <div class="archd-seq-step"><span class="num">1</span>Crawl</div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🔗</span><span>URL Frontier &amp; Scheduler</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">assign</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🕷️</span><span>Crawler Workers</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Document Store</span></div>
+        <div class="archd-node"><span class="archd-icon">🔗</span><span>Extracted URLs</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Index</div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">✂️</span><span>Content Extractor &amp; Parser</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">📇</span><span>Indexer Service</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">📄</span><span>Forward Index</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🔁</span><span>Inverted Index</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🏷️</span><span>Metadata</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Search</div>
+      <div class="archd-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User Query</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">🔎</span><span>Search API</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">check</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Cache (Redis/Memcached)</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">miss</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Query Parser</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🔁</span><span>Inverted Index Lookup</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🏆</span><span>Ranking Engine</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">📝</span><span>Result Formatter</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-user"><span class="archd-icon">📬</span><span>Return Results</span></div>
+      </div>
+    </div>
+
+    <h3>End-to-End Data Flow</h3>
+    <div class="archd" aria-label="End-to-end data flow diagram">
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🕷️</span><span>Crawler</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">✂️</span><span>Parser</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📇</span><span>Indexer</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">💾</span><span>Storage</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node"><span class="archd-icon">🔎</span><span>Query / API</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-service"><span class="archd-icon">🏆</span><span>Ranking</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Cache</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User / Client</span></div>
+    </div>
+
+    <h2 id="core-components">Core Components</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Component</th><th>Responsibility</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Crawler Service</strong></td><td>Fetches web pages, obeys rate limits &amp; robots.txt.</td></tr>
+          <tr><td><strong>URL Frontier &amp; Scheduler</strong></td><td>Prioritizes next URLs to crawl. Manages politeness &amp; domain partitioning.</td></tr>
+          <tr><td><strong>Content Extractor &amp; Parser</strong></td><td>Cleans HTML, extracts text, tokenizes, gets metadata/links.</td></tr>
+          <tr><td><strong>Indexer Service</strong></td><td>Builds forward and inverted indexes, extracts ranking features.</td></tr>
+          <tr><td><strong>Inverted Index Store</strong></td><td>Maps terms → docIDs for fast lookup.</td></tr>
+          <tr><td><strong>Forward Index</strong></td><td>Maps docID → content/metadata for ranking and snippet formatting.</td></tr>
+          <tr><td><strong>Document Store</strong></td><td>Stores raw &amp; parsed content, metadata.</td></tr>
+          <tr><td><strong>Query Service</strong></td><td>Parses incoming queries, fetches &amp; ranks results.</td></tr>
+          <tr><td><strong>Ranking Engine</strong></td><td>Scores documents (TF-IDF, PageRank, freshness).</td></tr>
+          <tr><td><strong>Search API</strong></td><td>User-facing interface (UI/API gateway).</td></tr>
+          <tr><td><strong>Cache</strong></td><td>In-memory hot query/result cache (Redis/Memcached).</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="scale-estimation">Scale Estimation</h2>
+
+    <h3>Web Size</h3>
+    <ul>
+      <li><strong>Indexed Pages:</strong> 100+ billion (MVP: 100M).</li>
+      <li><strong>Average Page Size:</strong> 100 KB → 10 TB for 100M pages (raw); 3–5 TB tokenized.</li>
+      <li><strong>Inverted Index:</strong> ~500–800 GB.</li>
+      <li><strong>Forward Index:</strong> ~5 TB.</li>
+      <li><strong>Metadata:</strong> 100–200 GB.</li>
+    </ul>
+
+    <h3>Traffic Load</h3>
+    <ul>
+      <li><strong>Active users:</strong> 10M.</li>
+      <li><strong>Queries/user/day:</strong> 5.</li>
+      <li><strong>Total queries/day:</strong> 50M.</li>
+      <li><strong>Peak QPS:</strong> 1,000–2,000 (with burst handling).</li>
+      <li><strong>Read:Write Ratio:</strong> 95:5.</li>
+    </ul>
+
+    <h3>Crawling Throughput</h3>
+    <ul>
+      <li><strong>Goal:</strong> 100M pages in 7 days → ~170 pages/sec.</li>
+      <li><strong>With 500 workers:</strong> ~0.34 pages/sec/worker.</li>
+    </ul>
+
+    <h2 id="bottlenecks-solutions">Bottlenecks &amp; Solutions</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Layer</th><th>Bottleneck</th><th>Solution</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Crawling</td><td>Bandwidth, duplicate content</td><td>Distributed crawling, deduplication, politeness</td></tr>
+          <tr><td>Indexing</td><td>Memory &amp; I/O pressure</td><td>Segment-based indexing, compression</td></tr>
+          <tr><td>Query</td><td>Latency at high QPS</td><td>Sharded indexes, caching, in-memory lookups</td></tr>
+          <tr><td>Storage</td><td>Petabyte-scale data</td><td>Distributed FS (HDFS/S3), cold/hot separation</td></tr>
+          <tr><td>Freshness</td><td>High update frequency</td><td>Adaptive re-crawling, prioritization</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="data-indexing-architecture">Data &amp; Indexing Architecture</h2>
+
+    <h3>Index Types</h3>
+    <ul>
+      <li><strong>Inverted index</strong> (term → list of docIDs): For fast keyword search.</li>
+      <li><strong>Forward index</strong> (docID → content/metadata): For efficient ranking and result formatting.</li>
+    </ul>
+
+    <h3>Index Size Estimates (for 100M pages)</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Component</th><th>Size</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Raw HTML</td><td>10 TB</td></tr>
+          <tr><td>Tokenized Text</td><td>3–5 TB</td></tr>
+          <tr><td>Inverted Index</td><td>500–800 GB</td></tr>
+          <tr><td>Forward Index</td><td>5 TB</td></tr>
+          <tr><td>Metadata</td><td>100–200 GB</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="end-to-end-workflow">End-to-End Workflow</h2>
+
+    <h3>Crawling &amp; Indexing Sequence</h3>
+    <div class="archd-seq" aria-label="Crawling and indexing sequence">
+      <div class="archd-seq-step"><span class="num">1</span>Frontier assigns next URL to a worker</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🔗</span><span>URL Frontier</span></div>
+        <div class="archd-seq-arrow right"><span class="label">assign URL</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🕷️</span><span>Crawler Worker</span></div>
+        <div class="archd-seq-arrow right"><span class="label">store raw</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Document Store</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Worker pushes HTML to parser via queue</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🕷️</span><span>Crawler Worker</span></div>
+        <div class="archd-seq-arrow right"><span class="label">HTML (MQ)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">✂️</span><span>Parser</span></div>
+        <div class="archd-seq-arrow right"><span class="label">tokens + links (MQ)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📇</span><span>Indexer</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Indexer updates forward/inverted indexes</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">📇</span><span>Indexer</span></div>
+        <div class="archd-seq-arrow right"><span class="label">update indexes</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">📚</span><span>Forward / Inverted</span></div>
+        <div class="archd-seq-arrow left"><span class="label">ack</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Document Store</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Parser pushes discovered URLs back to frontier</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">✂️</span><span>Parser</span></div>
+        <div class="archd-seq-arrow right"><span class="label">new URLs</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🔗</span><span>URL Frontier</span></div>
+        <div class="archd-seq-arrow right"><span class="label">re-queue</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🕷️</span><span>Next Worker</span></div>
+      </div>
+    </div>
+
+    <h3>Query Processing Sequence</h3>
+    <div class="archd-seq" aria-label="Query processing sequence">
+      <div class="archd-seq-step"><span class="num">1</span>User submits a search query</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">submit query</span></div>
+        <div class="archd-node"><span class="archd-icon">🔎</span><span>Search API</span></div>
+        <div class="archd-seq-arrow right"><span class="label">check</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Cache</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Cache miss → parse query</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Cache</span></div>
+        <div class="archd-seq-arrow left"><span class="label">miss</span></div>
+        <div class="archd-node"><span class="archd-icon">🔎</span><span>Search API</span></div>
+        <div class="archd-seq-arrow right"><span class="label">parse</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Query Parser</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Lookup terms in inverted index, fetch metadata</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Query Parser</span></div>
+        <div class="archd-seq-arrow right"><span class="label">term lookup</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🔁</span><span>Inverted Index</span></div>
+        <div class="archd-seq-arrow right"><span class="label">fetch docs</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Document Store</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Rank candidates and return top N</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Document Store</span></div>
+        <div class="archd-seq-arrow right"><span class="label">candidates</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🏆</span><span>Ranking Engine</span></div>
+        <div class="archd-seq-arrow right"><span class="label">ranked results</span></div>
+        <div class="archd-node"><span class="archd-icon">🔎</span><span>Search API</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">5</span>Return results and warm cache</div>
+      <div class="archd-seq-row">
+        <div class="archd-node"><span class="archd-icon">🔎</span><span>Search API</span></div>
+        <div class="archd-seq-arrow right"><span class="label">top N</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow left"><span class="label">store</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Cache</span></div>
+      </div>
+    </div>
+
+    <h3>Query Processing Flow (Pseudocode)</h3>
+<pre><code class="language-python">function process_query(query):
+    tokens = tokenize_and_normalize(query)
+    candidate_docs = set()
+    for token in tokens:
+        candidate_docs |= inverted_index[token]
+    scored_docs = rank(candidate_docs, query)
+    return format_results(top_k(scored_docs))</code></pre>
+
+    <h3>Search Flow With Caching</h3>
+<pre><code class="language-python">def search(query):
+    # 1. Check cache for hot query
+    cached_result = redis.get(query)
+    if cached_result:
+        return cached_result
+
+    # 2. Parse query and tokenize
+    tokens = tokenize(query)
+
+    # 3. Fetch relevant documents from inverted index
+    doc_candidates = set()
+    for token in tokens:
+        doc_candidates |= inverted_index.get(token, set())
+
+    # 4. Rank documents
+    ranked_docs = ranker.rank(query, doc_candidates)
+
+    # 5. Format result and cache
+    results = format_results(ranked_docs)
+    redis.set(query, results, ex=60)  # Cache for 1 minute
+
+    return results</code></pre>
+
+    <h2 id="data-models">Data Models</h2>
+
+    <h3>Crawler URL Queue (Relational/NoSQL)</h3>
+<pre><code class="language-sql">CREATE TABLE UrlQueue (
+  url VARCHAR(1024) PRIMARY KEY,
+  domain_hash INT,      -- For partitioning
+  status ENUM('pending','processing','done','failed'),
+  last_crawled TIMESTAMP,
+  priority INT
+);</code></pre>
+
+    <h3>Forward Index (NoSQL)</h3>
+<pre><code class="language-json">{
+  "doc_id": "12345",
+  "url": "https://example.com",
+  "tokens": ["search", "engine", "design"],
+  "metadata": {
+    "title": "System Design of Search Engine",
+    "pagerank": 0.42,
+    "crawl_date": "2024-06-09"
+  }
+}</code></pre>
+
+    <h3>Inverted Index (NoSQL)</h3>
+<pre><code class="language-json">{
+  "token": "search",
+  "doc_ids": [
+    {"doc_id": "12345", "positions": [1, 7], "tf": 2},
+    {"doc_id": "67890", "positions": [3], "tf": 1}
+  ]
+}</code></pre>
+
+    <h3>MongoDB Document</h3>
+<pre><code class="language-json">{
+  "_id": "docid123",
+  "url": "https://example.com",
+  "title": "Example Page",
+  "content": "tokenized, normalized content",
+  "links": ["https://another.com"],
+  "last_crawled": "2024-06-07T13:00:00Z"
+}</code></pre>
+
+    <h3>Schema Summary</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Table</th><th>Key Fields</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>UrlQueue</td><td>url, priority, crawl_status</td><td>Sharded, prioritized URL queue</td></tr>
+          <tr><td>Documents</td><td>docID, url, title, content</td><td>Forward index, metadata, raw/parsed content</td></tr>
+          <tr><td>InvertedIndex</td><td>token, [docIDs], positions, freq</td><td>Token → docIDs mapping</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="component-deep-dives">Component Deep Dives &amp; Code</h2>
+
+    <h3>1. Web Crawler Service</h3>
+    <ul>
+      <li><strong>Role:</strong> Continuously fetches web pages, respects robots.txt and rate limits.</li>
+      <li><strong>Coordination:</strong> Distributed workers pull from a sharded URL frontier.</li>
+      <li><strong>Duplicate detection:</strong> Uses content hashes/fingerprints.</li>
+    </ul>
+
+<pre><code class="language-python">import requests
+import hashlib
+
+def fetch_url(url):
+    resp = requests.get(url, timeout=3)
+    content_hash = hashlib.sha256(resp.content).hexdigest()
+    return resp.content, content_hash</code></pre>
+
+    <p>A version with error handling and link extraction:</p>
+
+<pre><code class="language-python">import requests
+
+def crawl_url(url):
+    try:
+        resp = requests.get(url, timeout=5)
+        if resp.status_code == 200:
+            save_raw_html(url, resp.text)
+            links = extract_links(resp.text)
+            add_links_to_frontier(links)
+    except requests.RequestException as e:
+        log_error(url, e)</code></pre>
+
+    <h3>2. URL Frontier &amp; Scheduler</h3>
+<pre><code class="language-python">from queue import PriorityQueue
+
+url_frontier = PriorityQueue()
+# url_frontier.put((-priority, url))  # Higher priority first</code></pre>
+
+<pre><code class="language-python">def get_next_url():
+    url = frontier_queue.pop()
+    if obey_robots_txt(url):
+        return url
+    else:
+        return get_next_url()</code></pre>
+
+    <h3>3. Content Extractor &amp; Parser</h3>
+<pre><code class="language-python">from bs4 import BeautifulSoup
+
+def extract_content(html):
+    soup = BeautifulSoup(html, 'html.parser')
+    text = soup.get_text()
+    links = [a['href'] for a in soup.find_all('a', href=True)]
+    return text, links</code></pre>
+
+    <h3>4. Deduplication with SimHash</h3>
+<pre><code class="language-python">import simhash
+
+def is_duplicate(new_page_content, existing_hashes, threshold=3):
+    new_hash = simhash.Simhash(new_page_content)
+    for h in existing_hashes:
+        if new_hash.distance(h) &lt; threshold:
+            return True
+    return False</code></pre>
+
+    <p>Simple hash-based deduplication:</p>
+
+<pre><code class="language-python">import hashlib
+
+def is_duplicate(content, hash_set):
+    content_hash = hashlib.md5(content.encode()).hexdigest()
+    if content_hash in hash_set:
+        return True
+    hash_set.add(content_hash)
+    return False</code></pre>
+
+    <h3>5. Indexer</h3>
+<pre><code class="language-python">import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+
+def tokenize_and_index(text, doc_id, inverted_index):
+    tokens = word_tokenize(text.lower())
+    tokens = [t for t in tokens if t.isalnum()]
+    tokens = [t for t in tokens if t not in stopwords.words('english')]
+    for token in tokens:
+        inverted_index.setdefault(token, set()).add(doc_id)</code></pre>
+
+    <p>Simple inverted index builder:</p>
+
+<pre><code class="language-python">from collections import defaultdict
+
+def build_inverted_index(docs):
+    index = defaultdict(list)
+    for doc_id, content in docs.items():
+        for word in set(content.split()):
+            index[word].append(doc_id)
+    return index
+
+# Example usage
+docs = {1: "search engine design", 2: "system design interview"}
+inverted_index = build_inverted_index(docs)
+print(inverted_index['design'])  # [1, 2]</code></pre>
+
+    <p>A version using tokens:</p>
+
+<pre><code class="language-python">from collections import defaultdict
+
+def build_inverted_index(docs):
+    index = defaultdict(list)
+    for doc_id, tokens in docs.items():
+        for token in set(tokens):
+            index[token].append(doc_id)
+    return index</code></pre>
+
+    <h3>6. Indexing to Elasticsearch</h3>
+<pre><code class="language-python">from elasticsearch import Elasticsearch
+
+es = Elasticsearch("http://localhost:9200")
+
+def index_document(doc_id, content):
+    es.index(index="web_docs", id=doc_id, body={"content": content})</code></pre>
+
+    <h3>7. Search API (FastAPI)</h3>
+<pre><code class="language-python">from fastapi import FastAPI, Query
+
+app = FastAPI()
+
+@app.get("/search")
+def search(q: str):
+    # 1. Parse query
+    # 2. Lookup in inverted index
+    # 3. Rank results
+    # 4. Return as JSON
+    pass</code></pre>
+
+    <h3>8. Search API With Cache</h3>
+<pre><code class="language-python">from fastapi import FastAPI, Query
+import redis
+
+app = FastAPI()
+cache = redis.Redis(host='localhost', port=6379)
+
+@app.get("/search")
+def search(q: str):
+    cache_key = f"search:{q}"
+    cached = cache.get(cache_key)
+    if cached:
+        return {"results": eval(cached), "source": "cache"}
+    # Lookup, ranking, formatting
+    results = ["Page1", "Page2", "Page3"]
+    cache.set(cache_key, str(results), ex=60*10)  # Cache 10 min
+    return {"results": results, "source": "live"}</code></pre>
+
+    <h3>9. Distributed Crawl Worker (Celery + Kafka)</h3>
+<pre><code class="language-python">from celery import Celery
+
+app = Celery('crawler', broker='kafka://localhost:9092')
+
+@app.task
+def fetch_url(url):
+    # Respect robots.txt, handle rate limits, fetch HTML
+    html = download_html(url)
+    # Store to document store
+    store_raw_content(url, html)
+    # Extract links, push to Kafka for further crawling
+    links = extract_links(html)
+    for link in links:
+        app.send_task('crawler.fetch_url', args=[link])</code></pre>
+
+    <h3>10. Caching Query Results (Redis)</h3>
+<pre><code class="language-python">import redis
+
+r = redis.Redis()
+
+def search_query(query):
+    cached = r.get(query)
+    if cached:
+        return cached
+    results = perform_search(query)
+    r.set(query, results, ex=300)  # Cache for 5 min
+    return results</code></pre>
+
+    <h2 id="ranking-algorithms">Ranking Algorithms</h2>
+
+    <h3>TF-IDF</h3>
+<pre><code class="language-python">import math
+
+def tfidf(term, doc, doc_freq, num_docs):
+    tf = doc.count(term) / len(doc)
+    idf = math.log(num_docs / (1 + doc_freq[term]))
+    return tf * idf</code></pre>
+
+    <p>A simpler variant:</p>
+
+<pre><code class="language-python">import math
+
+def tf_idf(term, doc, corpus):
+    tf = doc.count(term) / len(doc)
+    idf = math.log(len(corpus) / (1 + sum(1 for d in corpus if term in d)))
+    return tf * idf</code></pre>
+
+    <h3>PageRank</h3>
+<pre><code class="language-python">def pagerank(graph, d=0.85, num_iter=10):
+    # graph: dict {url: [linked_urls]}
+    N = len(graph)
+    ranks = {url: 1/N for url in graph}
+    for _ in range(num_iter):
+        new_ranks = {}
+        for url in graph:
+            rank_sum = sum(ranks[other] / len(graph[other]) for other in graph if url in graph[other])
+            new_ranks[url] = (1-d)/N + d * rank_sum
+        ranks = new_ranks
+    return ranks</code></pre>
+
+    <h3>Combined Ranking</h3>
+    <p>The Ranking Engine combines:</p>
+    <ul>
+      <li><strong>TF-IDF</strong> for basic keyword relevance.</li>
+      <li><strong>PageRank</strong> for link-based authority.</li>
+      <li><strong>Freshness score</strong> for prioritizing recent content.</li>
+    </ul>
+
+    <h2 id="tech-infrastructure-decisions">Tech &amp; Infrastructure Decisions</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Layer</th><th>Tech Examples</th><th>Why</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Crawling</td><td>Kafka, Celery, custom workers</td><td>Scalable, resilient worker pools</td></tr>
+          <tr><td>Index Storage</td><td>MongoDB, DynamoDB, Elasticsearch</td><td>NoSQL for flexible, fast lookups; full-text search</td></tr>
+          <tr><td>Storage</td><td>Object (S3/GCS) for raw; DFS for indexes</td><td>Petabyte-scale storage</td></tr>
+          <tr><td>Caching</td><td>Redis, Memcached</td><td>Millisecond response for hot queries</td></tr>
+          <tr><td>Query API</td><td>NGINX, AWS ALB</td><td>Load balancing, rate limiting</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Key Design Decisions</h3>
+    <ol>
+      <li><strong>Sharded architecture:</strong> Partition index by term hash for scalability.</li>
+      <li><strong>Replication:</strong> Replicate index/data for fault tolerance.</li>
+      <li><strong>Segmented indexing:</strong> Build indexes in segments to manage load and speed up merges.</li>
+      <li><strong>Distributed crawler:</strong> Hash URLs by domain for politeness and parallelism.</li>
+      <li><strong>Caching:</strong> Use Redis/Memcached for hot queries.</li>
+      <li><strong>Dual indexing:</strong> Use both inverted (for search) and forward (for ranking/snippets) indexes.</li>
+    </ol>
+
+    <h2 id="scaling-fault-tolerance">Scaling &amp; Fault Tolerance</h2>
+    <ul>
+      <li><strong>Horizontal partitioning:</strong> Shard index and URL frontier by hash of domain or token.</li>
+      <li><strong>Replication:</strong> Store multiple copies for high availability.</li>
+      <li><strong>Retry &amp; failover:</strong> Crawler and indexer workers reassign tasks on failure.</li>
+      <li><strong>Asynchronous queues:</strong> Decouple slow/fast components, buffer spikes, enable retry.</li>
+      <li><strong>Load balancers:</strong> Each service is fronted by a load balancer for high QPS.</li>
+    </ul>
+
+    <h2 id="beyond-mvp">Beyond MVP — What a Senior Designer Adds</h2>
+
+    <h3>Query Understanding (Beyond Keyword Match)</h3>
+    <p>Real search doesn't just match keywords. It tries to <em>understand</em> the query:</p>
+    <ul>
+      <li><strong>Spell correction:</strong> "harry poter" → "harry potter."</li>
+      <li><strong>Synonyms:</strong> "shoes" matches "footwear."</li>
+      <li><strong>Stemming/lemmatization:</strong> "running" matches "run."</li>
+      <li><strong>Intent classification:</strong> "weather tomorrow" needs the weather widget, not 10 blue links.</li>
+      <li><strong>Entity recognition:</strong> "tom hanks movies" identifies Tom Hanks as an entity, returns his filmography.</li>
+    </ul>
+    <p>These all happen as a <strong>query pre-processing pipeline</strong> before hitting the index.</p>
+
+    <h3>Autocomplete (Sub-100ms is Hard)</h3>
+    <p>The dropdown that appears as you type. Tricks to make it fast:</p>
+    <ol>
+      <li><strong>Trie</strong> structure of common queries — instant prefix lookup.</li>
+      <li><strong>Top-K cache</strong> per prefix — pre-compute the top 10 completions for "syst", "syste", "system", etc.</li>
+      <li><strong>Personalization layer</strong> — boost completions the user has searched before.</li>
+      <li><strong>Spell tolerance</strong> — match "systm" to "system" prefixes.</li>
+    </ol>
+    <p>Backed by Redis or in-memory tries. Total latency budget: typically &lt;50ms.</p>
+
+    <h3>Lexical Search vs Semantic Search</h3>
+    <p>Traditional search uses <strong>lexical</strong> matching — TF-IDF, BM25, exact tokens.</p>
+    <p>Modern search complements with <strong>semantic</strong> matching — embed query and documents as vectors, find nearest neighbors.</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Lexical</th><th>Semantic (Embeddings)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Matches keywords</td><td>Matches meaning ("dog" ≈ "puppy")</td></tr>
+          <tr><td>Inverted index</td><td>Vector index (Annoy, FAISS, Pinecone)</td></tr>
+          <tr><td>Precise, predictable</td><td>Surfaces conceptually similar results</td></tr>
+          <tr><td>Bad at synonyms/intent</td><td>Good at synonyms/intent</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><strong>Modern search engines blend both:</strong> lexical for high-precision exact matches, semantic for the long tail.</p>
+
+    <h3>Ranking Signals Beyond TF-IDF + PageRank</h3>
+    <p>Real Google has hundreds of ranking signals. Common ones:</p>
+    <ul>
+      <li><strong>Freshness:</strong> news queries prefer recent content.</li>
+      <li><strong>Click-through rate</strong> in past sessions for similar queries.</li>
+      <li><strong>Dwell time:</strong> users staying on the result = good signal.</li>
+      <li><strong>Bounce-back:</strong> users returning to search after clicking = bad signal.</li>
+      <li><strong>Quality signals:</strong> domain reputation, site engagement, content depth.</li>
+      <li><strong>Personalization:</strong> user's location, search history, preferences.</li>
+      <li><strong>Spam signals:</strong> keyword stuffing, link farming, cloaking detected and demoted.</li>
+    </ul>
+    <p>These are blended in a <strong>learning-to-rank</strong> model — typically a gradient-boosted tree or neural net.</p>
+
+    <h3>Featured Snippets / Answer Boxes</h3>
+    <p>For queries like "what's the capital of France?", a search engine extracts an answer directly from the top result and displays it as a card. Implementation:</p>
+    <ol>
+      <li>Classify the query as "informational lookup."</li>
+      <li>Extract candidate answers from top-N documents.</li>
+      <li>Score and pick the best (length, source authority, freshness).</li>
+      <li>Render as a card above the regular results.</li>
+    </ol>
+
+    <h3>Spam and Abuse Defense</h3>
+    <p>The web is adversarial. Crawlers ingest content that wants to <strong>manipulate</strong> ranking:</p>
+    <ul>
+      <li><strong>Cloaking:</strong> showing the crawler different content than users.</li>
+      <li><strong>Link farms:</strong> thousands of low-quality pages all linking to each other.</li>
+      <li><strong>Keyword stuffing:</strong> invisible text packed with target keywords.</li>
+      <li><strong>AI-generated content farms</strong> (post-2023 problem).</li>
+    </ul>
+    <p>Defenses are ML-based: classifiers flag low-quality content, signal-based demotion, and manual review queues for the worst offenders.</p>
+
+    <h2 id="tips-tricks">💡 Tips &amp; Tricks</h2>
+
+    <h3>Crawling</h3>
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Crawler Best Practices</div>
+        <ul>
+          <li><strong>Respect politeness:</strong> Always honor <code>robots.txt</code> and crawl-delay to avoid bans.</li>
+          <li><strong>Partition crawling by domain hash:</strong> Avoid hammering single sites; simplify dedup.</li>
+          <li><strong>Backoff strategies:</strong> Exponential backoff for failed fetches.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Deduplication &amp; Storage</h3>
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Dedup &amp; Storage Tips</div>
+        <ul>
+          <li><strong>Deduplication:</strong> Use SimHash or fingerprinting to prevent re-crawling same/similar content.</li>
+          <li><strong>Deduplicate early:</strong> Hash content to avoid storing/crawling duplicates.</li>
+          <li><strong>Compression:</strong> Store indexes using delta encoding, front-coding for space savings.</li>
+          <li><strong>Cold/hot storage:</strong> Archive old/rarely accessed docs to cheap storage; keep hot data in fast SSD.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Indexing</h3>
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Indexing Tips</div>
+        <ul>
+          <li><strong>Sharding is your friend:</strong> Both crawling and indexing benefit from hashing and partitioning.</li>
+          <li><strong>Segmented indexing:</strong> Manage load and speed up merges.</li>
+          <li><strong>Batch writes, stream reads:</strong> Real-time indexing isn't always necessary — batch new docs, but serve queries in real-time.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Queries</h3>
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Query Tips</div>
+        <ul>
+          <li><strong>Cache aggressively:</strong> Hot queries often account for a large chunk of load. Use Redis/Memcached.</li>
+          <li><strong>Query caching:</strong> Cache frequent/popular queries for instant retrieval.</li>
+          <li><strong>Optimize for read-heavy workloads:</strong> 95%+ of operations are reads.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Freshness</h3>
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Freshness Tips</div>
+        <ul>
+          <li><strong>Adaptive recrawling:</strong> Prioritize high-change sites for freshness; use sitemaps/change-frequency signals.</li>
+          <li><strong>Prioritize freshness:</strong> Use content diffing and change-rate heuristics.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Operations</h3>
+    <div class="callout callout-warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-content">
+        <div class="callout-title">Operational Discipline</div>
+        <ul>
+          <li><strong>Always design for peak, not average:</strong> Base capacity planning on peak QPS.</li>
+          <li><strong>Monitor everything:</strong> Track crawl rates, index update lag, query latency in real time.</li>
+          <li><strong>Async everywhere:</strong> Decouple all slow/fast boundaries with queues.</li>
+          <li><strong>Horizontal scaling:</strong> Add more workers/nodes, not just CPU/RAM.</li>
+          <li><strong>Graceful degradation:</strong> If ranking fails, still return results; if cache fails, fall back to index.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2 id="conclusion">Conclusion</h2>
+    <p>Designing a web-scale search engine is a tour-de-force in distributed systems, data engineering, and algorithmic ranking. By breaking the problem into manageable blocks — crawling, indexing, querying, ranking — and rigorously addressing scale, performance, and reliability, you can architect a system that not only works, but works at <strong>web scale.</strong></p>
+
+    <p>By combining <strong>distributed crawling, NoSQL document stores, real-time indexing, robust ranking, and cloud-based scaling</strong>, you can build a search engine that's fast, scalable, and reliable.</p>
+
+    <h2 id="further-reading">📚 Further Reading</h2>
+    <ul>
+      <li><a href="https://research.google/pubs/pub51/" target="_blank">Google File System</a></li>
+      <li><a href="https://research.google/pubs/pub62/" target="_blank">MapReduce</a></li>
+      <li><a href="http://ilpubs.stanford.edu:8090/422/1/1999-66.pdf" target="_blank">Google's Original PageRank Paper</a></li>
+      <li><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html" target="_blank">Elasticsearch Architecture</a></li>
+      <li><a href="https://www.elastic.co/guide/en/elasticsearch/guide/current/index.html" target="_blank">Elasticsearch: The Definitive Guide</a></li>
+      <li><a href="https://dataintensive.net/" target="_blank">Designing Data-Intensive Applications by Martin Kleppmann</a></li>
+      <li><a href="https://www.searchenginejournal.com/how-search-engines-work/" target="_blank">How Search Engines Work</a></li>
+    </ul>
+
+    <nav class="chapter-nav">
+      <a class="chapter-nav-card" href="20 - Design a Video Sharing Platform (aka YouTube).html">
+        <div class="chapter-nav-label">← Previous</div>
+        <div class="chapter-nav-title">Chapter 20 — Video Sharing (YouTube)</div>
+      </a>
+      <a class="chapter-nav-card next" href="22 - Design an E-Commerce Platform(aka Amazon).html">
+        <div class="chapter-nav-label">Next chapter →</div>
+        <div class="chapter-nav-title">Chapter 22 — E-Commerce (Amazon)</div>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../assets/system-design.js"></script>
+
+</body>
+</html>

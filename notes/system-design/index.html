@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mastering System Design — Course Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/system-design.css">
+<style>
+/* ===== Landing page specific styles ===== */
+.home-hero {
+  text-align: center;
+  padding: 80px 24px 60px;
+  background:
+    radial-gradient(ellipse at top, var(--primary-faint), transparent 60%),
+    radial-gradient(ellipse at bottom right, var(--accent-faint), transparent 50%);
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.home-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(37, 99, 235, 0.08) 0, transparent 8%),
+    radial-gradient(circle at 80% 70%, rgba(245, 158, 11, 0.08) 0, transparent 8%);
+  pointer-events: none;
+}
+.home-eyebrow {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--primary);
+  background: var(--primary-faint);
+  padding: 7px 18px;
+  border-radius: 20px;
+  margin-bottom: 24px;
+  position: relative;
+}
+.home-hero h1 {
+  font-size: clamp(40px, 7vw, 72px);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, var(--text) 0%, var(--primary) 50%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  position: relative;
+}
+.home-tagline {
+  font-size: clamp(17px, 2.2vw, 21px);
+  color: var(--text-muted);
+  max-width: 780px;
+  margin: 0 auto 36px;
+  line-height: 1.55;
+  position: relative;
+}
+.home-cta-row {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+  position: relative;
+}
+.home-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: none;
+  transition: all var(--transition);
+  border: 2px solid transparent;
+}
+.home-btn-primary {
+  background: linear-gradient(135deg, var(--primary), #4f46e5);
+  color: white;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+}
+.home-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.4);
+  text-decoration: none;
+  color: white;
+}
+.home-btn-secondary {
+  background: var(--bg);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.home-btn-secondary:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateY(-2px);
+  text-decoration: none;
+}
+.home-stats {
+  display: flex;
+  gap: 48px;
+  justify-content: center;
+  margin-top: 48px;
+  flex-wrap: wrap;
+  position: relative;
+}
+.home-stat-num {
+  font-size: 36px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
+}
+.home-stat-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* Content sections */
+.home-container {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 64px 24px;
+}
+.home-section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--border);
+}
+.home-section-header h2 {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  margin: 0;
+  border: none;
+  padding: 0;
+}
+.home-section-header .count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  color: var(--text-faint);
+  font-weight: 500;
+}
+
+/* Chapter cards */
+.chapter-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+.chapter-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 22px 18px;
+  text-decoration: none;
+  color: var(--text);
+  transition: all var(--transition);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+}
+.chapter-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--primary), var(--accent));
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+.chapter-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.12);
+  text-decoration: none;
+  color: var(--text);
+}
+.chapter-card:hover::before { opacity: 1; }
+.chapter-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.chapter-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--primary-faint);
+  padding: 4px 9px;
+  border-radius: 6px;
+  letter-spacing: 0.02em;
+}
+.chapter-icon { font-size: 22px; }
+.chapter-title {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.chapter-desc {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  flex: 1;
+}
+.chapter-card-foot {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-faint);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chapter-card:hover .chapter-card-foot { color: var(--primary); }
+
+/* Course intro section */
+.home-intro-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 32px 36px;
+  margin-bottom: 56px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: center;
+}
+@media (max-width: 760px) {
+  .home-intro-card { grid-template-columns: 1fr; padding: 24px; }
+}
+.home-intro-card h3 {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0 0 12px;
+  letter-spacing: -0.015em;
+}
+.home-intro-card p {
+  font-size: 15px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0 0 8px;
+}
+.home-intro-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+.home-intro-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+}
+.home-intro-list li::before {
+  content: '✓';
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  background: var(--success-faint);
+  color: var(--success);
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Footer */
+.home-footer {
+  text-align: center;
+  padding: 40px 24px;
+  border-top: 1px solid var(--border);
+  color: var(--text-faint);
+  font-size: 13px;
+}
+.home-footer a { color: var(--text-muted); }
+</style>
+</head>
+<body><a href="../../notes.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;z-index:99999;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600;background:#0f172a;color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.28)">&#8592; AI Library</a>
+
+<header class="topbar">
+  <a class="brand" href="index.html">
+    <span class="brand-icon">SD</span>
+    <span>Mastering System Design</span>
+  </a>
+  <div class="topbar-actions">
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<section class="home-hero">
+  <span class="home-eyebrow">A 25-Chapter Course</span>
+  <h1>Mastering System Design</h1>
+  <p class="home-tagline">
+    From basics to cracking interviews — a complete journey through networking, scalability, storage, performance, security, and 8 real-world case studies.
+  </p>
+  <div class="home-cta-row">
+    <a class="home-btn home-btn-primary" href="chapters/1 - Introduction.html">
+      Start the Course →
+    </a>
+    <a class="home-btn home-btn-secondary" href="chapters/11 - The System Design Blueprint.html">
+      Skip to Interview Blueprint
+    </a>
+  </div>
+  <div class="home-stats">
+    <div>
+      <div class="home-stat-num">25</div>
+      <div class="home-stat-label">Chapters</div>
+    </div>
+    <div>
+      <div class="home-stat-num">8</div>
+      <div class="home-stat-label">Case Studies</div>
+    </div>
+    <div>
+      <div class="home-stat-num">~30h</div>
+      <div class="home-stat-label">Reading Time</div>
+    </div>
+    <div>
+      <div class="home-stat-num">200+</div>
+      <div class="home-stat-label">Diagrams &amp; Tables</div>
+    </div>
+  </div>
+</section>
+
+<main class="home-container">
+
+  <div class="home-intro-card">
+    <div>
+      <h3>What you'll learn</h3>
+      <p>Whether you're new to system design or preparing for tough interviews, this course gives you the structured thinking to design robust, scalable systems — for real-world impact, not just whiteboarding.</p>
+    </div>
+    <ul class="home-intro-list">
+      <li>Reason about latency, throughput, and trade-offs intuitively</li>
+      <li>Apply the 4-step design framework to any problem</li>
+      <li>Choose between monolith, microservices, or event-driven</li>
+      <li>Design real systems: YouTube, Uber, Google Docs, and more</li>
+      <li>Recognize anti-patterns before they cost you</li>
+    </ul>
+  </div>
+
+  <section>
+    <div class="home-section-header">
+      <h2>📚 Foundations</h2>
+      <span class="count">Chapters 1–11</span>
+    </div>
+    <div class="chapter-list">
+
+      <a class="chapter-card" href="chapters/1 - Introduction.html">
+        <div class="chapter-card-head">
+          <span class="chapter-num">CH 01</span>
+          <span class="chapter-icon">🚀</span>
+        </div>
+        <h3 class="chapter-title">Introduction</h3>
+        <p class="chapter-desc">What system design is, why it matters, the 4-step framework, latency numbers every programmer should know, and common anti-patterns.</p>
+        <div class="chapter-card-foot">Start here →</div>
+      </a>
+
+      <a class="chapter-card" href="chapters/2 - Networking %26 Communication.html">
+        <div class="chapter-card-head">
+          <span class="chapter-num">CH 02</span>
+          <span class="chapter-icon">🌐</span>
+        </div>
+        <h3 class="chapter-title">Networking &amp; Communication</h3>
+        <p class="chapter-desc">IP, DNS, proxies, load balancers, API gateways, CDNs, and the canonical "what happens when you type google.com" trace.</p>
+        <div class="chapter-card-foot">Read chapter →</div>
+      </a>
+
+      <a class="chapter-card" href="chapters/3 - Protocols (System Design Fundamentals).html">
+        <div class="chapter-card-head">
+          <span class="chapter-num">CH 03</span>
+          <span class="chapter-icon">📡</span>
+        </div>
+        <h3 class="chapter-title">Protocols</h3>
+        <p class="chapter-desc">UDP, TCP, HTTP/1.1 vs HTTP/2 vs HTTP/3, REST, GraphQL, gRPC, WebSockets, Server-Sent Events — how clients and servers actually talk.</p>
+        <div class="chapter-card-foot">Read chapter →</div>
+      </a>
+
+      <a class="chapter-card" href="chapters/4 - Architectural Patterns (System Design Fundamentals).html">
+        <div class="chapter-card-head">
+          <span class="chapter-num">CH 04</span>
+          <span class="chapter-icon">🏛️</span>
+        </div>
+        <h3 class="chapter-title">Architectural Patterns</h3>
+        <p class="chapter-desc">Monolith, modular monolith, microservices, event-driven, BFF, CQRS, Event Sourcing, Saga — and when NOT to use microservices.</p>
+        <div class="chapter-card-foot">Read chapter →</div>
+      </a>
+
+      <a class="chapter-card" href="chapters/5 - Web Concepts in System Design (System Design Fundamentals).html">
+        <div class="chapter-card-head">
+          <span class="chapter-num">CH 05</span>
+          <span class="chapter-icon">🔐</span>
+        </div>
+        <h3 class="chapter-title">Web Concepts</h3>
+        <p class="chapter-desc">Sessions, cookies, JWT, CORS, security headers, OAuth flows, the modern BFF + HttpOnly cookie pattern, and XSS/CSRF defense.</p>
+        <div class="chapter-card-foot">Read chapter →</div>
+      </a>
+
+      <a class="chapter-card" href="chapters/6 - Scalability in System Design.html">
+        <div class="chapter-card-head">
+          <span class="chapter-num">CH 06</span>
+          <span class="chapter-icon">📈</span>
+        </div>
+        <h3 class="chapter-title">Scalability</h3>
+        <p class="chapter-desc">Horizontal vs vertical, Amdahl's Law, USL, stateless design, circuit breakers, bulkheads, rate limiting, backpressure, capacity planning.</p>
+        <div class="chapter-card-foot">Read chapter →</div>
+      </a>
+
+      <a class="chapter-card" href="chapters/7 - Storage - Database and Storage.html">
+        <div class="chapter-card-head">
+          <span class="chapter-num">CH 07</span>
+          <span class="chapter-icon">🗄️</span>
+        </div>
+        <h3 class="chapter-title">Storage</h3>
+        <p class="chapter-desc">SQL vs NoSQL, CAP theorem, sharding, replication, B-Tree vs LSM-Tree, consistency spectrum, specialized DBs (time-series, vector, graph).</p>
+        <div class="chapter-card-foot">Read chapter →</div>
+      </a>
+
+      <a class="chapter-card" href="chapters/8 - Performance - Concepts, Tools %26 Techniques.html">
+        <div class="chapter-card-head">
+          <span class="chapter-num">CH 08</span>
+          <span class="chapter-icon">⚡</span>
+        </div>
+        <h3 class="chapter-title">Performance</h3>
+        <p class="chapter-desc">Caching patterns (5 of them), cache stampede, N+1 query, message queues, indexing, query optimization, concurrency vs parallelism.</p>
+        <div class="chapter-card-foot">Read chapter →</div>
+      </a>
+
+      <a class="chapter-card" href="chapters/9 - Reliability, Availability %26 Disaster Recovery.html">
+        <div class="chapter-card-head">
+          <span class="chapter-num">CH 09</span>
+          <span class="chapter-icon">🛡️</span>
+        </div>
+        <h3 class="chapter-title">Reliability &amp; DR</h3>
+        <p class="chapter-desc">9s of availability, retry-with-backoff, idempotency keys, active-active vs active-passive, RTO/RPO, chaos engineering.</p>
+        <div class="chapter-card-foot">Read chapter →</div>
+      </a>
+
+      <a class="chapter-card" href="chapters/10 - Security in System Design – Principles, Practices %26 Protocols.html">
+        <div class="chapter-card-head">
+          <span class="chapter-num">CH 10</span>
+          <span class="chapter-icon">🔒</span>
+        </div>
+        <h3 class="chapter-title">Security</h3>
+        <p class="chapter-desc">CIA triad, STRIDE, OAuth 2.0 flows, JWT pitfalls, defense-in-depth, encryption, secrets management, Zero Trust.</p>
+        <div class="chapter-card-foot">Read chapter →</div>
+      </a>
+
+      <a class="chapter-card" href="chapters/11 - The System Design Blueprint.html">
+        <div class="chapter-card-head">
+          <span class="chapter-num">CH 11</span>
+          <span class="chapter-icon">🧭</span>
+        </div>
+        <h3 class="chapter-title">The System Design Blueprint</h3>
+        <p class="chapter-desc">The 4-step methodology, interview frameworks (RADIO, REACTO), managing 45 minutes, reading the interviewer.</p>
+        <div class="chapter-card-foot">Read chapter →</div>
+      </a>
+
+    </div>
+  </section>
+
+  <section style="margin-top: 64px;">
+    <div class="home-section-header">
+      <h2>🏗️ Case Studies</h2>
+      <span class="count">Chapters 12–24</span>
+    </div>
+    <div class="chapter-list">
+
+      <a class="chapter-card" href="chapters/12 - Design a URL Shortener (TinyURL).html">
+        <div class="chapter-card-head">
+          <span class="chapter-num">CH 12</span>
+          <span class="chapter-icon">🔗</span>
+        </div>
+        <h3 class="chapter-title">URL Shortener</h3>
+        <p class="chapter-desc">bit.ly clone — base62 encoding, key generation, caching, custom aliases, abuse prevention, click analytics.</p>
+        <div class="chapter-card-foot">Read case study →</div>
+      </a>
+
+      <a class="chapter-card" href="chapters/17 - Design an Auction Platform (aka eBay).html">
+        <div class="chapter-card-head">
+          <span class="chapter-num">CH 17</span>
+          <span class="chapter-icon">💎</span>
+        </div>
+        <h3 class="chapter-title">Auction Platform (eBay)</h3>
+        <p class="chapter-desc">Concurrent bidding, anti-sniping extension, search/discovery, reviews, dispute resolution, multi-warehouse inventory.</p>
+        <div class="chapter-card-foot">Read case study →</div>
+      </a>
+
+      <a class="chapter-card" href="chapters/19 - Design a Cloud Storage Solution (aka Google Drive, Dropbox).html">
+        <div class="chapter-card-head">
+          <span class="chapter-num">CH 19</span>
+          <span class="chapter-icon">☁️</span>
+        </div>
+        <h3 class="chapter-title">Cloud Storage (Drive)</h3>
+        <p class="chapter-desc">Chunking, block-level dedup, sync, sharing graph (Zanzibar), offline editing, conflict resolution (LWW vs three-way merge).</p>
+        <div class="chapter-card-foot">Read case study →</div>
+      </a>
+
+      <a class="chapter-card" href="chapters/20 - Design a Video Sharing Platform (aka YouTube).html">
+        <div class="chapter-card-head">
+          <span class="chapter-num">CH 20</span>
+          <span class="chapter-icon">▶️</span>
+        </div>
+        <h3 class="chapter-title">Video Sharing (YouTube)</h3>
+        <p class="chapter-desc">Transcoding pipeline, HLS/DASH adaptive streaming, view counter at scale, recommendations, Content ID, VOD vs Live.</p>
+        <div class="chapter-card-foot">Read case study →</div>
+      </a>
+
+      <a class="chapter-card" href="chapters/21 - Design a Search Engine(aka Google).html">
+        <div class="chapter-card-head">
+          <span class="chapter-num">CH 21</span>
+          <span class="chapter-icon">🔍</span>
+        </div>
+        <h3 class="chapter-title">Search Engine (Google)</h3>
+        <p class="chapter-desc">Crawling, inverted index, TF-IDF, PageRank, query understanding, autocomplete, lexical vs semantic search.</p>
+        <div class="chapter-card-foot">Read case study →</div>
+      </a>
+
+      <a class="chapter-card" href="chapters/22 - Design an E-Commerce Platform(aka Amazon).html">
+        <div class="chapter-card-head">
+          <span class="chapter-num">CH 22</span>
+          <span class="chapter-icon">🛒</span>
+        </div>
+        <h3 class="chapter-title">E-Commerce (Amazon)</h3>
+        <p class="chapter-desc">Catalog, cart, checkout Saga, multi-warehouse inventory, faceted search, recommendations, returns workflow, fraud detection.</p>
+        <div class="chapter-card-foot">Read case study →</div>
+      </a>
+
+      <a class="chapter-card" href="chapters/23 - Design a Taxi Hailing App (aka Uber).html">
+        <div class="chapter-card-head">
+          <span class="chapter-num">CH 23</span>
+          <span class="chapter-icon">🚖</span>
+        </div>
+        <h3 class="chapter-title">Taxi App (Uber)</h3>
+        <p class="chapter-desc">Geohash/S2/H3 spatial indexing, driver matching, surge pricing, ETA prediction, real-time location, fraud detection.</p>
+        <div class="chapter-card-foot">Read case study →</div>
+      </a>
+
+      <a class="chapter-card" href="chapters/24 - Design a Collaborative Document Editor (aka Google Docs).html">
+        <div class="chapter-card-head">
+          <span class="chapter-num">CH 24</span>
+          <span class="chapter-icon">📝</span>
+        </div>
+        <h3 class="chapter-title">Collaborative Docs</h3>
+        <p class="chapter-desc">Operational Transformation vs CRDTs, real-time presence, offline editing, comments anchoring, WebSocket fan-out.</p>
+        <div class="chapter-card-foot">Read case study →</div>
+      </a>
+
+    </div>
+  </section>
+
+  <section style="margin-top: 64px;">
+    <div class="home-section-header">
+      <h2>🎯 Final Prep</h2>
+      <span class="count">Chapter 25</span>
+    </div>
+    <div class="chapter-list">
+
+      <a class="chapter-card" href="chapters/25 - Final Prep, Mindset %26 Moving Forward.html">
+        <div class="chapter-card-head">
+          <span class="chapter-num">CH 25</span>
+          <span class="chapter-icon">🎓</span>
+        </div>
+        <h3 class="chapter-title">Final Prep &amp; Mindset</h3>
+        <p class="chapter-desc">Interview formats at top companies, what L4/L5/L6/L7 candidates do differently, when you get stuck, mock interview resources.</p>
+        <div class="chapter-card-foot">Wrap up →</div>
+      </a>
+
+    </div>
+  </section>
+
+</main>
+
+<footer class="home-footer">
+  <p>
+    Course content by Charikshith ·
+    Built with the system-design HTML framework
+  </p>
+</footer>
+
+<script src="assets/system-design.js"></script>
+</body>
+</html>

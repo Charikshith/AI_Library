@@ -1,0 +1,1999 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chapter 4 — Architectural Patterns</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<link rel="stylesheet" href="../assets/system-design.css">
+<style>
+/* ===== Chapter-specific: Pattern Comparison & Saga ===== */
+.pattern-compare {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+  margin: 28px 0;
+}
+.pattern-compare .pc-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  transition: all var(--transition);
+}
+.pattern-compare .pc-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+  box-shadow: var(--shadow-md);
+}
+.pc-card .pc-icon { font-size: 26px; margin-bottom: 8px; }
+.pc-card .pc-title {
+  font-weight: 700; font-size: 15px;
+  margin-bottom: 6px; color: var(--text);
+}
+.pc-card .pc-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--primary-faint);
+  color: var(--primary);
+  margin-bottom: 8px;
+}
+.pc-card .pc-body { font-size: 13.5px; color: var(--text-muted); line-height: 1.55; }
+
+.saga-flow {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin: 24px 0;
+}
+.saga-step {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  border-bottom: 1px dashed var(--border);
+  font-size: 14px;
+}
+.saga-step:last-child { border-bottom: none; }
+.saga-step .sg-num {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--primary-faint);
+  color: var(--primary);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px;
+}
+.saga-step.fail .sg-num { background: var(--danger-faint); color: var(--danger); }
+.saga-step.comp .sg-num { background: var(--warning-faint); color: var(--warning); }
+.saga-step .sg-status {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--success-faint);
+  color: var(--success);
+}
+.saga-step.fail .sg-status { background: var(--danger-faint); color: var(--danger); }
+.saga-step.comp .sg-status { background: var(--warning-faint); color: var(--warning); }
+
+.bff-diagram {
+  background: linear-gradient(180deg, var(--bg-elevated), var(--bg-muted));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px 18px;
+  margin: 24px 0;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+}
+.bff-col { display: flex; flex-direction: column; gap: 10px; }
+.bff-arrow {
+  height: 2px;
+  background: var(--border-strong);
+  position: relative;
+}
+.bff-arrow::after {
+  content: '';
+  position: absolute;
+  right: -1px; top: 50%;
+  transform: translateY(-50%);
+  width: 0; height: 0;
+  border: 6px solid transparent;
+  border-left-color: var(--border-strong);
+  border-right: 0;
+}
+@media (max-width: 720px) {
+  .bff-diagram { grid-template-columns: 1fr; }
+  .bff-arrow { height: 28px; width: 2px; margin: 0 auto; }
+  .bff-arrow::after {
+    right: auto; left: 50%; top: auto; bottom: -1px;
+    transform: translateX(-50%);
+    border-top-color: var(--border-strong);
+    border-left-color: transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 0;
+  }
+}
+</style>
+</head>
+<body><a href="../../../notes.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;z-index:99999;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600;background:#0f172a;color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.28)">&#8592; AI Library</a>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">
+    <span class="brand-icon">SD</span>
+    <span>Mastering System Design</span>
+  </a>
+  <div class="topbar-actions">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Chapter 4 — On This Page</h3>
+    <ul class="toc-list" id="tocList">
+      <li><a href="#learning-outcomes">Learning Outcomes</a></li>
+      <li><a href="#what-is-software-architecture">What is Software Architecture?</a></li>
+      <li><a href="#key-design-considerations">Key Design Considerations</a></li>
+      <li><a href="#common-architectural-patterns">Common Architectural Patterns</a></li>
+      <li><a href="#multi-tier-architecture">Multi-Tier Architecture — Deep Dive</a></li>
+      <li><a href="#microservices-deep-dive">Microservices — Deep Dive</a></li>
+      <li><a href="#event-driven-deep-dive">Event-Driven — Deep Dive</a></li>
+      <li><a href="#factors-influencing">Factors Influencing Selection</a></li>
+      <li><a href="#patterns-worth-knowing">Patterns Worth Knowing</a></li>
+      <li><a href="#practical-trade-offs">Practical Trade-offs</a></li>
+      <li><a href="#tips-and-tricks">Tips &amp; Tricks</a></li>
+      <li><a href="#sample-interview-questions">Sample Interview Questions</a></li>
+      <li><a href="#summary-key-takeaways">Summary &amp; Key Takeaways</a></li>
+      <li><a href="#further-reading">Further Reading</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <span class="chapter-label">Chapter 4</span>
+      <h1>Architectural Patterns &amp; Styles in Modern System Design</h1>
+      <p class="hero-subtitle">
+        From the humble monolith to microservices, event-driven systems, and patterns like BFF, CQRS, and Saga — learn which architecture fits which problem, and how to evolve a system as it grows.
+      </p>
+      <div class="hero-author">By Charikshith</div>
+    </section>
+
+    <p>Welcome to a deep dive into <strong>Architectural Patterns and Styles</strong>! Understanding architecture is fundamental for building robust, scalable, and maintainable software systems. Whether you're designing your first application or optimizing an enterprise solution, understanding these patterns will help you build adaptable software.</p>
+
+    <p>In this chapter we'll explore the foundational architectural patterns — Monolithic, Layered (N-Tier), Client-Server, Microservices, and Event-Driven — see practical code and diagram examples, compare them, and finish with actionable tips and interview prep.</p>
+
+    <h2 id="learning-outcomes">🎯 Learning Outcomes</h2>
+    <p>After reading this chapter, you'll be able to:</p>
+    <ol class="outcomes-list">
+      <li><span class="outcome-num">1</span><span>Pick monolith, layered, microservices, or event-driven for a given problem and <strong>justify the choice</strong>.</span></li>
+      <li><span class="outcome-num">2</span><span>Recognize a <strong>distributed monolith</strong> anti-pattern and avoid it.</span></li>
+      <li><span class="outcome-num">3</span><span>Identify when to <em>defer</em> moving to microservices (almost always when starting out).</span></li>
+      <li><span class="outcome-num">4</span><span>Apply the <strong>Strangler Fig</strong> pattern when migrating a monolith.</span></li>
+      <li><span class="outcome-num">5</span><span>Reach for <strong>CQRS, Saga, and BFF</strong> patterns in the right situations.</span></li>
+    </ol>
+
+    <h2 id="what-is-software-architecture">What is Software Architecture?</h2>
+    <p>At its core, <strong>software architecture</strong> defines the <strong>high-level structure</strong> of your system — describing how its components are organized and how they interact. It encompasses:</p>
+    <ul>
+      <li><strong>Module organization</strong></li>
+      <li><strong>Component relationships</strong></li>
+      <li><strong>Data flow</strong></li>
+      <li><strong>Communication patterns</strong></li>
+      <li><strong>Component dependencies</strong></li>
+    </ul>
+    <blockquote><em>"Software architecture is the high-level structure of a software system — much like a blueprint for a building."</em></blockquote>
+
+    <h3>Why Does It Matter?</h3>
+    <p>The architectural choices you make will directly impact:</p>
+    <ul>
+      <li><strong>Scalability:</strong> Can the system handle more users/data?</li>
+      <li><strong>Performance:</strong> How fast does it respond under load?</li>
+      <li><strong>Maintainability:</strong> How easily can you update or fix it?</li>
+      <li><strong>Resilience:</strong> How well does the system tolerate failure?</li>
+    </ul>
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Key Point</div>
+        <p>Every architectural decision shapes your system's behavior in production.</p>
+      </div>
+    </div>
+
+    <h2 id="key-design-considerations">Key Design Considerations</h2>
+    <p>Before selecting an architecture, consider these core aspects:</p>
+    <ol>
+      <li><strong>Business Needs:</strong> What is the system's core purpose and requirements?</li>
+      <li><strong>Scalability:</strong> Expected load and growth.</li>
+      <li><strong>Performance:</strong> Latency, throughput, and responsiveness.</li>
+      <li><strong>Maintainability:</strong> Ease of updates, fixes, and evolution.</li>
+      <li><strong>Team Skillsets:</strong> Familiarity with distributed systems, automation, etc.</li>
+      <li><strong>Time to Market:</strong> Speed vs. long-term scalability.</li>
+    </ol>
+    <div class="callout callout-tip">
+      <span class="callout-icon">🎯</span>
+      <div class="callout-content">
+        <div class="callout-title">Remember</div>
+        <p>Choices like monolithic vs. microservices, database structure, and communication protocols directly affect system behavior in production.</p>
+      </div>
+    </div>
+
+    <h2 id="common-architectural-patterns">Common Architectural Patterns</h2>
+
+    <h3>1. Monolithic Architecture</h3>
+    <p>A <strong>monolithic architecture</strong> bundles all components of an application into a single, tightly-coupled unit where everything is deployed together.</p>
+
+    <h4>Diagram</h4>
+    <div class="archd" aria-label="Monolithic architecture — simple view">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Monolith App</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+    </div>
+
+    <p>A more detailed view:</p>
+    <div class="archd" aria-label="Monolithic architecture — detailed view">
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>User Interface</span></div>
+        <div class="archd-node"><span class="archd-icon">🔌</span><span>API Layer</span></div>
+        <div class="archd-node"><span class="archd-icon">⚙️</span><span>Business Logic</span></div>
+        <div class="archd-node"><span class="archd-icon">🗃️</span><span>Data Access Layer</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">all bundled</span></div>
+      <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Monolithic Application</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+    </div>
+
+    <p>ASCII view:</p>
+<pre><code>+------------------+
+|   Monolith App   |
++------------------+
+| UI | Logic | DB  |
++------------------+</code></pre>
+
+<pre><code>+-------------------------------+
+|   User Interface              |
++-------------------------------+
+|   Business Logic              |
++-------------------------------+
+|   Data Access                 |
++-------------------------------+
+|   Single Database             |
++-------------------------------+</code></pre>
+
+    <h4>Example Code: Flask Monolith</h4>
+<pre><code class="language-python"># Everything in one place (e.g., Flask app)
+from flask import Flask, request
+
+app = Flask(__name__)
+
+@app.route('/user/&lt;id&gt;')
+def get_user(id):
+    # Business logic and data access mixed
+    user = db.query_user(id)
+    return render_template('user.html', user=user)</code></pre>
+
+    <p>A simpler version showing multiple routes:</p>
+<pre><code class="language-python">from flask import Flask, request
+
+app = Flask(__name__)
+
+@app.route('/users')
+def users():
+    return "List of users"
+
+@app.route('/orders')
+def orders():
+    return "List of orders"
+
+if __name__ == "__main__":
+    app.run()</code></pre>
+
+    <p>A version with mixed UI + logic + data layer in one place:</p>
+<pre><code class="language-python">from flask import Flask
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return render_home()
+
+def render_home():
+    # UI + business logic + data access all here
+    return "Welcome!"
+
+if __name__ == '__main__':
+    app.run()</code></pre>
+
+    <h4>Pros &amp; Cons</h4>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Pros</th><th>Cons</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Simple to develop and deploy</td><td>Hard to scale</td></tr>
+          <tr><td>Easier management for small apps</td><td>Difficult to maintain as codebase grows</td></tr>
+          <tr><td>No inter-service communication complexity</td><td>High risk of system-wide failure due to a single bug</td></tr>
+          <tr><td>Easy to test</td><td>Updates require redeploying the whole app</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4>Use Cases</h4>
+    <ul>
+      <li>Small-scale applications</li>
+      <li>Startups / MVPs</li>
+      <li>Simple CRUD-based apps</li>
+    </ul>
+
+    <h3>2. Layered (N-Tier) Architecture</h3>
+    <p><strong>Layered architecture</strong> divides the system into layers, each with a specific responsibility (e.g., Presentation, Business Logic, Data Access).</p>
+
+    <h4>Diagram</h4>
+    <div class="archd" aria-label="Layered architecture with user">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node"><span class="archd-icon">🖥️</span><span>Presentation Layer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-service"><span class="archd-icon">⚙️</span><span>Business Logic Layer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node"><span class="archd-icon">🗃️</span><span>Data Layer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+    </div>
+
+    <p>A simpler version:</p>
+    <div class="archd" aria-label="Layered architecture — three layers">
+      <div class="archd-node"><span class="archd-icon">🖥️</span><span>Presentation Layer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-service"><span class="archd-icon">⚙️</span><span>Business Logic Layer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node"><span class="archd-icon">🗃️</span><span>Data Layer</span></div>
+    </div>
+
+    <div class="archd" aria-label="Layered architecture with DB">
+      <div class="archd-node"><span class="archd-icon">🖥️</span><span>Presentation Layer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-service"><span class="archd-icon">⚙️</span><span>Business Logic Layer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node"><span class="archd-icon">🗃️</span><span>Data Access Layer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+    </div>
+
+    <p>ASCII view:</p>
+<pre><code>+--------------------+
+| Presentation Layer |
++--------------------+
+         |
++--------------------+
+| Business Logic     |
++--------------------+
+         |
++--------------------+
+| Data Access Layer  |
++--------------------+</code></pre>
+
+    <h4>Code Structure</h4>
+<pre><code class="language-plaintext">/app
+  /presentation
+      user_controller.py
+  /business_logic
+      user_service.py
+  /data_access
+      user_repository.py</code></pre>
+
+    <h4>Example Code: Python Flask 3-Layer</h4>
+<pre><code class="language-python"># Presentation Layer
+@app.route('/users')
+def get_users():
+    return jsonify(UserController().get_users())
+
+# Business Logic Layer
+class UserController:
+    def get_users(self):
+        return UserService().fetch_users()
+
+# Data Access Layer
+class UserService:
+    def fetch_users(self):
+        return UserModel.query.all()</code></pre>
+
+    <p>A simpler module-based variant:</p>
+<pre><code class="language-python"># presentation.py
+def show_user_profile(user_id):
+    data = get_user_profile(user_id)
+    return render_profile(data)
+
+# business_logic.py
+def get_user_profile(user_id):
+    return fetch_user_from_db(user_id)
+
+# data_access.py
+def fetch_user_from_db(user_id):
+    # Fetch from database
+    pass</code></pre>
+
+    <h4>Pros &amp; Cons</h4>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Pros</th><th>Cons</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Clear separation of concerns</td><td>Performance overhead due to layer traversal</td></tr>
+          <tr><td>Easier to maintain and scale</td><td>Layers may become tightly coupled</td></tr>
+          <tr><td>Easy to test</td><td>Can become rigid; changes in one layer may impact others</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4>Use Cases</h4>
+    <ul>
+      <li>Enterprise applications (CRM, ERP)</li>
+      <li>Banking / financial systems</li>
+      <li>Large web applications</li>
+    </ul>
+
+    <h3>3. Client-Server Architecture</h3>
+    <p><strong>Client-server</strong> divides the system into clients (requesters) and servers (responders).</p>
+
+    <h4>Diagram</h4>
+    <div class="archd-seq" aria-label="Client-server sequence">
+      <div class="archd-seq-step"><span class="num">1</span>Request / Response</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Request</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Response</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+    </div>
+
+    <div class="archd" aria-label="Multiple clients to one server">
+      <div class="archd-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+    </div>
+
+    <h4>Examples</h4>
+    <ul>
+      <li>Web browser (client) communicates with web server (server).</li>
+      <li>Mobile app (client) calls backend API (server).</li>
+      <li>Email client connects to mail server.</li>
+    </ul>
+
+    <h4>Pros &amp; Cons</h4>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Pros</th><th>Cons</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Centralized control</td><td>Server can become a bottleneck</td></tr>
+          <tr><td>Easier management</td><td>Limited offline capability</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4>Use Cases</h4>
+    <ul>
+      <li>Web applications</li>
+      <li>Email systems</li>
+      <li>Most traditional web/mobile setups</li>
+    </ul>
+
+    <h3>4. Microservices Architecture</h3>
+    <p><strong>Microservices</strong> is a software design pattern that structures an application as a collection of small, independent services. Each service is responsible for a specific business capability and can be deployed, updated, and scaled independently.</p>
+
+    <p><strong>Key characteristics:</strong></p>
+    <ul>
+      <li><strong>Independently deployable:</strong> Services are autonomous and can be upgraded without redeploying the entire system.</li>
+      <li><strong>Loosely coupled:</strong> Services interact via well-defined APIs, minimizing dependencies.</li>
+      <li><strong>Scalable &amp; fault-tolerant:</strong> Each microservice can be scaled horizontally and failures are isolated.</li>
+    </ul>
+
+    <h4>Diagram</h4>
+    <div class="archd" aria-label="Microservices via API gateway with separate DBs">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Service 1</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Service 2</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Service 3</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database 1</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database 2</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database 3</span></div>
+      </div>
+    </div>
+
+    <p>A version showing specific service names:</p>
+    <div class="archd" aria-label="Microservices with named services">
+      <div class="archd-node"><span class="archd-icon">🖥️</span><span>UI</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">👥</span><span>User Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Order Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🛍️</span><span>Product Service</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>User DB</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Order DB</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Product DB</span></div>
+      </div>
+    </div>
+
+    <div class="archd" aria-label="Microservices: product/order/payment">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🛍️</span><span>Product Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Order Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">💳</span><span>Payment Service</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>DB</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>DB</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>DB</span></div>
+      </div>
+    </div>
+
+    <div class="archd" aria-label="API gateway routing">
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">👥</span><span>User Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Order Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📊</span><span>Inventory Service</span></div>
+      </div>
+    </div>
+
+    <p>ASCII view:</p>
+<pre><code>+--------+   +--------+   +--------+
+| User   |   | Order  |   | Payment|
+|Service |&lt;-&gt;|Service |&lt;-&gt;|Service |
++--------+   +--------+   +--------+
+         |         |         |
+         +---API Gateway-----+</code></pre>
+
+    <h4>Example Code</h4>
+    <p><strong>Node.js (Express) microservice:</strong></p>
+<pre><code class="language-javascript">// order-service.js
+const express = require('express');
+const app = express();
+
+app.get('/orders', (req, res) =&gt; {
+  res.json([{ id: 1, item: 'Apple' }]);
+});
+
+app.listen(3001, () =&gt; console.log('Order Service running'));</code></pre>
+
+    <p><strong>Python Flask microservice (Users service):</strong></p>
+<pre><code class="language-python">from flask import Flask, jsonify
+
+app = Flask(__name__)
+
+@app.route('/users/&lt;id&gt;')
+def get_user(id):
+    # This service only knows about users
+    return jsonify({'id': id, 'name': 'Alice'})
+
+if __name__ == "__main__":
+    app.run(port=5001)</code></pre>
+
+    <p><strong>Python Flask microservice (Products service):</strong></p>
+<pre><code class="language-python"># product_service.py
+from flask import Flask, jsonify
+
+app = Flask(__name__)
+
+@app.route('/products')
+def get_products():
+    return jsonify([{"id": 1, "name": "Book"}])
+
+if __name__ == '__main__':
+    app.run(port=5001)</code></pre>
+
+    <p><strong>Node.js (Express) — Users service:</strong></p>
+<pre><code class="language-javascript">const express = require('express');
+const app = express();
+
+app.get('/users', (req, res) =&gt; {
+  res.json([{ name: "Alice" }, { name: "Bob" }]);
+});
+
+app.listen(3001, () =&gt; console.log('User service running on port 3001'));</code></pre>
+
+    <p><strong>Flask microservice with <code>app.run()</code> in main:</strong></p>
+<pre><code class="language-python">from flask import Flask, jsonify
+
+app = Flask(__name__)
+
+@app.route('/users')
+def users():
+    return jsonify([{"id": 1, "name": "Alice"}])
+
+if __name__ == "__main__":
+    app.run(port=5001)</code></pre>
+
+    <h4>Communication</h4>
+    <ul>
+      <li><strong>Synchronous:</strong> REST, gRPC</li>
+      <li><strong>Asynchronous:</strong> Message queues (Kafka, RabbitMQ)</li>
+    </ul>
+
+    <h4>Pros &amp; Cons</h4>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Pros</th><th>Cons</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Independent deployment / scaling</td><td>Increased system complexity</td></tr>
+          <tr><td>Flexibility in technology stack (polyglot)</td><td>Need for robust DevOps and monitoring</td></tr>
+          <tr><td>Better fault isolation</td><td>Data consistency, distributed tracing challenges</td></tr>
+          <tr><td>Easier modular updates</td><td>Network overhead, more API call latency</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4>Use Cases</h4>
+    <ul>
+      <li>Large-scale applications</li>
+      <li>Cloud-native apps (Netflix, Amazon, Uber)</li>
+      <li>E-commerce platforms</li>
+    </ul>
+
+    <h3>5. Event-Driven Architecture</h3>
+    <p>In <strong>event-driven architecture (EDA)</strong>, components communicate asynchronously via events/messages rather than direct calls, enabling <strong>loose coupling</strong> and <strong>real-time responses</strong>.</p>
+
+    <h4>Diagram</h4>
+    <div class="archd" aria-label="Event-driven with producer broker consumers">
+      <div class="archd-node is-service"><span class="archd-icon">📤</span><span>Event Producer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Event Broker</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">📥</span><span>Consumer 1</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📥</span><span>Consumer 2</span></div>
+      </div>
+    </div>
+
+    <p>A sequence diagram:</p>
+    <div class="archd-seq" aria-label="Producer-Broker-Consumer sequence">
+      <div class="archd-seq-step"><span class="num">1</span>Producer emits an event</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-service"><span class="archd-icon">📤</span><span>Producer</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Emit Event</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Broker</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Broker delivers to consumer</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Broker</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Deliver Event</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📥</span><span>Consumer</span></div>
+      </div>
+    </div>
+
+    <div class="archd" aria-label="Producer broker consumer two">
+      <div class="archd-node is-service"><span class="archd-icon">📤</span><span>Event Producer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Event Broker</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">📥</span><span>Event Consumer 1</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📥</span><span>Event Consumer 2</span></div>
+      </div>
+    </div>
+
+    <p>A more detailed scenario with multiple producers/consumers:</p>
+    <div class="archd" aria-label="Detailed EDA: producers, broker, consumers, storage">
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Order Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">👥</span><span>User Service</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">OrderPlaced / UserCreated</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Kafka / RabbitMQ / EventBridge</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">💳</span><span>Payment Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📊</span><span>Inventory Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📧</span><span>Notification Service</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Event Log / Kinesis</span></div>
+    </div>
+
+    <p>A sequence diagram showing user-triggered flows:</p>
+    <div class="archd-seq" aria-label="User to event bus to multiple microservices">
+      <div class="archd-seq-step"><span class="num">1</span>User triggers an action</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Triggers Action</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Frontend</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Frontend emits event</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Frontend</span></div>
+        <div class="archd-seq-arrow right"><span class="label">OrderCreated</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Event Bus</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Event bus fans out to microservices</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Event Bus</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Notifies</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Microservice A</span></div>
+      </div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Event Bus</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Notifies</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Microservice B</span></div>
+      </div>
+    </div>
+
+    <p>ASCII view:</p>
+<pre><code>+-------------+        +-------------+
+| Producer(s) |-----&gt;  | Event Broker|-----&gt; [Consumer(s)]
++-------------+        +-------------+
+(e.g., Kafka, RabbitMQ)</code></pre>
+
+    <h4>Example Code: Event Publishing</h4>
+    <p><strong>Node.js + Kafka:</strong></p>
+<pre><code class="language-javascript">const { Kafka } = require('kafkajs');
+const kafka = new Kafka({ clientId: 'app', brokers: ['localhost:9092'] });
+const producer = kafka.producer();
+
+async function publish() {
+  await producer.connect();
+  await producer.send({
+    topic: 'orders',
+    messages: [{ value: JSON.stringify({ orderId: 42 }) }],
+  });
+  await producer.disconnect();
+}
+publish();</code></pre>
+
+    <p><strong>Python + Kafka:</strong></p>
+<pre><code class="language-python">from kafka import KafkaProducer
+producer = KafkaProducer(bootstrap_servers='localhost:9092')
+producer.send('orders', b'OrderPlaced:12345')</code></pre>
+
+    <p><strong>Python consumer with kafka-python:</strong></p>
+<pre><code class="language-python">from kafka import KafkaConsumer
+consumer = KafkaConsumer('orders', bootstrap_servers='localhost:9092')
+for msg in consumer:
+    handle_order(msg.value)</code></pre>
+
+    <p><strong>Python + RabbitMQ (pika):</strong></p>
+<pre><code class="language-python">import pika
+
+connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+channel = connection.channel()
+channel.queue_declare(queue='events')
+
+channel.basic_publish(exchange='', routing_key='events', body='UserRegistered')
+print("Event Published")
+connection.close()</code></pre>
+
+    <p>A second pika example with JSON event payload:</p>
+<pre><code class="language-python">import pika
+
+connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+channel = connection.channel()
+channel.queue_declare(queue='order_events')
+
+channel.basic_publish(exchange='',
+                      routing_key='order_events',
+                      body='{"event": "order_created", "data": {"order_id": 123}}')
+connection.close()</code></pre>
+
+    <p><strong>Simple in-process event handler (Python):</strong></p>
+<pre><code class="language-python">def on_user_created(event):
+    print(f"User created: {event['username']}")
+
+# Emitting an event
+event = {'username': 'alice'}
+on_user_created(event)</code></pre>
+
+    <h4>Pros &amp; Cons</h4>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Pros</th><th>Cons</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Highly decoupled, scalable</td><td>Harder to debug / troubleshoot</td></tr>
+          <tr><td>Supports asynchronous workflows, real-time</td><td>Eventual consistency can be tricky</td></tr>
+          <tr><td>Flexible and resilient</td><td>Requires good monitoring</td></tr>
+          <tr><td>Scales well under high traffic</td><td>Ensuring ordering / consistency is hard</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4>Use Cases</h4>
+    <ul>
+      <li>Real-time systems (chat, notifications)</li>
+      <li>IoT applications</li>
+      <li>Financial trading platforms</li>
+      <li>E-commerce order workflows</li>
+    </ul>
+
+    <h2 id="multi-tier-architecture">Multi-Tier Architecture — A Deep Dive</h2>
+    <p><strong>Multi-tier architecture</strong> is a software design pattern that organizes an application into multiple logical layers (or "tiers"), each responsible for a specific set of tasks. This pattern powers everything from small desktop apps to global-scale web services like Amazon and Netflix.</p>
+
+    <h3>Key Benefits</h3>
+    <ul>
+      <li><strong>Separation of concerns:</strong> Each layer handles a specific role, making the codebase easier to manage.</li>
+      <li><strong>Improved scalability:</strong> Layers can be scaled independently.</li>
+      <li><strong>Better security:</strong> Isolating sensitive operations (like database access) reduces attack surfaces.</li>
+      <li><strong>Maintainability:</strong> Changes in one layer have minimal impact on others.</li>
+      <li><strong>Organizes applications into independent layers.</strong></li>
+      <li><strong>Used in:</strong> Web apps, enterprise systems, cloud architectures.</li>
+    </ul>
+
+    <h3>Types of Multi-Tier Architectures</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Type</th><th>Layers</th><th>Use Case</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>2-Tier</strong></td><td>Client ↔ DB</td><td>Simple desktop apps</td></tr>
+          <tr><td><strong>3-Tier</strong></td><td>UI ↔ Business Logic ↔ DB</td><td>Standard web apps</td></tr>
+          <tr><td><strong>N-Tier</strong></td><td>UI ↔ API ↔ Logic ↔ Cache ↔ DB</td><td>Large-scale / cloud, microservices</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>2-Tier Architecture</h3>
+    <p>The client contains both the UI and application logic, communicating directly with the database.</p>
+
+<pre><code>[Client Application] &lt;------&gt; [Database Server]</code></pre>
+
+    <div class="archd-seq" aria-label="2-tier: client and DB">
+      <div class="archd-seq-step"><span class="num">1</span>Direct client-to-database</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🖥️</span><span>Client Layer (UI + App Logic)</span></div>
+        <div class="archd-seq-arrow right"><span class="label">SQL / NoSQL Query</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database Layer</span></div>
+      </div>
+    </div>
+
+    <p><strong>Example (Python + SQLite):</strong></p>
+<pre><code class="language-python"># Two-tier example: direct database access
+import sqlite3
+
+conn = sqlite3.connect('example.db')
+cursor = conn.cursor()
+cursor.execute("SELECT * FROM users")
+for row in cursor.fetchall():
+    print(row)
+conn.close()</code></pre>
+
+    <p><strong>Pros &amp; Cons:</strong></p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Pros</th><th>Cons</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Simple to implement</td><td>Poor scalability (few users)</td></tr>
+          <tr><td>Fast for small apps</td><td>Security risks (direct DB access)</td></tr>
+          <tr><td></td><td>Limited to small/simple apps</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Use case:</strong> A desktop app directly querying a local SQL database.</p>
+
+    <h3>3-Tier Architecture</h3>
+    <p>Adds a <strong>Business Logic Layer</strong> between the UI and the database.</p>
+
+<pre><code>[Presentation Layer] &lt;--&gt; [Business Logic Layer] &lt;--&gt; [Data Layer]</code></pre>
+
+    <div class="archd-seq" aria-label="3-tier flow">
+      <div class="archd-seq-step"><span class="num">1</span>UI → API → DB</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">🖥️</span><span>Presentation Layer (UI)</span></div>
+        <div class="archd-seq-arrow right"><span class="label">API Call</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">⚙️</span><span>Business Logic (API)</span></div>
+        <div class="archd-seq-arrow right"><span class="label">SQL / ORM</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database Layer</span></div>
+      </div>
+    </div>
+
+    <p>Or with the database on the right:</p>
+    <div class="archd" aria-label="3-tier top-down">
+      <div class="archd-node is-user"><span class="archd-icon">🖥️</span><span>Client / UI</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-service"><span class="archd-icon">⚙️</span><span>Business Logic / API</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+    </div>
+
+    <p><strong>Example (Node.js Express API as the Business Logic layer):</strong></p>
+<pre><code class="language-javascript">// Business Logic Layer (API)
+const express = require('express');
+const app = express();
+const db = require('./db'); // Assume db.js handles DB connection
+
+app.get('/users', async (req, res) =&gt; {
+  const users = await db.query('SELECT * FROM users');
+  res.json(users);
+});
+
+app.listen(3000, () =&gt; console.log('API running on port 3000'));</code></pre>
+
+    <p>A more decoupled version with separate route and data-access modules:</p>
+<pre><code class="language-javascript">// server/routes/users.js
+const express = require('express');
+const router = express.Router();
+const { getUserById } = require('../services/userService'); // Business logic
+
+router.get('/:id', async (req, res) =&gt; {
+  const user = await getUserById(req.params.id); // Calls data access layer
+  res.json(user);
+});
+
+module.exports = router;</code></pre>
+
+<pre><code class="language-javascript">// server/data/userRepository.js
+const db = require('./dbConnection');
+
+async function getUserById(id) {
+  return db.query('SELECT * FROM users WHERE id = $1', [id]);
+}
+
+module.exports = { getUserById };</code></pre>
+
+    <p><strong>Project structure:</strong></p>
+<pre><code class="language-plaintext">project/
+│
+├── frontend/      # Presentation Layer (React, Angular, etc.)
+├── server/        # Business Logic Layer (Node.js/Express)
+├── database/      # Data Layer (PostgreSQL, MongoDB)</code></pre>
+
+    <p><strong>Pros &amp; Cons:</strong></p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Pros</th><th>Cons</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Improved scalability &amp; security</td><td>Slightly higher latency</td></tr>
+          <tr><td>Better separation of concerns</td><td>More complex than 2-tier</td></tr>
+          <tr><td>Easier maintenance</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Use case:</strong> Traditional web applications (React front-end → Node.js/Express API → PostgreSQL DB).</p>
+
+    <h3>N-Tier Architecture</h3>
+    <p>Extends 3-tier by adding specialized layers (caching, API gateway, microservices, etc.).</p>
+
+    <p><strong>Example layers:</strong></p>
+    <ul>
+      <li>API Gateway</li>
+      <li>Authentication Service</li>
+      <li>Caching Layer (e.g., Redis)</li>
+      <li>Microservices (e.g., User Service, Payment Service)</li>
+      <li>Database Layer</li>
+    </ul>
+
+    <div class="archd-seq" aria-label="N-tier with cache, services, DB">
+      <div class="archd-seq-step"><span class="num">1</span>UI → Gateway → Cache → Services → BL → DB</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">🖥️</span><span>UI Layer</span></div>
+        <div class="archd-seq-arrow right"></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+        <div class="archd-seq-arrow right"></div>
+        <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Cache Layer</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Microservices</span></div>
+        <div class="archd-seq-arrow right"></div>
+        <div class="archd-node is-service"><span class="archd-icon">⚙️</span><span>Business Logic</span></div>
+        <div class="archd-seq-arrow right"></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+      </div>
+    </div>
+
+    <div class="archd" aria-label="N-tier extended with auth and cache">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client / UI</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-service"><span class="archd-icon">🔐</span><span>Auth Service</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Business Logic / Microservices</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Cache</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+    </div>
+
+    <div class="archd" aria-label="N-tier classic four tiers">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client Tier</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node"><span class="archd-icon">🖥️</span><span>Web Server Tier</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-service"><span class="archd-icon">⚙️</span><span>Application Tier</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database Tier</span></div>
+    </div>
+
+    <p class="muted"><em>Note: actual order and number of layers may vary based on requirements.</em></p>
+
+    <p><strong>Example (Pseudo-code: API Gateway forwards to microservice, checks cache):</strong></p>
+<pre><code class="language-python">def get_user_profile(user_id):
+    cached = redis.get(f"profile:{user_id}")
+    if cached:
+        return cached
+    profile = user_service.get_profile(user_id)
+    redis.set(f"profile:{user_id}", profile)
+    return profile</code></pre>
+
+    <p><strong>Caching example:</strong></p>
+<pre><code class="language-python">def get_product(product_id):
+    product = cache.get(product_id)
+    if not product:
+        product = db.fetch(product_id)
+        cache.set(product_id, product)
+    return product</code></pre>
+
+    <p><strong>Pros &amp; Cons:</strong></p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Pros</th><th>Cons</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Handles high-traffic &amp; complex business logic</td><td>Higher complexity</td></tr>
+          <tr><td>Independent scaling of layers</td><td>More moving parts</td></tr>
+          <tr><td>Highly scalable</td><td>More points of failure</td></tr>
+          <tr><td>Fault tolerant</td><td>Requires robust monitoring and deployment</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Use case:</strong> Large-scale enterprise software, microservices-based applications, e-commerce platforms.</p>
+
+    <h3>Performance and Scalability — How Do Tiers Impact Your System?</h3>
+
+    <h4>Latency Considerations</h4>
+    <ul>
+      <li><strong>More tiers = higher latency</strong> (if not optimized).</li>
+      <li>Each request passes through more processing steps.</li>
+    </ul>
+
+    <p><strong>Mitigations:</strong></p>
+    <ul>
+      <li><strong>Caching:</strong> Store frequently accessed data for quick retrieval (e.g., Redis, Memcached).</li>
+      <li><strong>Load Balancing:</strong> Distribute requests across servers/layers for resilience and speed.</li>
+    </ul>
+
+    <h4>Scaling Strategies</h4>
+    <ul>
+      <li><strong>Vertical Scaling:</strong> Add resources to a single server (CPU, RAM).</li>
+      <li><strong>Horizontal Scaling:</strong> Add more servers (better for high-traffic systems).</li>
+      <li><strong>Optimizations:</strong> Caching, load balancing, and asynchronous messaging can reduce bottlenecks.</li>
+    </ul>
+
+    <h3>Multi-Tier — Tips and Tricks</h3>
+    <ul>
+      <li><strong>Keep layers independent:</strong> Avoid tight coupling; use clear interfaces/APIs between layers.</li>
+      <li><strong>Optimize for latency:</strong> Introduce caching and asynchronous processing where possible.</li>
+      <li><strong>Secure inter-layer communication:</strong> Use encryption (TLS), API keys, and input validation.</li>
+      <li><strong>Monitor and log each layer:</strong> Add observability (logging, tracing, metrics) to identify bottlenecks quickly.</li>
+      <li><strong>Scale horizontally where possible:</strong> Especially for API/business logic and caching layers.</li>
+      <li><strong>Automate deployments and testing:</strong> CI/CD pipelines ensure each layer is robust and can be deployed independently.</li>
+      <li><strong>Start simple:</strong> Begin with three-tier unless you know you'll need n-tier complexity.</li>
+      <li><strong>Isolate secrets and credentials:</strong> Never expose DB credentials in the UI/client layer.</li>
+      <li><strong>Leverage caching:</strong> Use Redis or Memcached for reducing database load.</li>
+      <li><strong>Use load balancers:</strong> Distribute API requests with load balancers for horizontal scaling.</li>
+      <li><strong>Secure APIs:</strong> Validate and sanitize all input at the business logic layer.</li>
+    </ul>
+
+    <h3>Multi-Tier — Common Interview Questions</h3>
+    <ol>
+      <li>What is Multi-Tier Architecture, and why is it used?</li>
+      <li>How does a 2-Tier architecture differ from a 3-Tier architecture?</li>
+      <li>What are the key components of a 3-Tier architecture?</li>
+      <li>How does scalability improve in a multi-tier system?</li>
+      <li>What strategies can reduce latency in a multi-tier app?</li>
+    </ol>
+
+    <h2 id="microservices-deep-dive">Microservices Architecture — A Deep Dive</h2>
+    <p>Modern applications must be scalable, resilient, and maintainable. As businesses grow and requirements change rapidly, traditional monolithic architectures often fail to keep up. Enter <strong>Microservices Architecture</strong> — adopted by giants like Netflix, Uber, and Amazon.</p>
+
+    <h3>Monolith vs. Microservices Comparison</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Aspect</th><th>Monolithic Architecture</th><th>Microservices Architecture</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Deployment</td><td>Single unit</td><td>Independent services</td></tr>
+          <tr><td>Scalability</td><td>Whole app scales together</td><td>Each service scales separately</td></tr>
+          <tr><td>Technology</td><td>Unified stack</td><td>Polyglot (mixed stacks)</td></tr>
+          <tr><td>Fault Tolerance</td><td>Single point of failure</td><td>Isolated failures</td></tr>
+          <tr><td>Maintainability</td><td>Hard as app grows</td><td>Easier, modular updates</td></tr>
+          <tr><td>Data Storage</td><td>Centralized</td><td>Decentralized, per-service DBs</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>ASCII view of monolith vs microservices:</p>
+<pre><code>[Monolith]              [Microservices]
++-------------------+   +--------+  +--------+  +--------+
+| UI | Logic | Data |   | Auth   |  | Orders |  | Payment|
++-------------------+   +--------+  +--------+  +--------+</code></pre>
+
+<pre><code>+-------------------+   +--------------------+   +-------------------+
+| Order Service     |   | Payment Service    |   | User Service      |
++-------------------+   +--------------------+   +-------------------+
+| Order DB          |   | Payment DB         |   | User DB           |
++-------------------+   +--------------------+   +-------------------+
+       |                       |                        |
+       +---------API / Events--+------------------------+</code></pre>
+
+    <h3>Identifying and Structuring Microservices</h3>
+    <p><strong>Principles to follow:</strong></p>
+    <ul>
+      <li><strong>Business capabilities:</strong> Each service aligns with a business function (e.g., Payments, Orders, Users).</li>
+      <li><strong>Single Responsibility Principle:</strong> One microservice should do one thing well.</li>
+      <li><strong>Data ownership:</strong> Each microservice owns its own data; avoid shared databases.</li>
+      <li><strong>Independent deployment:</strong> Updating one service should not require redeploying others.</li>
+      <li><strong>Right granularity:</strong> Avoid too-large (monolith) or too-fine (excessive complexity) services.</li>
+    </ul>
+
+    <p><strong>Domain-Driven Design (DDD)</strong> is a useful approach:</p>
+<pre><code>[Order Service] &lt;--&gt; [Payment Service] &lt;--&gt; [User Service]
+     |                    |                   |
+[Order DB]          [Payment DB]           [User DB]</code></pre>
+
+    <p>ASCII domain model:</p>
+<pre><code>+-------------+      +------------+      +-----------+
+| Order       |&lt;----&gt;| Payment    |&lt;----&gt;| Inventory |
++-------------+      +------------+      +-----------+</code></pre>
+
+    <h3>Example: Node.js Microservice Skeleton</h3>
+<pre><code class="language-javascript">// orders-service/app.js (Express)
+const express = require('express');
+const app = express();
+const port = 3001;
+
+app.use(express.json());
+
+app.get('/orders/:id', (req, res) =&gt; {
+  // Fetch order from Order DB
+  res.json({ orderId: req.params.id, status: 'processing' });
+});
+
+app.listen(port, () =&gt; {
+  console.log(`Order service listening at http://localhost:${port}`);
+});</code></pre>
+
+    <h3>Communication Between Microservices</h3>
+    <p>Microservices must interact to fulfill business flows. Two main models:</p>
+
+    <h4>Synchronous Communication</h4>
+    <ul>
+      <li><strong>REST APIs</strong>
+        <ul>
+          <li>Easy to implement and widely supported.</li>
+          <li>Uses HTTP/JSON — higher latency.</li>
+        </ul>
+      </li>
+      <li><strong>gRPC</strong>
+        <ul>
+          <li>Uses Protocol Buffers (binary format) for faster, low-latency RPC.</li>
+          <li>Great for high-performance internal communication.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <p><strong>Example: REST call from Payment Service to Order Service (Python):</strong></p>
+<pre><code class="language-python">import requests
+
+order = requests.get('http://orders-service:3001/orders/123').json()</code></pre>
+
+    <p><strong>Example: gRPC service definition:</strong></p>
+<pre><code class="language-plaintext">// order.proto
+syntax = "proto3";
+service OrderService {
+  rpc CreateOrder (OrderRequest) returns (OrderResponse);
+}
+message OrderRequest { string item_id = 1; }
+message OrderResponse { string status = 1; }</code></pre>
+
+    <p><strong>Example: Flask service with create_order endpoint:</strong></p>
+<pre><code class="language-python">from flask import Flask, jsonify, request
+
+app = Flask(__name__)
+
+@app.route('/order', methods=['POST'])
+def create_order():
+    data = request.json
+    # Process order...
+    return jsonify({'status': 'created'}), 201</code></pre>
+
+    <p><strong>Example: User Service calling Order Service (Python):</strong></p>
+<pre><code class="language-python"># User Service
+@app.route('/users/&lt;id&gt;/orders')
+def get_orders(id):
+    # REST call to Order Service
+    response = requests.get(f'http://orders/api/orders?user={id}')
+    return response.json()</code></pre>
+
+    <h4>Asynchronous Communication</h4>
+    <ul>
+      <li><strong>Event-driven messaging:</strong> Services publish events (e.g., <code>OrderCreated</code>) to a message broker (Kafka, RabbitMQ).</li>
+      <li>Other services subscribe and react to these events.</li>
+      <li><strong>Benefits:</strong> Loose coupling, improved scalability, non-blocking.</li>
+    </ul>
+
+    <p><strong>Example: Publish an Event with RabbitMQ (Node.js):</strong></p>
+<pre><code class="language-javascript">const amqp = require('amqplib');
+
+async function publish() {
+  const conn = await amqp.connect('amqp://localhost');
+  const channel = await conn.createChannel();
+  const queue = 'order_created';
+  const msg = JSON.stringify({ orderId: 123 });
+
+  await channel.assertQueue(queue, { durable: true });
+  channel.sendToQueue(queue, Buffer.from(msg));
+  console.log('Order event published');
+}
+
+publish();</code></pre>
+
+    <p><strong>Example: Python Kafka producer:</strong></p>
+<pre><code class="language-python">from kafka import KafkaProducer
+import json
+
+producer = KafkaProducer(bootstrap_servers='localhost:9092')
+producer.send('order-events', json.dumps({'order_id': 123, 'status': 'created'}).encode())</code></pre>
+
+    <p><strong>Event flow diagram:</strong></p>
+<pre><code>[Order Service]--(order_created)--&gt;[Kafka]---&gt;[Payment Service]
+                                                |
+                                                v
+                                          [Inventory Service]</code></pre>
+
+    <h3>Key Challenges in Microservices</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Challenge</th><th>Description</th><th>Solutions / Tools</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Data Consistency</td><td>Eventual consistency due to distributed databases</td><td>Compensating transactions, idempotent operations</td></tr>
+          <tr><td>Distributed Tracing</td><td>Hard to trace requests across multiple services</td><td>OpenTelemetry, Jaeger, Zipkin</td></tr>
+          <tr><td>Network Overhead</td><td>More API calls mean more latency and failure points</td><td>Optimize with gRPC, caching, API Gateway</td></tr>
+          <tr><td>Security</td><td>Each service needs auth, encrypted communication</td><td>OAuth2, JWT, mTLS, API Gateway</td></tr>
+          <tr><td>Operational Complexity</td><td>Deployment, orchestration, and monitoring across many services</td><td>Kubernetes, robust DevOps</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Example: Distributed Tracing (OpenTelemetry — Node.js)</h3>
+<pre><code class="language-javascript">// Pseudo-setup for distributed tracing
+const { NodeTracerProvider } = require('@opentelemetry/sdk-trace-node');
+const provider = new NodeTracerProvider();
+provider.register();</code></pre>
+
+    <h3>Scaling Microservices</h3>
+    <p>Microservices shine in scalability:</p>
+    <ul>
+      <li><strong>Horizontal Scaling:</strong> Add more instances of a service to handle increased load.</li>
+      <li><strong>Database Sharding &amp; Read Replicas:</strong> Split data to optimize for high traffic.</li>
+    </ul>
+
+    <p><strong>Auto-Scaling (Kubernetes example):</strong></p>
+<pre><code class="language-yaml">apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: order-service-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: order-service
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70</code></pre>
+
+    <p><strong>Horizontal scaling diagram:</strong></p>
+<pre><code>        +----------+
+        |  Client  |
+        +----------+
+             |
+     +----------------------+
+     |   Load Balancer      |
+     +----------------------+
+      /          |          \
++--------+  +--------+  +--------+
+|Order S1|  |Order S2|  |Order S3|
++--------+  +--------+  +--------+</code></pre>
+
+    <h3>Real-World Examples</h3>
+    <ul>
+      <li><strong>Netflix:</strong> Streams video via hundreds of microservices — separate services for streaming, recommendations, personalization, scaled independently.</li>
+      <li><strong>Uber:</strong> Ride-matching, payments, and navigation are different services.</li>
+      <li><strong>Amazon:</strong> Search, payments, recommendations are modular, allowing real-time updates and massive scale.</li>
+    </ul>
+
+    <h3>Microservices — Tips for Success</h3>
+    <ul>
+      <li><strong>Start with clear service boundaries:</strong> Use DDD to avoid accidental monoliths.</li>
+      <li><strong>Automate everything:</strong> CI/CD, testing, deployment, and monitoring.</li>
+      <li><strong>Invest in observability:</strong> Logging, metrics, tracing — don't leave debugging until production.</li>
+      <li><strong>Use an API Gateway:</strong> Centralize cross-cutting concerns (authentication, rate-limiting, routing).</li>
+      <li><strong>Design for failure:</strong> Assume outages; use retries, circuit breakers, bulkheads, and graceful degradation.</li>
+      <li><strong>Document APIs:</strong> Keep OpenAPI/Swagger specs updated.</li>
+      <li><strong>Version your contracts:</strong> Don't break clients when updating APIs.</li>
+      <li><strong>Keep data isolated:</strong> No shared databases; use events for cross-service sync.</li>
+      <li><strong>Right-size your services:</strong> Too fine-grained increases complexity; too coarse defeats the purpose.</li>
+      <li><strong>Secure all endpoints</strong> and encrypt inter-service traffic.</li>
+    </ul>
+
+    <h3>Microservices — Interview Questions</h3>
+    <ul>
+      <li>What are microservices and how do they differ from monolithic architecture?</li>
+      <li>How do microservices communicate?</li>
+      <li>What are the biggest challenges in microservices?</li>
+      <li>How do you ensure data consistency?</li>
+      <li>What is the role of an API Gateway?</li>
+      <li>How do you structure microservices for a new project?</li>
+      <li>How would you debug errors in a distributed microservices system?</li>
+      <li>When would you choose microservices over N-tier or monolithic?</li>
+      <li>When would you use synchronous vs. asynchronous communication?</li>
+      <li>How do you implement service discovery and load balancing?</li>
+      <li>What tools would you use for monitoring and observability?</li>
+    </ul>
+
+    <h2 id="event-driven-deep-dive">Event-Driven Architecture — A Deep Dive</h2>
+    <p><strong>Event-Driven Architecture (EDA)</strong> is a system design paradigm where components communicate through events. Rather than making direct synchronous calls, services publish events (like <code>OrderPlaced</code> or <code>UserRegistered</code>) and other services consume these events to trigger their own logic.</p>
+
+    <p><strong>Three key characteristics:</strong></p>
+    <ul>
+      <li><strong>Asynchronous processing:</strong> Components don't wait for responses and continue processing other work.</li>
+      <li><strong>Loose coupling:</strong> Components interact via events, not direct calls, so they evolve independently.</li>
+      <li><strong>Scalability &amp; flexibility:</strong> Easily handle spikes in workload without tight dependencies.</li>
+    </ul>
+
+    <h3>Why Use Event-Driven Architecture?</h3>
+    <ul>
+      <li><strong>Asynchronous processing:</strong> Services continue working while events are handled in the background.</li>
+      <li><strong>Loose coupling:</strong> Components evolve independently, increasing system flexibility.</li>
+      <li><strong>Scalability:</strong> Handles spikes and high traffic with ease.</li>
+      <li><strong>Real-time responsiveness:</strong> Ideal for finance, IoT, and notification systems.</li>
+      <li><strong>Complex workflows:</strong> Multiple services respond to a single event, supporting sophisticated business processes.</li>
+    </ul>
+
+    <h3>Core Components</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Component</th><th>Role</th><th>Example</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Event Producer</strong></td><td>Generates events based on actions or changes</td><td>User places an order</td></tr>
+          <tr><td><strong>Event Broker</strong></td><td>Routes, stores, and delivers events</td><td>Kafka, RabbitMQ, AWS EventBridge</td></tr>
+          <tr><td><strong>Event Consumer</strong></td><td>Listens for events and performs actions</td><td>Payment service, Email notifier</td></tr>
+          <tr><td><strong>Event Storage</strong></td><td>(Optional) Persists events for replay, auditing, or recovery</td><td>Kafka log, AWS Kinesis</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4>Event Flow Sequence Diagram</h4>
+    <div class="archd-seq" aria-label="Event flow with producer, broker, consumer, storage">
+      <div class="archd-seq-step"><span class="num">1</span>Producer publishes</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-service"><span class="archd-icon">📤</span><span>Producer</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Publish Event</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Broker</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Broker persists (optional)</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Broker</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Store Event</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Storage</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Broker delivers to consumer</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Broker</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Deliver Event</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📥</span><span>Consumer</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Consumer may query/replay</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-service"><span class="archd-icon">📥</span><span>Consumer</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Query / Replay</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Storage</span></div>
+      </div>
+    </div>
+
+    <h3>Synchronous vs. Asynchronous Communication</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Synchronous</th><th>Asynchronous (Event-Driven)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Blocking calls (wait for response)</td><td>Non-blocking (fire-and-forget)</td></tr>
+          <tr><td>Tight coupling between components</td><td>Decoupled; services operate independently</td></tr>
+          <tr><td>Example: HTTP REST API</td><td>Example: Kafka, RabbitMQ, SQS</td></tr>
+          <tr><td>Can lead to bottlenecks</td><td>Promotes scalability and resilience</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Example: Synchronous (traditional HTTP call)</strong></p>
+<pre><code class="language-python">def place_order(order):
+    response = payment_service.process_payment(order)
+    if response.success:
+        inventory_service.update(order)</code></pre>
+
+    <p><strong>Example: Asynchronous (event-driven)</strong></p>
+<pre><code class="language-python">def place_order(order):
+    event_broker.publish('OrderPlaced', order)
+    # Continue without waiting for payment/inventory
+
+# Payment service (subscriber)
+def on_order_placed(event):
+    process_payment(event.data)</code></pre>
+
+    <h3>Messaging Patterns</h3>
+
+    <h4>1. Publish-Subscribe (Pub/Sub)</h4>
+    <ul>
+      <li>Producers send events to a "topic."</li>
+      <li>All subscribed consumers receive the event, usually once and in real-time.</li>
+      <li>Subscribers receive events in real-time but must be online.</li>
+      <li><strong>Example:</strong> Notifications to all followers when a user posts.</li>
+    </ul>
+
+    <h4>2. Event Streaming</h4>
+    <ul>
+      <li>Events are stored in an ordered log; consumers can replay and process at their own pace.</li>
+      <li>Useful when replayability or ordered processing is needed.</li>
+      <li><strong>Example:</strong> Analytics, audit logs, IoT sensor data, website analytics tracking user activity over time.</li>
+    </ul>
+
+    <h4>Diagram: Pub/Sub vs. Event Streaming</h4>
+    <div class="archd" aria-label="Pub/Sub vs Event Streaming">
+      <div class="archd-node is-service"><span class="archd-icon">📤</span><span>Event Producer (Pub/Sub)</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Publish Event</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Event Broker</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">📥</span><span>Subscriber 1</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📥</span><span>Subscriber 2</span></div>
+      </div>
+    </div>
+
+    <div class="archd" aria-label="Event Streaming with append-log">
+      <div class="archd-node is-service"><span class="archd-icon">📤</span><span>Event Producer (Streaming)</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Append Event</span></div>
+      <div class="archd-node is-data"><span class="archd-icon">📜</span><span>Event Log</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Read Event</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">📥</span><span>Consumer 1</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📥</span><span>Consumer 2</span></div>
+      </div>
+    </div>
+
+    <h4>Code Example: Pub/Sub with Python &amp; Redis</h4>
+<pre><code class="language-python"># Producer
+import redis
+r = redis.Redis()
+r.publish('orders', 'order_placed:12345')
+
+# Consumer
+import redis
+r = redis.Redis()
+pubsub = r.pubsub()
+pubsub.subscribe('orders')
+for message in pubsub.listen():
+    if message['type'] == 'message':
+        print('Received:', message['data'])</code></pre>
+
+    <h3>Event-Driven Architecture in Action: E-Commerce Example</h3>
+    <p><strong>Workflow:</strong></p>
+    <ol>
+      <li><strong>Order Service:</strong> User places an order → emits <code>OrderPlaced</code> event.</li>
+      <li><strong>Payment Service:</strong> Listens for <code>OrderPlaced</code> → processes payment.</li>
+      <li><strong>Inventory Service:</strong> Listens for <code>OrderPlaced</code> → updates stock.</li>
+      <li><strong>Notification Service:</strong> Listens for <code>OrderPlaced</code> → sends email/SMS.</li>
+    </ol>
+    <p>This enables independent scaling and failure isolation for each service.</p>
+
+    <h3>Challenges in Event-Driven Systems</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Challenge</th><th>Description</th><th>Solutions / Tools</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Eventual Consistency</td><td>State updates are not always immediate across services</td><td>Idempotent processing, compensating transactions</td></tr>
+          <tr><td>Ordering Guarantees</td><td>Events may arrive out of sequence in distributed systems</td><td>Partitioning, sequence numbers, deduplication</td></tr>
+          <tr><td>Fault Tolerance</td><td>Handling failures without data loss</td><td>Dead-letter queues, retries, event replay</td></tr>
+          <tr><td>Debugging Complexity</td><td>Harder to trace asynchronous flows</td><td>Distributed tracing (OpenTelemetry, Jaeger)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Best Practices</h3>
+    <ol>
+      <li><strong>Idempotent event processing:</strong> Ensure consumers can safely process the same event multiple times.</li>
+    </ol>
+<pre><code class="language-python"># Pseudocode for idempotency
+if not already_processed(event_id):
+    process_event(event)</code></pre>
+
+    <ol start="2">
+      <li><strong>Implement dead-letter queues (DLQ):</strong> Capture failed events for later inspection and manual handling.</li>
+      <li><strong>Choose the right broker:</strong> Kafka for high-throughput streaming, RabbitMQ for classic queuing, AWS EventBridge for serverless event routing.</li>
+      <li><strong>Event versioning:</strong> Use schema registries (e.g., <a href="https://avro.apache.org/" target="_blank">Apache Avro</a>) to evolve event formats without breaking consumers.</li>
+    </ol>
+
+    <h3>Common Use Cases</h3>
+    <ul>
+      <li><strong>Logging &amp; auditing:</strong> Capture all system changes for compliance and debugging.</li>
+      <li><strong>Real-time notifications:</strong> Messaging apps, stock price updates, push notifications.</li>
+      <li><strong>Microservices decoupling:</strong> Independent scalability and resilience.</li>
+      <li><strong>IoT systems:</strong> High-frequency, real-time sensor data processing.</li>
+      <li><strong>E-commerce order processing:</strong> Orchestrate complex, multi-step order workflows.</li>
+    </ul>
+
+    <h3>Event-Driven — Tips &amp; Tricks</h3>
+    <ul>
+      <li><strong>Always make consumers idempotent:</strong> Use unique event IDs or database constraints.</li>
+      <li><strong>Monitor event flows:</strong> Use distributed tracing tools (Jaeger, OpenTelemetry).</li>
+      <li><strong>Plan for schema evolution:</strong> Add new fields, never remove or change existing ones without versioning.</li>
+      <li><strong>Use partitioning for ordering:</strong> Partition events by relevant key (e.g., user ID) to maintain order where required.</li>
+      <li><strong>Embrace infrastructure as code:</strong> Use Terraform or AWS CloudFormation to automate broker setup and scaling.</li>
+      <li><strong>Monitor event lag:</strong> Track how far behind consumers are from the latest event.</li>
+      <li><strong>Back pressure handling:</strong> Protect slow consumers from being overwhelmed.</li>
+      <li><strong>Compensating transactions:</strong> Use when eventual consistency isn't enough — e.g., refund a payment if order fails.</li>
+      <li><strong>Testing:</strong> Simulate failure scenarios and duplicate events during testing.</li>
+    </ul>
+
+    <h3>Event-Driven — Interview Prep</h3>
+    <ul>
+      <li>Explain the difference between Pub/Sub and Event Streaming.</li>
+      <li>How do you ensure idempotency in event consumers?</li>
+      <li>What are dead-letter queues and why are they important?</li>
+      <li>Describe a real-world use case for event-driven architecture.</li>
+      <li>How would you handle event versioning and schema evolution?</li>
+    </ul>
+
+    <h2 id="factors-influencing">Factors Influencing Architecture Selection</h2>
+    <p>When choosing an architectural style, consider:</p>
+    <ol>
+      <li><strong>Business Needs:</strong> What is the system's core purpose?</li>
+      <li><strong>Scalability:</strong> Expected load and growth.</li>
+      <li><strong>Performance:</strong> Latency, throughput, and responsiveness.</li>
+      <li><strong>Maintainability:</strong> Ease of updates, fixes, and evolution.</li>
+      <li><strong>Team Skillsets:</strong> Familiarity with distributed systems, automation, etc.</li>
+      <li><strong>Time to Market:</strong> Speed vs. long-term scalability.</li>
+    </ol>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Architecture</th><th>Best For</th><th>Avoid When</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Monolithic</td><td>Small, simple apps, MVPs, startups</td><td>Large/complex, needs high scale</td></tr>
+          <tr><td>Layered (N-Tier)</td><td>Enterprise apps, CRMs, banking systems</td><td>Performance-critical hot paths</td></tr>
+          <tr><td>Microservices</td><td>Large-scale, cloud-native, independent scaling</td><td>Small/simple projects</td></tr>
+          <tr><td>Event-Driven</td><td>Real-time, IoT, async, scalable systems</td><td>When strong consistency is needed</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Example: When to Use Which?</h3>
+    <div class="pattern-compare">
+      <div class="pc-card">
+        <div class="pc-icon">🏢</div>
+        <div class="pc-tag">CRM</div>
+        <div class="pc-title">Building a CRM for a small business?</div>
+        <div class="pc-body">Go for <strong>Layered Architecture</strong>.</div>
+      </div>
+      <div class="pc-card">
+        <div class="pc-icon">🚀</div>
+        <div class="pc-tag">MVP</div>
+        <div class="pc-title">Launching an MVP for a startup?</div>
+        <div class="pc-body">Start with <strong>Monolithic</strong>; split into microservices if it grows.</div>
+      </div>
+      <div class="pc-card">
+        <div class="pc-icon">🔔</div>
+        <div class="pc-tag">Real-Time</div>
+        <div class="pc-title">Creating a real-time notification system?</div>
+        <div class="pc-body"><strong>Event-Driven</strong> is a strong fit.</div>
+      </div>
+      <div class="pc-card">
+        <div class="pc-icon">🛒</div>
+        <div class="pc-tag">E-Commerce</div>
+        <div class="pc-title">Developing a large e-commerce platform?</div>
+        <div class="pc-body"><strong>Microservices</strong> for independent scaling of catalog, orders, payments.</div>
+      </div>
+    </div>
+
+    <h2 id="patterns-worth-knowing">Patterns Worth Knowing (Beyond the Big Four)</h2>
+    <p>The four main patterns above (monolith, layered, microservices, event-driven) are <em>categories</em>. The patterns below are <em>specific techniques</em> that show up inside or across those categories.</p>
+
+    <h3>Modular Monolith</h3>
+    <p>A monolith <strong>internally organized as if it were microservices</strong> — clear module boundaries, no cross-module DB access, well-defined interfaces — but deployed as a single binary.</p>
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Why It Matters</div>
+        <p>Combines monolith's deployment simplicity with microservices' modularity. Often the <em>correct</em> starting point for a new system. You can split it into actual services later if growth demands it.</p>
+      </div>
+    </div>
+
+    <h3>Strangler Fig — How to Migrate Monolith → Microservices</h3>
+    <p>Named after the strangler fig tree that grows around an existing tree and eventually replaces it. Coined by Martin Fowler.</p>
+
+    <p><strong>The technique:</strong></p>
+    <ol>
+      <li>Put a <strong>facade</strong> (API Gateway or reverse proxy) in front of the monolith.</li>
+      <li>Build the new microservice alongside the monolith.</li>
+      <li>Reroute the facade so specific endpoints go to the microservice instead of the monolith.</li>
+      <li>Once everything is moved, the monolith dies.</li>
+    </ol>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Why It Works</div>
+        <p>No "big bang" rewrite (which almost always fails). You ship incrementally, and at any point you can stop. The new code never has to be perfect because the monolith is always the fallback.</p>
+      </div>
+    </div>
+
+    <div class="archd" aria-label="Strangler Fig: Facade routes between monolith and new microservices">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Clients</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>Facade (API Gateway)</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-external"><span class="archd-icon">🏛️</span><span>Legacy Monolith</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>New Microservice A</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>New Microservice B</span></div>
+      </div>
+    </div>
+
+    <h3>Backend for Frontend (BFF)</h3>
+    <p>Each frontend (web, iOS, Android, smart TV) gets its <strong>own dedicated backend service</strong> that aggregates calls to underlying microservices, shaping responses for that frontend's needs.</p>
+
+    <p><strong>Why:</strong> different clients have different data needs and constraints. The iOS app wants minimal data on cellular; the web wants more. Without a BFF, every microservice has to support every client variation — or the frontend makes 10 separate calls.</p>
+
+    <div class="bff-diagram" aria-label="BFF pattern: clients → BFFs → microservices">
+      <div class="bff-col">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Web</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">📱</span><span>iOS</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">📺</span><span>TV</span></div>
+      </div>
+      <div class="bff-arrow"></div>
+      <div class="bff-col">
+        <div class="archd-node is-infra"><span class="archd-icon">🧩</span><span>BFF for Web</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🧩</span><span>BFF for iOS</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🧩</span><span>BFF for TV</span></div>
+      </div>
+      <div class="bff-arrow"></div>
+      <div class="bff-col">
+        <div class="archd-node is-service"><span class="archd-icon">⚙️</span><span>Microservice A</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">⚙️</span><span>Microservice B</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">⚙️</span><span>Microservice C</span></div>
+      </div>
+    </div>
+
+<pre><code>                ┌─ BFF for Web ─┐
+Clients ──→     ├─ BFF for iOS ─┤ ──→ Microservices
+                └─ BFF for TV  ─┘</code></pre>
+
+    <h3>CQRS (Command Query Responsibility Segregation)</h3>
+    <p><strong>Separate the model used for writes from the model used for reads.</strong> Writes go through a "command" model (often normalized, transactional); reads go through a "query" model (often denormalized, materialized views).</p>
+
+    <p><strong>Why:</strong> read and write patterns are wildly different at scale. Reads vastly outnumber writes; denormalized views serve them in O(1). Writes can use a clean normalized model without performance pressure.</p>
+
+    <p><strong>Trade-off:</strong> complexity. Don't reach for CQRS unless your read/write asymmetry is extreme.</p>
+
+    <div class="archd" aria-label="CQRS: split write and read sides">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">✍️</span><span>Command (Write) Model</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔍</span><span>Query (Read) Model</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Sync via events</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Write Store (normalized)</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗂️</span><span>Read Store (denormalized)</span></div>
+      </div>
+    </div>
+
+    <h3>Event Sourcing</h3>
+    <p>Instead of storing the <em>current state</em>, store the <em>sequence of events</em> that produced it. Current state is derived by replaying events.</p>
+
+    <p><strong>Why:</strong> complete audit log built in, time-travel debugging, easy to derive new read models.</p>
+
+    <p><strong>Trade-off:</strong> querying current state requires replay or maintained projections. Schema evolution is hard.</p>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Often Paired with CQRS</div>
+        <p>Events are the write model, projections are the read model.</p>
+      </div>
+    </div>
+
+    <h3>Saga Pattern (Distributed Transactions Without 2PC)</h3>
+    <p>In a monolith, you wrap multi-step operations in a database transaction. In microservices, <strong>you can't</strong> — each service has its own DB. The <strong>Saga pattern</strong> is the answer.</p>
+
+    <p><strong>The idea:</strong> break the transaction into a sequence of <em>local</em> transactions, each in its own service. If step N fails, run <strong>compensating transactions</strong> to undo steps 1..N-1.</p>
+
+    <p><strong>Example: book a trip (flight + hotel + car)</strong></p>
+
+    <div class="saga-flow">
+      <div class="saga-step">
+        <div class="sg-num">1</div>
+        <div>Book flight</div>
+        <div class="sg-status">success</div>
+      </div>
+      <div class="saga-step">
+        <div class="sg-num">2</div>
+        <div>Book hotel</div>
+        <div class="sg-status">success</div>
+      </div>
+      <div class="saga-step fail">
+        <div class="sg-num">3</div>
+        <div>Book car</div>
+        <div class="sg-status">FAILED</div>
+      </div>
+      <div class="saga-step comp">
+        <div class="sg-num">4</div>
+        <div>Compensate hotel (cancel)</div>
+        <div class="sg-status">compensate</div>
+      </div>
+      <div class="saga-step comp">
+        <div class="sg-num">5</div>
+        <div>Compensate flight (cancel)</div>
+        <div class="sg-status">compensate</div>
+      </div>
+    </div>
+
+<pre><code>1. Book flight       → success
+2. Book hotel        → success
+3. Book car          → FAILED
+4. Compensate hotel  (cancel)
+5. Compensate flight (cancel)</code></pre>
+
+    <p>Two implementation styles:</p>
+    <ul>
+      <li><strong>Choreography:</strong> each service listens for events and decides what to do. No central coordinator. Simple but hard to reason about at scale.</li>
+      <li><strong>Orchestration:</strong> a central "saga orchestrator" service tells each step what to do. Easier to debug; one more service to operate.</li>
+    </ul>
+
+    <h3>When NOT to Use Microservices</h3>
+    <p>A microservices anti-checklist. Stay with a monolith if:</p>
+    <ul>
+      <li>You have fewer than ~10 engineers.</li>
+      <li>Your domain isn't well understood yet (service boundaries will be wrong).</li>
+      <li>You don't have CI/CD, observability, and on-call rotation already.</li>
+      <li>Different parts of your system don't scale independently (no scaling problem to solve).</li>
+      <li>Latency is critical and you can't afford network hops between services.</li>
+    </ul>
+
+    <div class="callout callout-warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-content">
+        <div class="callout-title">The Truth</div>
+        <p>Every team that adopts microservices too early ends up with a <em>distributed monolith</em> — slower than a monolith, harder to debug, and more expensive to operate.</p>
+      </div>
+    </div>
+
+    <h2 id="practical-trade-offs">Practical Trade-offs</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Pattern</th><th>Pros</th><th>Cons</th><th>Use Cases</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Monolithic</td><td>Simple, fast to start</td><td>Hard to scale, maintain</td><td>Startups, simple apps</td></tr>
+          <tr><td>Layered (N-Tier)</td><td>Separated concerns</td><td>Overhead, possible coupling</td><td>Enterprise, banking</td></tr>
+          <tr><td>Microservices</td><td>Scale, flexibility</td><td>Complexity, consistency problems</td><td>Large, cloud-native</td></tr>
+          <tr><td>Event-Driven</td><td>Async, decoupled</td><td>Debugging, ordering, consistency</td><td>IoT, real-time, logging</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="tips-and-tricks">💡 Tips &amp; Tricks</h2>
+    <p>A merged master list of advice across all patterns.</p>
+
+    <h3>General</h3>
+    <ul>
+      <li><strong>Start simple, scale out.</strong> Begin with monolithic or layered; refactor to microservices when growth demands.</li>
+      <li><strong>Document boundaries.</strong> In microservices, define clear API contracts and data ownership to avoid integration mess.</li>
+      <li><strong>Document your architecture</strong> with diagrams and clear descriptions.</li>
+      <li><strong>Design for change.</strong> Assume requirements will change; favor modular, loosely-coupled designs.</li>
+      <li><strong>Choose the right pattern.</strong> Not every problem needs microservices. Start with monolithic or multi-tier, and migrate when scaling demands it.</li>
+    </ul>
+
+    <h3>Automation &amp; Observability</h3>
+    <ul>
+      <li><strong>Automate everything.</strong> Especially with microservices: CI/CD, monitoring, automated testing.</li>
+      <li><strong>Monitor performance.</strong> Use tools like Prometheus, Grafana, or Datadog to track bottlenecks and system health.</li>
+      <li><strong>Centralized logging.</strong> Essential for debugging in distributed/event-driven systems.</li>
+      <li><strong>Prepare for debugging.</strong> Implement distributed tracing (OpenTelemetry, Jaeger) early.</li>
+      <li><strong>Automate testing.</strong> Especially in event-driven and microservices systems, automated integration tests are vital.</li>
+    </ul>
+
+    <h3>Communication</h3>
+    <ul>
+      <li><strong>Choose the right communication pattern.</strong> Use <strong>REST/gRPC</strong> for synchronous, <strong>Kafka/RabbitMQ</strong> for async/event-driven.</li>
+      <li><strong>Use API gateways</strong> to manage requests in microservices architectures.</li>
+      <li><strong>Document interfaces</strong> — clearly specify contracts between services and layers.</li>
+      <li><strong>Version your contracts</strong> — don't break clients when updating APIs.</li>
+    </ul>
+
+    <h3>Reliability</h3>
+    <ul>
+      <li><strong>Handle failures gracefully.</strong> In event-driven designs, use <strong>dead-letter queues</strong> and <strong>idempotent handlers</strong>.</li>
+      <li><strong>Embrace eventual consistency</strong> in distributed/event-driven systems — design for eventual rather than immediate.</li>
+      <li><strong>Use retries, circuit breakers, and graceful degradation</strong> for distributed systems.</li>
+      <li><strong>Consistency vs. Availability</strong> — understand the CAP theorem and make informed trade-offs.</li>
+    </ul>
+
+    <h3>Security</h3>
+    <ul>
+      <li><strong>Security first.</strong> Isolate services, secure APIs, and encrypt inter-service communication.</li>
+      <li>Authentication, authorization, and data protection — especially as services multiply.</li>
+    </ul>
+
+    <h3>Data</h3>
+    <ul>
+      <li><strong>Data ownership in microservices.</strong> Each microservice should own its database. Avoid sharing schemas.</li>
+      <li><strong>Plan for schema changes.</strong> Use event versioning or backward-compatible messages in EDA.</li>
+    </ul>
+
+    <h3>Evolution</h3>
+    <ul>
+      <li><strong>Plan for evolution.</strong> Choose an architecture that can evolve as your business needs change.</li>
+    </ul>
+
+    <h2 id="sample-interview-questions">Sample Interview Questions</h2>
+    <ul>
+      <li>What are the differences between monolithic, layered, microservices, and event-driven architectures?</li>
+      <li>How does a 2-Tier architecture differ from a 3-Tier architecture?</li>
+      <li>How does scalability improve in a multi-tier system?</li>
+      <li>When would you choose microservices over a monolith?</li>
+      <li>What are the key challenges of microservices, and how do you mitigate them?</li>
+      <li>How would you handle data consistency in distributed systems?</li>
+      <li>What is the role of an API Gateway?</li>
+      <li>When would you use synchronous vs. asynchronous communication?</li>
+      <li>Explain the difference between Pub/Sub and Event Streaming.</li>
+      <li>How do you ensure idempotency in event consumers?</li>
+      <li>What are dead-letter queues and why are they important?</li>
+      <li>How do you implement service discovery and load balancing?</li>
+      <li>What tools would you use for monitoring and observability in a distributed system?</li>
+    </ul>
+
+    <h2 id="summary-key-takeaways">Summary &amp; Key Takeaways</h2>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">📦</div>
+        <div class="card-title">Monolithic</div>
+        <div class="card-body">Simple, good for small apps or prototypes; struggles at scale.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🏛️</div>
+        <div class="card-title">Layered (N-Tier)</div>
+        <div class="card-body">Clear separation, maintainable; can have performance overhead.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔗</div>
+        <div class="card-title">Client-Server</div>
+        <div class="card-body">Foundational for web/mobile; server can be a bottleneck.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🧩</div>
+        <div class="card-title">Microservices</div>
+        <div class="card-body">Scalable, resilient, flexible; complex to manage.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📬</div>
+        <div class="card-title">Event-Driven</div>
+        <div class="card-body">Decoupled, real-time, scalable; introduces consistency and debugging challenges.</div>
+      </div>
+    </div>
+
+    <blockquote>
+      <em>"Choose architecture based on business needs, technical requirements, and scalability goals — not just trends."</em>
+    </blockquote>
+
+    <h2 id="further-reading">📚 Further Reading</h2>
+    <ul>
+      <li><a href="https://martinfowler.com/articles/microservices.html" target="_blank">Martin Fowler — Microservices</a></li>
+      <li><a href="https://martinfowler.com/eaaCatalog/" target="_blank">Martin Fowler — Patterns of Enterprise Application Architecture</a></li>
+      <li><a href="https://martinfowler.com/articles/201701-event-driven.html" target="_blank">Martin Fowler — Event-Driven Architecture</a></li>
+      <li><a href="https://microservices.io/" target="_blank">Microservices.io (Chris Richardson)</a></li>
+      <li><a href="https://aws.amazon.com/architecture/event-driven/" target="_blank">Event-Driven Architecture on AWS</a></li>
+      <li><a href="https://docs.aws.amazon.com/whitepapers/latest/aws-overview/multi-tier-architectures.html" target="_blank">AWS Multi-Tier Architecture Guide</a></li>
+      <li><a href="https://docs.microsoft.com/en-us/azure/architecture/guide/architecture-styles/n-tier" target="_blank">Microsoft Patterns &amp; Practices — Multi-tier Architecture</a></li>
+      <li><a href="https://kafka.apache.org/documentation/" target="_blank">Apache Kafka Documentation</a></li>
+    </ul>
+
+    <p><strong>Next Up:</strong> Chapter 5 — Web Concepts in System Design — sessions, serialization, CORS, and the practical web-specific concerns that build on top of these architectural patterns.</p>
+
+    <nav class="chapter-nav">
+      <a class="chapter-nav-card" href="3 - Protocols (System Design Fundamentals).html">
+        <div class="chapter-nav-label">← Previous</div>
+        <div class="chapter-nav-title">Chapter 3 — Protocols</div>
+      </a>
+      <a class="chapter-nav-card next" href="5 - Web Concepts in System Design (System Design Fundamentals).html">
+        <div class="chapter-nav-label">Next chapter →</div>
+        <div class="chapter-nav-title">Chapter 5 — Web Concepts</div>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../assets/system-design.js"></script>
+
+</body>
+</html>

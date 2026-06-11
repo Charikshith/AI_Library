@@ -1,0 +1,2404 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chapter 7 — Storage &amp; Databases</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<link rel="stylesheet" href="../assets/system-design.css">
+<style>
+/* ============================== Chapter 7 — Custom Diagrams ============================== */
+
+/* ----- Triad (3-node triangle) — used for Scalability/Reliability/Performance ----- */
+.triad {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  aspect-ratio: 1 / 0.95;
+  margin: 28px auto;
+  background: linear-gradient(180deg, var(--bg-elevated), var(--bg-muted));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+.triad-node {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+  border: 3px solid;
+  box-shadow: var(--shadow-md);
+  transition: transform var(--transition), box-shadow var(--transition);
+  z-index: 2;
+}
+.triad-node:hover { transform: scale(1.06); box-shadow: var(--shadow-lg); }
+.triad-node .triad-icon { font-size: 20px; margin-bottom: 4px; }
+.triad-node.top    { top: 6%;  left: 50%; transform: translateX(-50%); background: var(--primary-faint); border-color: var(--primary); color: var(--primary); }
+.triad-node.left   { bottom: 8%; left: 5%; background: var(--accent-faint); border-color: var(--accent); color: var(--accent); }
+.triad-node.right  { bottom: 8%; right: 5%; background: var(--success-faint); border-color: var(--success); color: var(--success); }
+.triad-node.top:hover    { transform: translateX(-50%) scale(1.06); }
+.triad-line {
+  position: absolute;
+  height: 2px;
+  background: var(--border-strong);
+  z-index: 1;
+  transform-origin: 0 50%;
+}
+.triad-line::before, .triad-line::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 0; height: 0;
+  border: 5px solid transparent;
+}
+.triad-line::before { left: -1px; transform: translateY(-50%); border-right-color: var(--primary); border-left: 0; }
+.triad-line::after  { right: -1px; transform: translateY(-50%); border-left-color: var(--primary); border-right: 0; }
+
+/* ----- CAP Venn Diagram ----- */
+.cap-venn {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  aspect-ratio: 1 / 0.95;
+  margin: 28px auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.cap-circle {
+  position: absolute;
+  width: 56%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 12%;
+  text-align: center;
+  mix-blend-mode: multiply;
+  border: 2px solid;
+  transition: transform var(--transition);
+}
+[data-theme="dark"] .cap-circle { mix-blend-mode: screen; }
+.cap-circle:hover { transform: scale(1.02); z-index: 5; }
+.cap-circle.c { top: 2%;  left: 22%; background: rgba(16, 185, 129, 0.35); border-color: var(--success); }
+.cap-circle.a { bottom: 4%; left: 2%;  background: rgba(37, 99, 235, 0.35); border-color: var(--primary); }
+.cap-circle.p { bottom: 4%; right: 2%; background: rgba(245, 158, 11, 0.35); border-color: var(--accent); }
+.cap-circle .cap-name { font-weight: 800; font-size: 17px; color: var(--text); }
+.cap-circle .cap-desc { font-size: 11.5px; color: var(--text-muted); line-height: 1.35; padding: 6px 12% 0; }
+.cap-tag {
+  position: absolute;
+  background: var(--bg);
+  border: 1.5px solid var(--border-strong);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  z-index: 4;
+  box-shadow: var(--shadow-sm);
+  color: var(--text);
+}
+.cap-tag.ca { top: 36%; left: 30%; color: var(--primary); border-color: var(--primary); }
+.cap-tag.cp { top: 36%; right: 30%; color: var(--success); border-color: var(--success); }
+.cap-tag.ap { bottom: 18%; left: 50%; transform: translateX(-50%); color: var(--accent); border-color: var(--accent); }
+.cap-tag.x  { top: 47%; left: 50%; transform: translate(-50%, -50%); color: var(--danger); border-color: var(--danger); background: var(--danger-faint); }
+
+/* ----- SQL schema (3 fake table cards joined) ----- */
+.sql-schema {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 24px;
+  background: linear-gradient(180deg, var(--bg-elevated), var(--bg-muted));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  margin: 28px 0;
+  position: relative;
+}
+.sql-table {
+  background: var(--bg);
+  border: 1.5px solid var(--border-strong);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+.sql-table:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--primary); }
+.sql-table-header {
+  background: linear-gradient(135deg, var(--primary), #4f46e5);
+  color: white;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 8px 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  display: flex; align-items: center; gap: 6px;
+}
+.sql-row {
+  padding: 7px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 6px;
+}
+.sql-row:last-child { border-bottom: none; }
+.sql-row.pk { color: var(--primary); font-weight: 700; background: var(--primary-faint); }
+.sql-row.fk { color: var(--accent); font-weight: 600; }
+.sql-row .key-icon { font-size: 11px; opacity: 0.8; }
+.sql-join {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  margin-top: 8px;
+}
+
+/* ----- NoSQL types card grid (rich version) ----- */
+.nosql-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+.nosql-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+  transition: all var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+.nosql-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+}
+.nosql-card.kv::before     { background: linear-gradient(90deg, var(--primary), var(--accent)); }
+.nosql-card.doc::before    { background: linear-gradient(90deg, var(--success), var(--primary)); }
+.nosql-card.col::before    { background: linear-gradient(90deg, var(--accent), var(--danger)); }
+.nosql-card.graph::before  { background: linear-gradient(90deg, var(--primary), var(--success)); }
+.nosql-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary);
+}
+.nosql-visual {
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  gap: 6px;
+}
+/* Key-Value mini-diagram */
+.kv-pair { display: flex; align-items: center; gap: 4px; }
+.kv-pair + .kv-pair { margin-top: 4px; }
+.kv-k {
+  background: var(--accent); color: white;
+  padding: 3px 7px; border-radius: 4px;
+  font-weight: 700; font-size: 11px;
+}
+.kv-arrow { color: var(--text-faint); font-size: 12px; }
+.kv-v {
+  background: var(--primary); color: white;
+  padding: 3px 9px; border-radius: 999px;
+  font-weight: 700; font-size: 11px;
+}
+.nosql-visual.kv-viz { flex-direction: column; gap: 4px; align-items: flex-start; padding-left: 25%; }
+/* Document mini-tree */
+.doc-tree {
+  position: relative; width: 90px; height: 80px;
+}
+.doc-node { position: absolute; width: 16px; height: 16px; border-radius: 50%; background: var(--primary); border: 2px solid var(--bg); }
+.doc-node.root { top: 0; left: 50%; transform: translateX(-50%); background: var(--success); }
+.doc-node.l1   { top: 35px; left: 18%; }
+.doc-node.l2   { top: 35px; right: 18%; }
+.doc-node.l3   { top: 65px; left: 0; background: var(--success); }
+.doc-node.l4   { top: 65px; right: 0; background: var(--success); }
+.doc-line {
+  position: absolute;
+  background: var(--border-strong);
+  height: 2px;
+  transform-origin: 0 50%;
+}
+/* Column store mini-grid */
+.col-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 18px);
+  grid-template-rows: repeat(3, 18px);
+  gap: 3px;
+}
+.col-cell { background: var(--accent-faint); border: 1px solid var(--accent); border-radius: 2px; }
+.col-cell.hi { background: var(--accent); }
+/* Graph mini */
+.graph-mini { position: relative; width: 90px; height: 80px; }
+.graph-mini .g-node { position: absolute; width: 18px; height: 18px; border-radius: 50%; background: var(--primary); border: 2px solid var(--bg); }
+.graph-mini .g-node.n1 { top: 8px; left: 8px; background: var(--success); }
+.graph-mini .g-node.n2 { top: 8px; right: 8px; }
+.graph-mini .g-node.n3 { bottom: 8px; left: 50%; transform: translateX(-50%); background: var(--success); }
+
+.nosql-card .nosql-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+.nosql-card .nosql-sub   { font-size: 12px; color: var(--text-muted); }
+
+/* ----- Replication diagram (primary/replicas with cylinders) ----- */
+.replica-arch {
+  background: linear-gradient(180deg, var(--bg-elevated), var(--bg-muted));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px 24px;
+  margin: 28px 0;
+}
+.repl-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 22px;
+  align-items: stretch;
+}
+.repl-node {
+  background: var(--bg);
+  border: 2px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 14px 18px;
+  min-width: 130px;
+  text-align: center;
+  transition: all var(--transition);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+}
+.repl-node:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.repl-node.primary  { border-color: var(--primary); background: var(--primary-faint); }
+.repl-node.replica  { border-color: var(--success); background: var(--success-faint); }
+.repl-node.client   { border-color: var(--accent); background: var(--accent-faint); border-style: dashed; }
+.repl-cyl {
+  font-size: 28px;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.repl-name { font-weight: 700; font-size: 14px; color: var(--text); }
+.repl-tag  { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px; font-weight: 600; }
+.repl-flow {
+  text-align: center;
+  margin: 16px 0;
+  position: relative;
+}
+.repl-flow .repl-arrow {
+  display: inline-block;
+  position: relative;
+  height: 2px;
+  width: 70%;
+  background: var(--border-strong);
+  margin: 18px 0;
+}
+.repl-flow .repl-arrow::after {
+  content: '';
+  position: absolute;
+  right: -1px; top: 50%;
+  transform: translateY(-50%);
+  width: 0; height: 0;
+  border: 6px solid transparent;
+  border-left-color: var(--border-strong);
+  border-right: 0;
+}
+.repl-flow .repl-label {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Read-replica two-track layout */
+.read-replica {
+  background: linear-gradient(180deg, var(--bg-elevated), var(--bg-muted));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  margin: 28px 0;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 14px;
+  align-items: center;
+}
+@media (max-width: 640px) { .read-replica { grid-template-columns: 1fr; } }
+.rr-app-stack { display: flex; flex-direction: column; gap: 10px; }
+.rr-app {
+  background: var(--bg);
+  border: 1.5px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  transition: all var(--transition);
+}
+.rr-app:hover { border-color: var(--primary); }
+.rr-app.bi { border-style: dashed; }
+.rr-arrow-col { display: flex; flex-direction: column; gap: 30px; align-items: center; }
+.rr-arrow {
+  position: relative;
+  width: 100px;
+  height: 2px;
+  background: var(--border-strong);
+}
+.rr-arrow.write { background: var(--primary); }
+.rr-arrow.read  { background: var(--success); }
+.rr-arrow::after {
+  content: '';
+  position: absolute; right: -1px; top: 50%;
+  transform: translateY(-50%);
+  width: 0; height: 0;
+  border: 6px solid transparent;
+  border-left-color: inherit;
+  border-right: 0;
+}
+.rr-arrow.write::after { border-left-color: var(--primary); }
+.rr-arrow.read::after  { border-left-color: var(--success); }
+.rr-arrow .lbl {
+  position: absolute;
+  top: -22px; left: 50%; transform: translateX(-50%);
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  padding: 2px 8px; border-radius: 4px;
+  white-space: nowrap;
+}
+.rr-db-stack { display: flex; flex-direction: column; gap: 24px; position: relative; }
+.rr-db {
+  background: var(--bg);
+  border: 2px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 14px;
+  text-align: center;
+  transition: all var(--transition);
+}
+.rr-db.primary { border-color: var(--primary); background: var(--primary-faint); }
+.rr-db.replica { border-color: var(--success); background: var(--success-faint); }
+.rr-db .rr-cyl { font-size: 32px; }
+.rr-db .rr-name { font-weight: 700; font-size: 13px; margin-top: 4px; }
+.rr-db .rr-role { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.rr-sync {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 10.5px;
+  font-style: italic;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  border: 1px dashed var(--border-strong);
+  padding: 2px 8px; border-radius: 4px;
+  white-space: nowrap;
+}
+
+/* ----- Client → Server → Database flow ----- */
+.db-flow {
+  background: linear-gradient(180deg, var(--bg-elevated), var(--bg-muted));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px;
+  margin: 28px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+.db-flow-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 110px;
+}
+.db-flow-icon {
+  font-size: 42px;
+  width: 76px; height: 76px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
+  border: 2px solid var(--border-strong);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition);
+}
+.db-flow-node:hover .db-flow-icon { transform: translateY(-4px); border-color: var(--primary); box-shadow: var(--shadow-md); }
+.db-flow-label { font-weight: 700; font-size: 13px; color: var(--text); }
+.db-flow-arrow {
+  position: relative;
+  width: 60px; height: 2px;
+  background: var(--border-strong);
+  flex-shrink: 0;
+}
+.db-flow-arrow::after {
+  content: '';
+  position: absolute; right: -1px; top: 50%;
+  transform: translateY(-50%);
+  width: 0; height: 0;
+  border: 6px solid transparent;
+  border-left-color: var(--border-strong);
+  border-right: 0;
+}
+@media (max-width: 520px) {
+  .db-flow-arrow { width: 2px; height: 30px; }
+  .db-flow-arrow::after { right: 50%; top: auto; bottom: -1px; transform: translateX(50%); border-left-color: transparent; border-top-color: var(--border-strong); border-bottom: 0; }
+}
+
+/* ----- Object storage hub-and-spoke ----- */
+.obj-hub {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 1 / 1;
+  margin: 28px auto;
+  background: radial-gradient(circle at center, var(--primary-faint), var(--bg-elevated));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.obj-center {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 130px; height: 130px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), #4f46e5);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 16px;
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.35);
+  z-index: 3;
+}
+.obj-center .obj-icon { font-size: 28px; margin-bottom: 4px; }
+.obj-satellite {
+  position: absolute;
+  width: 84px; height: 84px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 2px solid var(--primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--primary);
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition);
+  z-index: 2;
+}
+.obj-satellite:hover { transform: scale(1.08); box-shadow: var(--shadow-md); }
+.obj-satellite .obj-sat-icon { font-size: 18px; margin-bottom: 2px; }
+.obj-satellite.id   { top: 12%;  left: 8%; }
+.obj-satellite.meta { top: 12%;  right: 8%; }
+.obj-satellite.data { bottom: 12%; left: 8%; }
+.obj-satellite.attr { bottom: 12%; right: 8%; }
+.obj-spoke {
+  position: absolute;
+  top: 50%; left: 50%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary), transparent);
+  transform-origin: 0 50%;
+  z-index: 1;
+}
+
+/* ----- HDFS architecture (NameNode + DataNodes in racks) ----- */
+.hdfs {
+  background: linear-gradient(180deg, var(--bg-elevated), var(--bg-muted));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px 24px;
+  margin: 28px 0;
+}
+.hdfs-namenode-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.hdfs-namenode {
+  background: linear-gradient(135deg, var(--primary), #4f46e5);
+  color: white;
+  padding: 14px 22px;
+  border-radius: 12px;
+  font-weight: 700;
+  box-shadow: var(--shadow-md);
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px;
+}
+.hdfs-namenode .nn-icon { font-size: 20px; }
+.hdfs-meta {
+  background: var(--bg);
+  border: 1.5px dashed var(--border-strong);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  max-width: 240px;
+}
+.hdfs-racks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 18px;
+}
+@media (max-width: 640px) { .hdfs-racks { grid-template-columns: 1fr; } }
+.hdfs-rack {
+  background: var(--bg);
+  border: 2px dashed var(--accent);
+  border-radius: 12px;
+  padding: 16px 12px 12px;
+  position: relative;
+}
+.hdfs-rack-label {
+  position: absolute;
+  top: -10px; left: 14px;
+  background: var(--accent);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.hdfs-datanodes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.hdfs-datanode {
+  background: var(--success-faint);
+  border: 1.5px solid var(--success);
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  transition: all var(--transition);
+}
+.hdfs-datanode:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.hdfs-datanode .dn-name { font-weight: 700; font-size: 11.5px; color: var(--success); margin-bottom: 6px; }
+.hdfs-blocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  justify-content: center;
+}
+.hdfs-block {
+  width: 14px; height: 14px;
+  background: var(--success);
+  border-radius: 2px;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+.hdfs-clients {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 18px;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.hdfs-client {
+  background: var(--danger);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex; align-items: center; gap: 6px;
+  box-shadow: var(--shadow-sm);
+}
+.hdfs-legend {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.hdfs-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.hdfs-legend .dot { width: 10px; height: 10px; border-radius: 2px; }
+.hdfs-legend .dot.read   { background: var(--danger); }
+.hdfs-legend .dot.write  { background: var(--primary); }
+.hdfs-legend .dot.repl   { background: var(--accent); }
+
+/* Common figure styling */
+figure.diagram {
+  margin: 28px 0;
+}
+figure.diagram > figcaption {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 10px;
+}
+</style>
+</head>
+<body><a href="../../../notes.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;z-index:99999;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600;background:#0f172a;color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.28)">&#8592; AI Library</a>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">
+    <span class="brand-icon">SD</span>
+    <span>Mastering System Design</span>
+  </a>
+  <div class="topbar-actions">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Chapter 7 — On This Page</h3>
+    <ul class="toc-list" id="tocList">
+      <li><a href="#learning-outcomes">Learning Outcomes</a></li>
+      <li><a href="#why-storage-matters">Why Storage Matters</a></li>
+      <li><a href="#structured-vs-unstructured-data">Structured vs. Unstructured Data</a></li>
+      <li><a href="#storage-categories-and-properties">Storage Categories and Properties</a></li>
+      <li><a href="#tradeoffs">Scalability, Reliability &amp; Performance</a></li>
+      <li><a href="#cap-theorem">The CAP Theorem</a></li>
+      <li><a href="#sql-vs-nosql">Database Models — SQL vs. NoSQL</a></li>
+      <li><a href="#advanced-database-topics">Advanced Database Topics</a></li>
+      <li><a href="#object-storage">Object Storage</a></li>
+      <li><a href="#file-systems-dfs">File Systems &amp; Distributed Storage</a></li>
+      <li><a href="#big-data">Big Data Fundamentals</a></li>
+      <li><a href="#consistency-models">Consistency Models Spectrum</a></li>
+      <li><a href="#storage-engines">B-Tree vs LSM-Tree</a></li>
+      <li><a href="#block-file-object">Block vs File vs Object</a></li>
+      <li><a href="#specialized-dbs">Specialized Database Types</a></li>
+      <li><a href="#choosing-storage">Choosing the Right Storage</a></li>
+      <li><a href="#tips-tricks">Combined Tips &amp; Tricks</a></li>
+      <li><a href="#interview-questions">Sample Interview Questions</a></li>
+      <li><a href="#summary">Summary &amp; Key Takeaways</a></li>
+      <li><a href="#further-reading">Further Reading</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <span class="chapter-label">Chapter 7</span>
+      <h1>Storage: Databases &amp; Storage Deep Dive</h1>
+      <p class="hero-subtitle">
+        Master the storage layer of modern systems — SQL vs. NoSQL trade-offs, the CAP theorem during partitions, sharding and replication strategies, B-Tree vs. LSM-Tree engines, and when to reach for object, file, block, or specialized databases.
+      </p>
+      <div class="hero-author">By Charikshith</div>
+    </section>
+
+    <p>Welcome to this in-depth chapter on <strong>Databases and Storage</strong> — crucial pillars of modern system design. Whether you're building a small app or architecting a global platform, your storage choices directly impact performance, scalability, and reliability.</p>
+
+    <p>In this chapter we'll cover: structured vs. unstructured data, storage categories (database/object/file/block), the CAP theorem, SQL vs. NoSQL, advanced topics (replication/sharding/polyglot persistence), object storage, distributed file systems, and big data fundamentals.</p>
+
+    <h2 id="learning-outcomes">🎯 Learning Outcomes</h2>
+    <p>After reading this chapter, you'll be able to:</p>
+    <ol class="outcomes-list">
+      <li><span class="outcome-num">1</span><span>Pick <strong>SQL vs NoSQL</strong> (and which NoSQL flavor) for a given workload.</span></li>
+      <li><span class="outcome-num">2</span><span>Reason about <strong>CAP during a partition</strong> (the only time CAP applies).</span></li>
+      <li><span class="outcome-num">3</span><span>Choose <strong>strong vs. eventual consistency</strong> and name the spectrum in between (read-your-writes, monotonic reads, etc.).</span></li>
+      <li><span class="outcome-num">4</span><span>Understand the difference between <strong>B-tree</strong> and <strong>LSM-tree</strong> storage engines — and which DB uses which.</span></li>
+      <li><span class="outcome-num">5</span><span>Decide when to use <strong>object storage, block storage, or file storage</strong> — they're not interchangeable.</span></li>
+    </ol>
+
+    <h2 id="why-storage-matters">Why Storage Matters</h2>
+    <blockquote>
+      <strong>All systems generate and consume data — storing it effectively is essential.</strong>
+    </blockquote>
+    <p><strong>Storage</strong> is foundational to every system, powering features such as user profiles, watch histories, analytics, recommendations, and more. The right choice affects:</p>
+    <ul>
+      <li><strong>Performance:</strong> Fast data access = better user experience.</li>
+      <li><strong>Reliability:</strong> Durable storage ensures data isn't lost.</li>
+      <li><strong>Cost:</strong> Efficient storage saves resources at scale.</li>
+    </ul>
+    <p><strong>Example:</strong> A messaging app's history, a banking platform's accounts, and a content delivery network's cache — all rely on robust storage solutions.</p>
+
+    <h2 id="structured-vs-unstructured-data">Structured vs. Unstructured Data</h2>
+
+    <h3>Structured Data</h3>
+    <ul>
+      <li><strong>Format:</strong> Rows and columns, predefined schema (e.g., SQL tables).</li>
+      <li><strong>Example:</strong> User table in a relational database.</li>
+    </ul>
+<pre><code class="language-sql">CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);</code></pre>
+
+    <h3>Unstructured Data</h3>
+    <ul>
+      <li><strong>Format:</strong> No fixed schema, flexible format (e.g., images, logs, videos).</li>
+      <li><strong>Example:</strong> Product images, chat logs, user-uploaded files.</li>
+    </ul>
+
+    <h3>Structured vs. Unstructured — Side by Side</h3>
+    <div class="archd" aria-label="Structured vs unstructured data comparison">
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🗂️</span><span>Structured Data<br><small style="font-weight:400;opacity:0.85;">id | email | date</small></span></div>
+        <div class="archd-node is-external"><span class="archd-icon">📦</span><span>Unstructured Data<br><small style="font-weight:400;opacity:0.85;">image1.jpg, video.mp4, log.txt</small></span></div>
+      </div>
+    </div>
+
+    <h2 id="storage-categories-and-properties">Storage Categories and Properties</h2>
+
+    <h3>Categories</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Category</th><th>Examples</th><th>Use Case</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Database</td><td>PostgreSQL, MongoDB</td><td>Structured / semi-structured data</td></tr>
+          <tr><td>Object Storage</td><td>Amazon S3, GCS, MinIO</td><td>Unstructured data (media, logs, backups)</td></tr>
+          <tr><td>File Storage</td><td>NFS, SMB</td><td>Shared file access, legacy systems</td></tr>
+          <tr><td>Block Storage</td><td>EBS, SAN</td><td>Low-latency, high-performance (DB disks)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Core Storage Properties</h3>
+    <ul>
+      <li><strong>Durability:</strong> Data persists even after failures (power loss, crashes).</li>
+      <li><strong>Availability:</strong> Data accessible when needed, even during outages.</li>
+      <li><strong>Consistency:</strong> Every read returns the most recent write.</li>
+      <li><strong>Atomicity (transactional):</strong> Operations are all-or-nothing.</li>
+    </ul>
+
+    <h3>ACID Properties</h3>
+    <div class="archd" aria-label="ACID properties tree diagram">
+      <div class="archd-node is-infra"><span class="archd-icon">🔐</span><span>ACID</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">A</span><span>Atomicity<br><small style="font-weight:400;opacity:0.75;">All or nothing</small></span></div>
+        <div class="archd-node"><span class="archd-icon">C</span><span>Consistency<br><small style="font-weight:400;opacity:0.75;">Valid state</small></span></div>
+        <div class="archd-node"><span class="archd-icon">I</span><span>Isolation<br><small style="font-weight:400;opacity:0.75;">No interference</small></span></div>
+        <div class="archd-node"><span class="archd-icon">D</span><span>Durability<br><small style="font-weight:400;opacity:0.75;">Survives crashes</small></span></div>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Property</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Atomicity</strong></td><td>All steps in a transaction succeed or none do (all-or-nothing).</td></tr>
+          <tr><td><strong>Consistency</strong></td><td>Data must always be valid according to all defined rules/constraints.</td></tr>
+          <tr><td><strong>Isolation</strong></td><td>Transactions do not interfere with each other.</td></tr>
+          <tr><td><strong>Durability</strong></td><td>Once committed, data survives crashes/failures.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="tradeoffs">Trade-offs: Scalability, Reliability, and Performance</h2>
+    <p>No storage system is perfect. Real-world solutions must <strong>trade off</strong> between:</p>
+    <ul>
+      <li><strong>Scalability:</strong> Handles data/user/request growth.</li>
+      <li><strong>Reliability:</strong> Continues functioning despite failures.</li>
+      <li><strong>Performance:</strong> Fast reads/writes.</li>
+    </ul>
+    <p><em>Optimizing one often impacts the others</em> — the classic scalability/reliability/performance triangle.</p>
+
+    <figure class="diagram" aria-label="Scalability, Reliability, and Performance triad">
+      <div class="triad">
+        <div class="triad-node top">
+          <span class="triad-icon">🛡️</span>
+          <span>Reliability</span>
+        </div>
+        <div class="triad-node left">
+          <span class="triad-icon">✅</span>
+          <span>Availability</span>
+        </div>
+        <div class="triad-node right">
+          <span class="triad-icon">📈</span>
+          <span>Scalability</span>
+        </div>
+        <svg viewBox="0 0 460 437" preserveAspectRatio="none" style="position:absolute;inset:24px;width:calc(100% - 48px);height:calc(100% - 48px);z-index:1;" aria-hidden="true">
+          <defs>
+            <marker id="arr7tri" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--primary)" />
+            </marker>
+          </defs>
+          <line x1="230" y1="100" x2="105" y2="320" stroke="var(--primary)" stroke-width="2.5" marker-start="url(#arr7tri)" marker-end="url(#arr7tri)" />
+          <line x1="230" y1="100" x2="355" y2="320" stroke="var(--primary)" stroke-width="2.5" marker-start="url(#arr7tri)" marker-end="url(#arr7tri)" />
+          <line x1="105" y1="345" x2="355" y2="345" stroke="var(--primary)" stroke-width="2.5" marker-start="url(#arr7tri)" marker-end="url(#arr7tri)" />
+        </svg>
+      </div>
+      <figcaption>The three competing forces — optimize one, trade off another</figcaption>
+    </figure>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">📈</div>
+        <div class="card-title">Scalability</div>
+        <div class="card-body">Handles data, user, and request growth — horizontally or vertically.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🛡️</div>
+        <div class="card-title">Reliability</div>
+        <div class="card-body">Continues functioning despite failures — replication, redundancy, failover.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <div class="card-title">Performance</div>
+        <div class="card-body">Fast reads/writes — indexing, caching, in-memory engines.</div>
+      </div>
+    </div>
+
+    <h2 id="cap-theorem">The CAP Theorem</h2>
+    <p><strong>CAP:</strong> In a distributed system, you can only fully guarantee <strong>two</strong> of:</p>
+    <ul>
+      <li><strong>Consistency (C):</strong> Every read gets the latest write.</li>
+      <li><strong>Availability (A):</strong> Every request receives a response.</li>
+      <li><strong>Partition Tolerance (P):</strong> System functions despite network splits.</li>
+    </ul>
+    <p><strong>No distributed system can have all three at the same time.</strong></p>
+
+    <h3>CAP Theorem — Pick Two</h3>
+    <figure class="diagram" aria-label="CAP theorem Venn diagram">
+      <div class="cap-venn">
+        <div class="cap-circle c">
+          <div class="cap-name">Consistency</div>
+          <div class="cap-desc">All clients see the same view of data, even right after an update or delete.</div>
+        </div>
+        <div class="cap-circle a">
+          <div class="cap-name">Availability</div>
+          <div class="cap-desc">All clients can find a replica of data, even in case of partial node failures.</div>
+        </div>
+        <div class="cap-circle p">
+          <div class="cap-name">Partition Tolerance</div>
+          <div class="cap-desc">The system continues to work as expected, even with partial network failure.</div>
+        </div>
+        <span class="cap-tag ca">CA</span>
+        <span class="cap-tag cp">CP</span>
+        <span class="cap-tag ap">AP</span>
+        <span class="cap-tag x">✕</span>
+      </div>
+      <figcaption>You can guarantee at most two — never all three at once</figcaption>
+    </figure>
+
+    <h3>Types of Systems Based on CAP Trade-offs</h3>
+
+    <h4>CP (Consistency + Partition Tolerance)</h4>
+    <ul>
+      <li>Prioritizes data correctness over availability.</li>
+      <li>During a partition, the system may reject requests to avoid inconsistent reads.</li>
+      <li>Not always available, but when it is — data is guaranteed to be correct.</li>
+      <li><strong>Example:</strong> HBase — strongly consistent. If a node can't confirm a write across replicas, it won't serve it — even if it means being unavailable briefly.</li>
+      <li><strong>When to use:</strong> Financial systems, banking apps — anything where data integrity is critical.</li>
+    </ul>
+
+    <h4>AP (Availability + Partition Tolerance)</h4>
+    <ul>
+      <li>Prioritizes system uptime over consistency.</li>
+      <li>During a partition, the system will serve requests, even if they return stale or eventually consistent data.</li>
+      <li><strong>Example:</strong> DynamoDB — inspired by Amazon's Dynamo model, uses eventual consistency by default for high availability.</li>
+      <li><strong>When to use:</strong> Social media feeds, product catalogs, content delivery — where being up is more important than perfect accuracy.</li>
+    </ul>
+
+    <h4>CA (Consistency + Availability) — The "Unicorn"</h4>
+    <ul>
+      <li>Only possible if no network partitions ever occur — i.e., in single-node or tightly coupled systems.</li>
+      <li>In practice, not achievable in distributed systems that need to tolerate network faults.</li>
+      <li><strong>Example:</strong> Relational databases (like PostgreSQL) in standalone mode (not distributed) could be considered CA.</li>
+    </ul>
+
+    <h3>Database Models in CAP</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Tends Toward</th><th>Example Use Case</th><th>Typical DB</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>CP</strong></td><td>Consistency + Partition Tolerance</td><td>Financial, banking, critical systems</td><td>SQL</td></tr>
+          <tr><td><strong>AP</strong></td><td>Availability + Partition Tolerance</td><td>Social media, product catalogs</td><td>NoSQL</td></tr>
+          <tr><td><strong>CA</strong></td><td>Consistency + Availability</td><td>Standalone SQL (non-distributed)</td><td>SQL</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Key Takeaway</div>
+        <p>At scale, network partitions are inevitable — real-world systems must choose between <strong>Consistency</strong> and <strong>Availability</strong> during a partition.</p>
+      </div>
+    </div>
+
+    <h2 id="sql-vs-nosql">Database Models — SQL vs. NoSQL</h2>
+    <p>At its core, a <strong>database</strong> provides a structured way to store, retrieve, and manage data persistently — even across restarts or failures.</p>
+
+    <figure class="diagram" aria-label="Client to server to database flow">
+      <div class="db-flow">
+        <div class="db-flow-node">
+          <div class="db-flow-icon">💻</div>
+          <div class="db-flow-label">Client</div>
+        </div>
+        <div class="db-flow-arrow"></div>
+        <div class="db-flow-node">
+          <div class="db-flow-icon">🖥️</div>
+          <div class="db-flow-label">Server</div>
+        </div>
+        <div class="db-flow-arrow"></div>
+        <div class="db-flow-node">
+          <div class="db-flow-icon">🗄️</div>
+          <div class="db-flow-label">Database</div>
+        </div>
+      </div>
+      <figcaption>Databases act as the persistent data manager behind the application server</figcaption>
+    </figure>
+
+    <h3>Relational Databases (SQL): The Traditional Powerhouse</h3>
+    <ul>
+      <li><strong>Schema:</strong> Fixed, structured tables.</li>
+      <li><strong>Query Language:</strong> SQL.</li>
+      <li><strong>ACID Properties:</strong> Atomicity, Consistency, Isolation, Durability.</li>
+      <li><strong>Examples:</strong> MySQL, PostgreSQL, Oracle, SQL Server.</li>
+    </ul>
+
+    <p><strong>Core concepts:</strong></p>
+    <ul>
+      <li><strong>Schema-based:</strong> Structure (tables, columns, data types) is defined upfront.</li>
+      <li><strong>Rows and Columns:</strong> Data organized like a spreadsheet.</li>
+      <li><strong>Joins:</strong> Combine data across tables.</li>
+      <li><strong>ACID transactions.</strong></li>
+    </ul>
+
+    <h4>Example: SQL Table Schema</h4>
+
+    <figure class="diagram" aria-label="SQL relational schema with join tables">
+      <div class="sql-schema">
+        <div>
+          <div class="sql-table">
+            <div class="sql-table-header"><span>📋</span><span>USERS</span></div>
+            <div class="sql-row pk"><span class="key-icon">🔑</span><span>USER_ID</span></div>
+            <div class="sql-row"><span class="key-icon">▫</span><span>USER_NAME</span></div>
+            <div class="sql-row"><span class="key-icon">▫</span><span>PASSWORD</span></div>
+            <div class="sql-row"><span class="key-icon">▫</span><span>EMAIL</span></div>
+          </div>
+          <div class="sql-join">↕ joined via USER_ID</div>
+        </div>
+        <div>
+          <div class="sql-table">
+            <div class="sql-table-header"><span>🔗</span><span>USER_ROLES</span></div>
+            <div class="sql-row fk"><span class="key-icon">🔑</span><span>USER_ID (FK)</span></div>
+            <div class="sql-row fk"><span class="key-icon">🔑</span><span>ROLE_ID (FK)</span></div>
+          </div>
+          <div class="sql-join">junction table</div>
+        </div>
+        <div>
+          <div class="sql-table">
+            <div class="sql-table-header"><span>📋</span><span>ROLES</span></div>
+            <div class="sql-row pk"><span class="key-icon">🔑</span><span>ROLE_ID</span></div>
+            <div class="sql-row"><span class="key-icon">▫</span><span>ROLE_NAME</span></div>
+          </div>
+          <div class="sql-join">↕ joined via ROLE_ID</div>
+        </div>
+      </div>
+      <figcaption>Many-to-many users ↔ roles via a junction table</figcaption>
+    </figure>
+
+<pre><code class="language-sql">CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE,
+    email VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);</code></pre>
+
+    <p>A more complete example with a foreign key:</p>
+<pre><code class="language-sql">CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id),
+    total DECIMAL(10,2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);</code></pre>
+
+    <h4>Example: Complex Query with Join</h4>
+<pre><code class="language-sql">SELECT users.email, orders.total
+FROM users
+JOIN orders ON users.id = orders.user_id
+WHERE orders.date &gt; '2024-06-01';</code></pre>
+
+    <h4>When to Use SQL</h4>
+    <ul>
+      <li>Complex queries &amp; relationships.</li>
+      <li>Strong consistency needed.</li>
+      <li>Well-known, structured schema.</li>
+    </ul>
+
+    <h4>Limitations of Relational Databases</h4>
+    <ul>
+      <li><strong>Rigid schema:</strong> Not ideal when data structure changes frequently.</li>
+      <li><strong>Scaling:</strong> Typically scale <em>vertically</em> (bigger server), which has limits and cost challenges.</li>
+      <li><strong>Nested data:</strong> Handling deeply nested or variable data (e.g., JSON blobs) is clunky.</li>
+    </ul>
+
+    <h3>NoSQL Databases: Designed for Scale and Flexibility</h3>
+    <ul>
+      <li><strong>Schema:</strong> Schema-less or dynamic.</li>
+      <li><strong>Types:</strong> Document, Key-Value, Columnar, Graph.</li>
+      <li><strong>BASE Properties:</strong> Basically Available, Soft state, Eventually consistent.</li>
+    </ul>
+
+    <h4>NoSQL Types — Deep Dive</h4>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Type</th><th>Example DBs</th><th>Best For</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Document</td><td>MongoDB</td><td>Nested/flexible data, CMS, profiles</td></tr>
+          <tr><td>Key-Value</td><td>Redis, DynamoDB</td><td>Caching, sessions, fast lookups</td></tr>
+          <tr><td>Columnar</td><td>Cassandra, HBase</td><td>Analytics, time-series, big writes</td></tr>
+          <tr><td>Graph</td><td>Neo4j</td><td>Social networks, recommendations</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Document Databases:</strong></p>
+    <ul>
+      <li>JSON-like structure (key-value pairs, nesting supported).</li>
+      <li>Ideal for content management, user profiles.</li>
+      <li><strong>Example:</strong> MongoDB.</li>
+    </ul>
+
+    <p><strong>Key-Value Databases:</strong></p>
+    <ul>
+      <li>Simple, fast, key-based lookups.</li>
+      <li>High performance, low latency.</li>
+      <li><strong>Example:</strong> Redis, DynamoDB.</li>
+    </ul>
+
+    <p><strong>Columnar Databases:</strong></p>
+    <ul>
+      <li>Store data by column, not row.</li>
+      <li>Optimized for analytical queries over large datasets.</li>
+      <li><strong>Example:</strong> Cassandra, HBase.</li>
+    </ul>
+
+    <p><strong>Graph Databases:</strong></p>
+    <ul>
+      <li>Store entities and relationships as nodes and edges.</li>
+      <li>Efficient for highly connected data (social networks).</li>
+      <li><strong>Example:</strong> Neo4j.</li>
+    </ul>
+
+    <h4>NoSQL Database Types — Visualized</h4>
+    <figure class="diagram" aria-label="The four NoSQL database types">
+      <div class="nosql-grid">
+        <div class="nosql-card kv">
+          <div class="nosql-visual kv-viz">
+            <div class="kv-pair"><span class="kv-k">K1</span><span class="kv-arrow">→</span><span class="kv-v">V1</span></div>
+            <div class="kv-pair"><span class="kv-k">K2</span><span class="kv-arrow">→</span><span class="kv-v">V2</span></div>
+            <div class="kv-pair"><span class="kv-k">K3</span><span class="kv-arrow">→</span><span class="kv-v">V3</span></div>
+          </div>
+          <div class="nosql-title">Key-Value</div>
+          <div class="nosql-sub">Redis · DynamoDB</div>
+        </div>
+        <div class="nosql-card doc">
+          <div class="nosql-visual">
+            <div class="doc-tree">
+              <div class="doc-node root"></div>
+              <div class="doc-node l1"></div>
+              <div class="doc-node l2"></div>
+              <div class="doc-node l3"></div>
+              <div class="doc-node l4"></div>
+              <svg viewBox="0 0 90 80" style="position:absolute;inset:0;width:100%;height:100%;z-index:0;" aria-hidden="true">
+                <line x1="45" y1="8" x2="24" y2="43" stroke="var(--border-strong)" stroke-width="2"/>
+                <line x1="45" y1="8" x2="66" y2="43" stroke="var(--border-strong)" stroke-width="2"/>
+                <line x1="24" y1="43" x2="8" y2="73" stroke="var(--border-strong)" stroke-width="2"/>
+                <line x1="66" y1="43" x2="82" y2="73" stroke="var(--border-strong)" stroke-width="2"/>
+              </svg>
+            </div>
+          </div>
+          <div class="nosql-title">Document</div>
+          <div class="nosql-sub">MongoDB · CouchDB</div>
+        </div>
+        <div class="nosql-card col">
+          <div class="nosql-visual">
+            <div class="col-grid">
+              <div class="col-cell"></div><div class="col-cell hi"></div><div class="col-cell"></div>
+              <div class="col-cell hi"></div><div class="col-cell"></div><div class="col-cell"></div>
+              <div class="col-cell"></div><div class="col-cell"></div><div class="col-cell hi"></div>
+            </div>
+          </div>
+          <div class="nosql-title">Column-Family</div>
+          <div class="nosql-sub">Cassandra · HBase</div>
+        </div>
+        <div class="nosql-card graph">
+          <div class="nosql-visual">
+            <div class="graph-mini">
+              <svg viewBox="0 0 90 80" style="position:absolute;inset:0;width:100%;height:100%;z-index:0;" aria-hidden="true">
+                <line x1="17" y1="17" x2="73" y2="17" stroke="var(--border-strong)" stroke-width="2"/>
+                <line x1="17" y1="17" x2="45" y2="65" stroke="var(--border-strong)" stroke-width="2"/>
+                <line x1="73" y1="17" x2="45" y2="65" stroke="var(--border-strong)" stroke-width="2"/>
+              </svg>
+              <div class="g-node n1"></div>
+              <div class="g-node n2"></div>
+              <div class="g-node n3"></div>
+            </div>
+          </div>
+          <div class="nosql-title">Graph</div>
+          <div class="nosql-sub">Neo4j · ArangoDB</div>
+        </div>
+      </div>
+      <figcaption>Four distinct shapes of NoSQL — each tuned for a different access pattern</figcaption>
+    </figure>
+
+    <h4>Example: Document Store (MongoDB)</h4>
+<pre><code class="language-json">{
+    "user_id": "12345",
+    "username": "jane_doe",
+    "profile": {
+        "bio": "Engineer. Coffee lover.",
+        "social": ["twitter", "github"]
+    },
+    "created_at": "2024-06-20T15:32:00Z"
+}</code></pre>
+
+    <p><strong>MongoDB document insert:</strong></p>
+<pre><code class="language-javascript">db.users.insertOne({
+  name: "Alice",
+  email: "alice@example.com",
+  preferences: { theme: "dark", notifications: true }
+});</code></pre>
+
+    <p>A simpler variant:</p>
+<pre><code class="language-javascript">db.users.insertOne({
+  username: "alice",
+  email: "alice@example.com",
+  created_at: new Date()
+});</code></pre>
+
+    <p><strong>MongoDB query:</strong></p>
+<pre><code class="language-javascript">db.users.find({ "profile.social": "github" })</code></pre>
+
+    <h4>BASE Properties</h4>
+    <p>NoSQL systems often relax ACID guarantees in favor of scalability and availability, summarized as <strong>BASE</strong>:</p>
+    <ul>
+      <li><strong>Basically Available:</strong> System always returns a response (even if stale).</li>
+      <li><strong>Soft state:</strong> State may change over time, even without input (due to eventual sync).</li>
+      <li><strong>Eventually consistent:</strong> System guarantees data consistency... eventually.</li>
+    </ul>
+
+    <h4>When to Use NoSQL</h4>
+    <ul>
+      <li>High scalability needed.</li>
+      <li>Flexible / evolving data structures.</li>
+      <li>Low-latency or high-volume ops.</li>
+    </ul>
+
+    <h3>SQL vs. NoSQL — When to Use Which?</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Use SQL (Relational) When...</th><th>Use NoSQL (Non-Relational) When...</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Complex queries, joins, relationships</td><td>High scalability, massive traffic/data volume</td></tr>
+          <tr><td>Strong consistency is required</td><td>Flexible, evolving, or nested data</td></tr>
+          <tr><td>Data is structured &amp; predictable</td><td>Low-latency / high-throughput writes, caching, analytics</td></tr>
+          <tr><td>Examples: Banking, ERP, inventory</td><td>Examples: IoT, social feeds, logs, recommendations</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Scaling Approaches: Vertical vs. Horizontal</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Vertical Scaling (Scale-Up)</th><th>Horizontal Scaling (Scale-Out)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Add more CPU/RAM to one server</td><td>Add more nodes; distribute data</td></tr>
+          <tr><td>Simpler, but hardware-limited</td><td>Elastic, fault-tolerant, scalable</td></tr>
+          <tr><td>SQL DBs (MySQL, PostgreSQL)</td><td>NoSQL DBs (MongoDB, Cassandra)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="advanced-database-topics">Advanced Database Topics</h2>
+
+    <h3>Scaling Strategies — A Recap</h3>
+
+    <h4>Vertical Scaling (Scale-Up)</h4>
+    <ul>
+      <li><strong>Definition:</strong> Boost the capacity of a single server (more CPU, RAM, SSD).</li>
+      <li><strong>Typical with:</strong> Relational/SQL databases.</li>
+      <li><strong>Pros:</strong> Simpler setup; strong consistency via ACID.</li>
+      <li><strong>Cons:</strong> Limited by hardware ceilings; cost grows non-linearly; single point of failure.</li>
+    </ul>
+
+    <div class="archd" aria-label="Vertical scaling diagram">
+      <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Application Server</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>SQL Database</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Scale Up</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">⚙️</span><span>Add CPU / RAM / SSD</span></div>
+    </div>
+
+    <h4>Horizontal Scaling (Scale-Out)</h4>
+    <ul>
+      <li><strong>Definition:</strong> Add more servers/nodes to distribute load and data.</li>
+      <li><strong>Typical with:</strong> NoSQL databases.</li>
+      <li><strong>Pros:</strong> Elastic scalability; handles large-scale traffic and big data; better fault tolerance.</li>
+      <li><strong>Cons:</strong> Increased operational complexity; weaker consistency (often eventual).</li>
+    </ul>
+
+    <div class="archd" aria-label="Horizontal scaling diagram">
+      <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>App Server</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>NoSQL Node 1</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>NoSQL Node 2</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>NoSQL Node 3</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Replicated</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🔁</span><span>Cross-node replication</span></div>
+    </div>
+
+    <p><strong>When to use which?</strong></p>
+    <ul>
+      <li><strong>SQL / Vertical:</strong> Banking, ERP, transactional systems.</li>
+      <li><strong>NoSQL / Horizontal:</strong> Social feeds, product catalogs, IoT, analytics.</li>
+    </ul>
+
+    <h3>Replication</h3>
+    <p><strong>Replication</strong> copies data across multiple database nodes for redundancy and increased throughput.</p>
+
+    <p><strong>Benefits:</strong></p>
+    <ul>
+      <li><strong>Fault Tolerance:</strong> If one node fails, others can serve data.</li>
+      <li><strong>Read Scalability:</strong> Distribute read load across replicas.</li>
+      <li><strong>Data Availability:</strong> Users access data despite node failures.</li>
+    </ul>
+
+    <h4>Leader-Follower (Primary-Replica) Replication</h4>
+    <ul>
+      <li><strong>All writes</strong> go to the <strong>Leader</strong>.</li>
+      <li><strong>Reads</strong> can go to <strong>Followers</strong> (replicas).</li>
+      <li><strong>Asynchronous replication</strong> may cause followers to lag (eventual consistency).</li>
+      <li><strong>Synchronous replication</strong> offers strong consistency but can impact availability.</li>
+    </ul>
+
+    <figure class="diagram" aria-label="Leader-follower primary-replica architecture">
+      <div class="replica-arch">
+        <div class="repl-row">
+          <div class="repl-node client">
+            <div class="repl-cyl">🧑‍💻</div>
+            <div class="repl-name">Client</div>
+            <div class="repl-tag">writes &amp; reads</div>
+          </div>
+        </div>
+        <div class="repl-flow">
+          <span class="repl-arrow"><span class="repl-label">Writes</span></span>
+        </div>
+        <div class="repl-row">
+          <div class="repl-node primary">
+            <div class="repl-cyl">🛢️</div>
+            <div class="repl-name">Leader</div>
+            <div class="repl-tag">primary</div>
+          </div>
+          <div class="repl-node replica">
+            <div class="repl-cyl">🛢️</div>
+            <div class="repl-name">Follower 1</div>
+            <div class="repl-tag">reads</div>
+          </div>
+          <div class="repl-node replica">
+            <div class="repl-cyl">🛢️</div>
+            <div class="repl-name">Follower 2</div>
+            <div class="repl-tag">reads</div>
+          </div>
+        </div>
+        <div class="repl-flow">
+          <span class="repl-arrow"><span class="repl-label">Replicates</span></span>
+        </div>
+        <div class="repl-row">
+          <div class="repl-node client">
+            <div class="repl-cyl">👥</div>
+            <div class="repl-name">Read Clients</div>
+            <div class="repl-tag">load-balanced</div>
+          </div>
+        </div>
+      </div>
+      <figcaption>All writes funnel to the leader; reads fan out across followers</figcaption>
+    </figure>
+
+    <h4>Read Replicas</h4>
+    <ul>
+      <li><strong>Purpose:</strong> Scale read-heavy workloads.</li>
+      <li><strong>All writes</strong> go to the primary; <strong>reads</strong> are balanced across replicas.</li>
+      <li><strong>Trade-off:</strong> Potential for stale reads if replication lags.</li>
+    </ul>
+
+    <figure class="diagram" aria-label="Read replica architecture with separate BI workload">
+      <div class="read-replica">
+        <div class="rr-app-stack">
+          <div class="rr-app">⚙️ App Server 1</div>
+          <div class="rr-app">⚙️ App Server 2</div>
+          <div class="rr-app bi">📊 BI / Reporting Server</div>
+        </div>
+        <div class="rr-arrow-col">
+          <div class="rr-arrow write"><span class="lbl">Read / Write</span></div>
+          <div class="rr-arrow read"><span class="lbl">Read only</span></div>
+        </div>
+        <div class="rr-db-stack">
+          <div class="rr-db primary">
+            <div class="rr-cyl">🛢️</div>
+            <div class="rr-name">Primary</div>
+            <div class="rr-role">writes</div>
+          </div>
+          <div class="rr-db replica">
+            <div class="rr-cyl">🛢️</div>
+            <div class="rr-name">Read Replica</div>
+            <div class="rr-role">reads only</div>
+          </div>
+          <div class="rr-sync">⤓ async replication</div>
+        </div>
+      </div>
+      <figcaption>Heavy BI queries hit the replica — the primary stays free for OLTP traffic</figcaption>
+    </figure>
+
+    <h4>Example: Configuring Read Replicas in PostgreSQL</h4>
+<pre><code class="language-bash"># On the primary server (postgresql.conf)
+wal_level = replica
+max_wal_senders = 10
+hot_standby = on
+
+# On the replica server
+standby_mode = 'on'
+primary_conninfo = 'host=primary_ip user=replicator password=secret'</code></pre>
+
+    <h3>Sharding</h3>
+    <p>As systems outgrow the capacity of a single node, <strong>sharding</strong> divides data across multiple databases or nodes.</p>
+
+    <h4>Types of Sharding</h4>
+    <ul>
+      <li><strong>Horizontal sharding:</strong> Split data by rows — e.g., <code>user_id</code> ranges.</li>
+      <li><strong>Vertical sharding:</strong> Split by feature/domain — e.g., profiles vs. analytics.</li>
+    </ul>
+
+    <h4>Sharding Strategies</h4>
+
+    <p><strong>a) Range-Based Sharding:</strong></p>
+    <ul>
+      <li><strong>How:</strong> Data split by value ranges (e.g., user_id 1-1000 → Shard A).</li>
+      <li><strong>Pro:</strong> Simple, intuitive.</li>
+      <li><strong>Con:</strong> Risk of hotspots if data is skewed.</li>
+    </ul>
+
+    <p><strong>b) Hash-Based Sharding:</strong></p>
+    <ul>
+      <li><strong>How:</strong> Apply a hash function to a key (e.g., <code>user_id</code>) for shard assignment.</li>
+      <li><strong>Pro:</strong> Even distribution.</li>
+      <li><strong>Con:</strong> Range queries are hard; re-sharding is painful.</li>
+    </ul>
+
+<pre><code class="language-python">def get_shard(user_id, num_shards):
+    return hash(user_id) % num_shards
+
+# Usage example
+shard_index = get_shard(12345, 4)  # returns shard index 0-3</code></pre>
+
+    <p><strong>c) Consistent Hashing:</strong></p>
+    <p>Solves the re-sharding problem: only a small subset of keys move when adding/removing nodes.</p>
+
+    <div class="archd" aria-label="Consistent hashing ring">
+      <div class="archd-node is-infra"><span class="archd-icon">⭕</span><span>Hash Ring</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🟢</span><span>Node A</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🟡</span><span>Node B</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🟣</span><span>Node C</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">🔑</span><span>Key 1</span></div>
+        <div class="archd-node"><span class="archd-icon">🔑</span><span>Key 2</span></div>
+        <div class="archd-node"><span class="archd-icon">🔑</span><span>Key 3</span></div>
+        <div class="archd-node"><span class="archd-icon">🔑</span><span>Key 4</span></div>
+      </div>
+    </div>
+
+    <blockquote>Only a subset of keys are remapped when nodes are added/removed.</blockquote>
+
+    <p><strong>d) Geo-Based Sharding:</strong></p>
+    <ul>
+      <li><strong>How:</strong> Shard by geographic region for latency/compliance.</li>
+      <li><strong>Use Case:</strong> Social media, CDN, regionally regulated data.</li>
+    </ul>
+
+    <h3>Polyglot Persistence</h3>
+    <p><strong>Polyglot persistence</strong> means using multiple database types in one architecture, choosing the best tool for each job.</p>
+
+    <p><strong>Why:</strong> Each DB excels at different tasks (search, analytics, relationships).</p>
+    <p><strong>Benefit:</strong> Better performance, optimized storage.</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Data Need</th><th>Recommended DB</th><th>Example Use Case</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Relationships</td><td>Relational (PostgreSQL)</td><td>User profiles, transactions</td></tr>
+          <tr><td>Flexible Documents</td><td>Document (MongoDB)</td><td>Product catalogs</td></tr>
+          <tr><td>Fast Key Access</td><td>Key-Value (Redis)</td><td>Caching, session storage</td></tr>
+          <tr><td>Full-Text Search</td><td>Search Engine (Elasticsearch)</td><td>Search functionality</td></tr>
+          <tr><td>Analytics</td><td>Columnar (Cassandra)</td><td>Log/metrics pipelines</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4>Microservices with Polyglot Persistence</h4>
+    <div class="archd" aria-label="Polyglot persistence across microservices">
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">👤</span><span>User Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Product Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔍</span><span>Search Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📊</span><span>Analytics Service</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🐘</span><span>PostgreSQL</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🍃</span><span>MongoDB</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🔎</span><span>Elasticsearch</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗃️</span><span>Cassandra</span></div>
+      </div>
+    </div>
+
+    <h2 id="object-storage">Object Storage</h2>
+
+    <p><strong>Object storage</strong> is a storage architecture that manages data as <em>objects</em>, rather than as files in a hierarchy (file storage) or blocks (block storage). It stores data as a <strong>flat namespace</strong>.</p>
+
+    <p>Each object contains:</p>
+    <ul>
+      <li>The data itself (e.g., an image, video, or document).</li>
+      <li>A unique identifier (object key).</li>
+      <li>Metadata (extra info: content-type, tags, timestamps, etc.).</li>
+    </ul>
+
+    <p>Unlike traditional file or block storage, object storage systems are:</p>
+    <ul>
+      <li><strong>Scalable:</strong> Billions of objects, petabytes+ of data.</li>
+      <li><strong>Distributed:</strong> Spans servers, data centers, regions, even continents.</li>
+      <li><strong>Optimized for unstructured data:</strong> Handles images, videos, logs, backups, etc.</li>
+    </ul>
+
+    <h3>What Does "Flat Namespace" Mean?</h3>
+    <p>When we say <strong>object storage uses a flat namespace</strong>, it means there are <strong>no hierarchical folders or directories</strong> — every object is stored in a <strong>single logical container (bucket)</strong> and identified by a <strong>unique key (name or ID)</strong>.</p>
+
+    <h4>Example Comparison</h4>
+    <p><strong>File Storage (Hierarchical):</strong></p>
+<pre><code>/images/2025/travel/beach.png
+/images/2025/travel/mountains.png</code></pre>
+    <p>Here, files exist inside real folders (<code>images/</code>, <code>travel/</code>).</p>
+
+    <p><strong>Object Storage (Flat):</strong></p>
+<pre><code>images/2025/travel/beach.png
+images/2025/travel/mountains.png</code></pre>
+    <p>There are <strong>no real folders</strong> — the slashes (<code>/</code>) are <em>just part of the object name</em>. Everything exists in <strong>one big flat space</strong>.</p>
+
+    <h4>AWS S3 Example</h4>
+    <p>In an S3 bucket:</p>
+<pre><code>my-bucket/photos/beach.jpg
+my-bucket/docs/report.pdf
+my-bucket/backups/2025/jan.zip</code></pre>
+
+    <p>Under the hood, S3 does <strong>not</strong> create real directories — it simply stores object keys:</p>
+<pre><code>"photos/beach.jpg"
+"docs/report.pdf"
+"backups/2025/jan.zip"</code></pre>
+
+    <p>The folder view in the AWS Console is <strong>just a visual convenience</strong>.</p>
+
+    <h4>Why Flat Namespace?</h4>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Advantage</th><th>Explanation</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Scalability</td><td>Easier to distribute data across nodes — no directory hierarchy to manage.</td></tr>
+          <tr><td>Simplicity</td><td>Each object has a globally unique key — easy to retrieve directly.</td></tr>
+          <tr><td>Performance</td><td>Ideal for billions of objects — key-based lookup is faster than path traversal.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Analogy:</strong></p>
+    <ul>
+      <li><strong>File storage</strong> → like a <em>folder tree</em> on your computer.</li>
+      <li><strong>Object storage</strong> → like a <em>key-value store</em> — each object is fetched by its <strong>key</strong>, not its folder path.</li>
+    </ul>
+
+    <h3>Key Concepts &amp; Architecture</h3>
+
+    <p><strong>Object:</strong></p>
+    <ul>
+      <li><strong>Definition:</strong> The fundamental unit — a self-contained package of data + metadata + identifier.</li>
+      <li><strong>Analogy:</strong> Like a ZIP file with all relevant info bundled inside.</li>
+    </ul>
+
+    <p><strong>Bucket:</strong></p>
+    <ul>
+      <li><strong>Definition:</strong> A logical container for objects (similar to folders, but flat).</li>
+      <li><strong>Role:</strong> Organizes objects; every object must belong to a bucket.</li>
+    </ul>
+
+    <p><strong>Metadata:</strong></p>
+    <ul>
+      <li><strong>Definition:</strong> Flexible, extensible info about the object.</li>
+      <li><strong>Examples:</strong> MIME type, creation date, owner, custom tags, access controls.</li>
+    </ul>
+
+    <h4>Object Storage Structure</h4>
+    <figure class="diagram" aria-label="Object storage architecture — object surrounded by its components">
+      <div class="obj-hub">
+        <svg viewBox="0 0 480 480" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;z-index:1;" aria-hidden="true">
+          <line x1="240" y1="240" x2="100" y2="100" stroke="var(--primary)" stroke-width="2" opacity="0.6"/>
+          <line x1="240" y1="240" x2="380" y2="100" stroke="var(--primary)" stroke-width="2" opacity="0.6"/>
+          <line x1="240" y1="240" x2="100" y2="380" stroke="var(--primary)" stroke-width="2" opacity="0.6"/>
+          <line x1="240" y1="240" x2="380" y2="380" stroke="var(--primary)" stroke-width="2" opacity="0.6"/>
+        </svg>
+        <div class="obj-center">
+          <div class="obj-icon">📦</div>
+          <div>OBJECT</div>
+        </div>
+        <div class="obj-satellite id">
+          <div class="obj-sat-icon">🔑</div>
+          <div>ID</div>
+        </div>
+        <div class="obj-satellite meta">
+          <div class="obj-sat-icon">🏷️</div>
+          <div>META<br>DATA</div>
+        </div>
+        <div class="obj-satellite data">
+          <div class="obj-sat-icon">💾</div>
+          <div>DATA</div>
+        </div>
+        <div class="obj-satellite attr">
+          <div class="obj-sat-icon">⚙️</div>
+          <div>ATTRIBUTES</div>
+        </div>
+      </div>
+      <figcaption>Every object bundles its data, unique ID, metadata, and attributes into one logical unit</figcaption>
+    </figure>
+
+    <p>And the higher-level view of buckets housing many objects:</p>
+    <div class="archd" aria-label="Object storage buckets and objects">
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🪣</span><span>Bucket: photos<br><small style="font-weight:400;opacity:0.75;">dog.jpg · key: 123abc<br>metadata: type, tags</small></span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🪣</span><span>Bucket: videos<br><small style="font-weight:400;opacity:0.75;">movie.mp4 · key: 456xyz<br>metadata: type, tags</small></span></div>
+      </div>
+    </div>
+
+    <p>A simpler conceptual view:</p>
+<pre><code>Bucket: "user-photos"
+    ├── photo1.jpg (metadata: {uploaded_by: "alice", tags: ["vacation"]})
+    ├── photo2.jpg (metadata: {uploaded_by: "bob", tags: ["profile"]})</code></pre>
+
+    <h3>Popular Object Storage Platforms</h3>
+    <ul>
+      <li><strong>Amazon S3:</strong> Industry gold standard, highly durable, vast ecosystem.</li>
+      <li><strong>Google Cloud Storage (GCS):</strong> Simple tiers, ML/data-lake friendly.</li>
+      <li><strong>Azure Blob Storage:</strong> Deep Microsoft stack integration, flexible tiers.</li>
+      <li><strong>On-prem / Hybrid (Open Source):</strong> MinIO, Ceph — cloud-native APIs in your datacenter.</li>
+    </ul>
+
+    <h3>Common Use Cases</h3>
+    <ul>
+      <li><strong>Media Storage:</strong> Images, videos, design files (YouTube, asset management).</li>
+      <li><strong>Backups &amp; Archives:</strong> Durable, cheap, long-term backup and compliance storage.</li>
+      <li><strong>Data Lakes:</strong> Massive raw-data repositories for analytics/AI (e.g., S3 Data Lake).</li>
+      <li><strong>Static Website Hosting:</strong> Host HTML/CSS/JS directly from S3/GCS buckets.</li>
+      <li><strong>IoT &amp; ML Data Pipelines:</strong> Sink for sensor/model data, high-throughput ingestion.</li>
+    </ul>
+
+    <h3>Performance and Cost Considerations</h3>
+
+    <p><strong>Performance:</strong></p>
+    <ul>
+      <li><strong>Latency:</strong> Higher than block/file storage; not ideal for rapid small reads/writes.</li>
+      <li><strong>Throughput:</strong> Designed for massive parallel access — great for large data sets.</li>
+      <li><strong>Consistency:</strong> Often eventual (e.g., S3), so changes may not be instantly visible.</li>
+      <li><strong>Access Patterns:</strong> Best for "write-once, read-many" workloads; not optimized for frequent updates/appends.</li>
+    </ul>
+
+    <p><strong>Cost:</strong></p>
+    <ul>
+      <li><strong>Storage Tiers:</strong> Standard, Infrequent Access, Archive (e.g., S3 Glacier).</li>
+      <li><strong>Pricing:</strong> Pay for storage used, <em>and</em> for API requests (PUT, GET), and data egress.</li>
+      <li><strong>Best practices:</strong>
+        <ul>
+          <li>Use lifecycle rules to move stale data to cheaper tiers or delete it.</li>
+          <li>Monitor usage, adjust storage classes as access patterns change.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h3>Sample Code: Using Amazon S3 with Python (boto3)</h3>
+
+    <p>A simple upload:</p>
+<pre><code class="language-python">import boto3
+s3 = boto3.client('s3')
+s3.upload_file('photo.jpg', 'mybucket', 'photos/photo.jpg')</code></pre>
+
+    <p>Upload with metadata, download, and head_object:</p>
+<pre><code class="language-python">import boto3
+
+s3 = boto3.client('s3')
+
+# Upload a file with metadata
+s3.upload_file('local_photo.jpg', 'my-photo-bucket', 'photos/dog.jpg',
+               ExtraArgs={'Metadata': {'uploaded_by': 'alice', 'project': 'pets'}})
+
+# Download a file
+s3.download_file('my-photo-bucket', 'photos/dog.jpg', 'downloaded_dog.jpg')
+
+# Get object metadata
+response = s3.head_object(Bucket='my-photo-bucket', Key='photos/dog.jpg')
+print(response['Metadata'])</code></pre>
+
+    <p>Just upload with metadata:</p>
+<pre><code class="language-python">import boto3
+
+s3 = boto3.client('s3')
+s3.upload_file('photo1.jpg', 'mybucket', 'photos/photo1.jpg', ExtraArgs={'Metadata': {'uploaded_by': 'alice'}})</code></pre>
+
+    <h3>Object Storage — Tips &amp; Tricks</h3>
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Pro Tips for Object Storage</div>
+        <ul>
+          <li><strong>Use metadata wisely:</strong> Tag objects for easier search, access control, and automation.</li>
+          <li><strong>Lifecycle rules:</strong> Automate moving old data to cheaper storage or deletion to control costs.</li>
+          <li><strong>Monitor usage:</strong> Use built-in analytics to spot unused or rarely-accessed data.</li>
+          <li><strong>Secure your buckets:</strong> Enforce least-privilege, use bucket policies, enable object versioning.</li>
+          <li><strong>Optimize for access patterns:</strong> Use Standard tier for hot data, Archive/Glacier for cold data.</li>
+          <li><strong>Batch operations:</strong> When possible, batch uploads/downloads to reduce request costs.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Object Storage — Interview Questions</h3>
+    <ul>
+      <li>What is object storage and how is it different from file or block storage?</li>
+      <li>When would you choose object storage over a traditional file system?</li>
+      <li>Explain the structure of an object in object storage. What role does metadata play?</li>
+      <li>Design a media hosting platform (e.g., YouTube). How would you use object storage for video uploads and streaming?</li>
+      <li>What are the performance trade-offs of using object storage for real-time access?</li>
+    </ul>
+
+    <h2 id="file-systems-dfs">File Systems and Distributed Storage</h2>
+
+    <h3>What is a File System?</h3>
+    <p>A <strong>file system</strong> is the foundational layer that defines how data is stored, organized, and accessed on storage media (hard drives, SSDs, removable disks).</p>
+
+    <p><strong>Responsibilities:</strong></p>
+    <ul>
+      <li>Stores files and manages metadata (name, timestamps, permissions, size).</li>
+      <li>Manages directory hierarchy (folders/subfolders).</li>
+      <li>Handles read/write operations and access control.</li>
+    </ul>
+
+    <p><strong>Common file systems:</strong></p>
+    <ul>
+      <li><code>ext4</code> (Linux), <code>NTFS</code> (Windows), <code>XFS</code> (high-performance Linux).</li>
+    </ul>
+
+    <h3>Traditional File Systems: Strengths &amp; Limitations</h3>
+    <p>Traditional file systems use a <strong>hierarchical structure</strong> — folders and files arranged in a tree:</p>
+<pre><code>/ (root)
+└── home/
+    ├── user/
+    │   ├── docs/
+    │   └── photos/</code></pre>
+
+    <p><strong>Key limitations:</strong></p>
+    <ul>
+      <li><strong>Single-node design:</strong> All storage is managed on one machine.</li>
+      <li><strong>Limited scalability:</strong> Cannot easily scale across multiple servers.</li>
+      <li><strong>Not fault tolerant:</strong> Hardware failure = data loss unless external backups are used.</li>
+    </ul>
+
+    <p><strong>Best suited for:</strong> Personal computers, small servers, workloads not requiring distributed, parallel access or massive scale.</p>
+
+    <h3>Distributed File Systems (DFS): The Need for Scale</h3>
+    <blockquote>
+      <strong>Definition:</strong> A DFS allows files to be <strong>stored and accessed across multiple nodes/servers</strong>, but appears as a single file system to users and applications.
+    </blockquote>
+
+    <p><strong>Key benefits:</strong></p>
+    <ul>
+      <li><strong>Redundancy &amp; Fault Tolerance:</strong> Data is replicated across nodes; hardware failure does not mean data loss.</li>
+      <li><strong>Horizontal Scalability:</strong> Add more nodes to increase capacity and throughput.</li>
+      <li><strong>High Throughput:</strong> Parallel read/write operations across the cluster.</li>
+    </ul>
+
+    <p><strong>Real-world examples:</strong></p>
+    <ul>
+      <li><strong>HDFS (Hadoop Distributed File System):</strong> Powers Hadoop and Spark analytics.</li>
+      <li><strong>CephFS, GlusterFS:</strong> Enterprise and scientific storage.</li>
+    </ul>
+
+    <h3>DFS Architecture: NameNode &amp; DataNodes</h3>
+    <p>A classic DFS architecture (like HDFS) has:</p>
+    <ul>
+      <li><strong>NameNode:</strong> The "brain" of DFS. Manages metadata (file names, directories, permissions, block locations).</li>
+      <li><strong>DataNodes:</strong> The "workhorses." Store actual data blocks.</li>
+    </ul>
+
+    <p><strong>How it works:</strong></p>
+    <ol>
+      <li><strong>File upload:</strong> Split into fixed-size blocks (e.g., 128MB).</li>
+      <li><strong>Block distribution:</strong> Blocks are distributed across DataNodes.</li>
+      <li><strong>Replication:</strong> Each block is stored on multiple DataNodes (default: 3 copies).</li>
+      <li><strong>Metadata:</strong> NameNode keeps track of where each block lives.</li>
+    </ol>
+
+    <p><strong>Block size &amp; striping:</strong></p>
+    <ul>
+      <li>Larger blocks = fewer metadata entries, but less flexibility.</li>
+      <li>Striping enables parallel access and higher throughput.</li>
+    </ul>
+
+    <h3>Scalability, Fault Tolerance, and Performance</h3>
+
+    <p><strong>Scalability:</strong></p>
+    <ul>
+      <li><strong>Horizontal scaling:</strong> Add more DataNodes to increase capacity &amp; speed.</li>
+      <li><strong>Automatic rebalancing:</strong> DFS redistributes data as nodes are added/removed.</li>
+    </ul>
+
+    <p><strong>Fault Tolerance:</strong></p>
+    <ul>
+      <li><strong>Replication factor</strong> (e.g., 3) ensures that if one node fails, data is available from another replica.</li>
+      <li><strong>Self-healing:</strong> DFS automatically copies data to healthy nodes if a node goes offline.</li>
+    </ul>
+
+    <p><strong>Performance:</strong></p>
+    <ul>
+      <li><strong>Parallel I/O:</strong> Multiple nodes serve read/write requests simultaneously.</li>
+      <li><strong>High throughput:</strong> Ideal for analytics, machine learning, and backup workloads.</li>
+    </ul>
+
+    <h3>Code Snippet: Accessing HDFS in Python</h3>
+<pre><code class="language-python">from hdfs import InsecureClient
+
+# Connect to HDFS (assumes NameNode at localhost:9870)
+client = InsecureClient('http://localhost:9870', user='hadoop')
+
+# List files in a directory
+print(client.list('/user/data'))
+
+# Write a file to HDFS
+with client.write('/user/data/example.txt', encoding='utf-8') as writer:
+    writer.write('Hello, HDFS!')
+
+# Read a file from HDFS
+with client.read('/user/data/example.txt', encoding='utf-8') as reader:
+    content = reader.read()
+    print(content)</code></pre>
+
+    <h3>DFS Architecture — Visualized</h3>
+    <figure class="diagram" aria-label="HDFS architecture with NameNode, DataNodes, and racks">
+      <div class="hdfs">
+        <div class="hdfs-namenode-row">
+          <div class="hdfs-namenode">
+            <span class="nn-icon">🧠</span>
+            <span>NameNode</span>
+          </div>
+          <div class="hdfs-meta">
+            Metadata (Name, replicas, …):<br>
+            /home/foo/data, 3, …
+          </div>
+        </div>
+        <div class="hdfs-racks">
+          <div class="hdfs-rack">
+            <div class="hdfs-rack-label">Rack 1</div>
+            <div class="hdfs-datanodes">
+              <div class="hdfs-datanode">
+                <div class="dn-name">DataNode</div>
+                <div class="hdfs-blocks">
+                  <div class="hdfs-block"></div>
+                  <div class="hdfs-block"></div>
+                  <div class="hdfs-block"></div>
+                </div>
+              </div>
+              <div class="hdfs-datanode">
+                <div class="dn-name">DataNode</div>
+                <div class="hdfs-blocks">
+                  <div class="hdfs-block"></div>
+                  <div class="hdfs-block"></div>
+                </div>
+              </div>
+              <div class="hdfs-datanode">
+                <div class="dn-name">DataNode</div>
+                <div class="hdfs-blocks">
+                  <div class="hdfs-block"></div>
+                  <div class="hdfs-block"></div>
+                </div>
+              </div>
+              <div class="hdfs-datanode">
+                <div class="dn-name">DataNode</div>
+                <div class="hdfs-blocks">
+                  <div class="hdfs-block"></div>
+                  <div class="hdfs-block"></div>
+                  <div class="hdfs-block"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="hdfs-rack">
+            <div class="hdfs-rack-label">Rack 2</div>
+            <div class="hdfs-datanodes">
+              <div class="hdfs-datanode">
+                <div class="dn-name">DataNode</div>
+                <div class="hdfs-blocks">
+                  <div class="hdfs-block"></div>
+                  <div class="hdfs-block"></div>
+                  <div class="hdfs-block"></div>
+                </div>
+              </div>
+              <div class="hdfs-datanode">
+                <div class="dn-name">DataNode</div>
+                <div class="hdfs-blocks">
+                  <div class="hdfs-block"></div>
+                  <div class="hdfs-block"></div>
+                </div>
+              </div>
+              <div class="hdfs-datanode">
+                <div class="dn-name">DataNode</div>
+                <div class="hdfs-blocks">
+                  <div class="hdfs-block"></div>
+                  <div class="hdfs-block"></div>
+                  <div class="hdfs-block"></div>
+                </div>
+              </div>
+              <div class="hdfs-datanode">
+                <div class="dn-name">DataNode</div>
+                <div class="hdfs-blocks">
+                  <div class="hdfs-block"></div>
+                  <div class="hdfs-block"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="hdfs-clients">
+          <div class="hdfs-client">📖 Client (Read)</div>
+          <div class="hdfs-client">✍️ Client (Write)</div>
+        </div>
+        <div class="hdfs-legend">
+          <span><span class="dot read"></span>Client ops</span>
+          <span><span class="dot write"></span>Block ops via NameNode</span>
+          <span><span class="dot repl"></span>Cross-rack replication (×3)</span>
+        </div>
+      </div>
+      <figcaption>NameNode tracks metadata; DataNodes (across racks) store and replicate blocks</figcaption>
+    </figure>
+
+    <h3>File Systems &amp; DFS — Tips &amp; Tricks</h3>
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Pro Tips for File Systems &amp; DFS</div>
+        <ul>
+          <li><strong>Tune block size:</strong> Adjust based on workload. Larger files → larger blocks.</li>
+          <li><strong>Monitor replication:</strong> Avoid under- or over-replication. Too few = risk of data loss; too many = wasted space.</li>
+          <li><strong>Automate rebalancing:</strong> Enable DFS's built-in rebalancer to redistribute data as nodes are added/removed.</li>
+          <li><strong>Secure your cluster:</strong> Use Kerberos or other authentication for NameNode/DataNodes in production.</li>
+          <li><strong>Optimize for access patterns:</strong> For analytics, use striping and partitioning to maximize parallel access.</li>
+          <li><strong>Plan for NameNode failure:</strong> In HDFS, the NameNode is a single point of failure (unless using HA mode). Always configure NameNode HA for production.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2 id="big-data">Big Data Fundamentals</h2>
+    <p>Modern software systems — from Netflix recommendations to IoT-driven smart factories — are fueled by data. But as data grows in <strong>volume</strong>, <strong>speed</strong>, and <strong>complexity</strong>, traditional storage and processing systems struggle to keep up.</p>
+
+    <h3>The 6 V's of Big Data</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>V</th><th>Description</th><th>Example</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Volume</strong></td><td>Massive data quantities (TBs, PBs, EBs)</td><td>Social media, IoT, transaction logs</td></tr>
+          <tr><td><strong>Velocity</strong></td><td>High speed of data generation and processing</td><td>Clickstreams, sensor feeds, stock data</td></tr>
+          <tr><td><strong>Variety</strong></td><td>Diverse formats: structured, semi/unstructured</td><td>Tables, JSON, images, videos, logs</td></tr>
+          <tr><td><strong>Veracity</strong></td><td>Data quality: accuracy, noise, trustworthiness</td><td>Incomplete, noisy, or ambiguous data</td></tr>
+          <tr><td><strong>Value</strong></td><td>Business or analytical value derived from data</td><td>Insights, decisions, model training</td></tr>
+          <tr><td><strong>Variability</strong></td><td>Inconsistency and unpredictability in data structure</td><td>Changing context, evolving schemas</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Tip</div>
+        <p>In interviews, referencing the 6 V's demonstrates deep understanding of Big Data challenges.</p>
+      </div>
+    </div>
+
+    <h3>Why Traditional Storage Fails at Scale</h3>
+    <ul>
+      <li><strong>Limited scalability:</strong> Vertical scaling hits physical and cost limits.</li>
+      <li><strong>Performance bottlenecks:</strong> Not optimized for parallel reads/writes.</li>
+      <li><strong>Cost inefficiency:</strong> Scaling up is expensive; maintenance is labor-intensive.</li>
+      <li><strong>Lack of fault tolerance:</strong> No built-in redundancy — data loss risk on hardware failure.</li>
+    </ul>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Example</div>
+        <p>Imagine storing petabytes of logs from millions of sensors on a single server — simply infeasible.</p>
+      </div>
+    </div>
+
+    <h3>Distributed Storage for Big Data</h3>
+    <p>Modern Big Data solutions rely on <strong>distributed file systems</strong> and <strong>cloud-native object storage</strong>:</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Storage Type</th><th>Example</th><th>Best For</th><th>Key Features</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Distributed File System</strong></td><td>HDFS, CephFS, GlusterFS</td><td>Analytics, high-throughput workloads</td><td>Replication, horizontal scale, fault tolerance</td></tr>
+          <tr><td><strong>Object Storage</strong></td><td>Amazon S3, GCS, Azure Blob</td><td>Unstructured data, backups, data lakes</td><td>Scalable, metadata-rich, API-driven</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>How Distributed Storage Works:</strong></p>
+    <ul>
+      <li>Data is split into blocks/objects and distributed across many nodes.</li>
+      <li><strong>Replication</strong> ensures that if one node fails, data is safe elsewhere.</li>
+      <li><strong>Horizontal scaling:</strong> Add more nodes to grow storage and throughput.</li>
+    </ul>
+
+    <h3>Big Data Workloads: Real-World Examples</h3>
+    <ul>
+      <li><strong>Logs &amp; Events:</strong> Application/system logs, server metrics (monitoring &amp; auditing).</li>
+      <li><strong>Clickstreams:</strong> Tracks user navigation on websites/apps (personalization, analytics).</li>
+      <li><strong>IoT Data:</strong> Streams from sensors, smart meters, wearables.</li>
+      <li><strong>Machine Learning Pipelines:</strong> Model training, feature extraction, data versioning.</li>
+    </ul>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Commonality</div>
+        <p>All require infrastructure that is scalable, flexible, and can handle both <em>large volumes</em> and <em>high velocity</em>.</p>
+      </div>
+    </div>
+
+    <h3>Batch vs. Stream Processing</h3>
+
+    <h4>Batch Processing</h4>
+    <ul>
+      <li><strong>Definition:</strong> Processes large data chunks at intervals (hourly, nightly).</li>
+      <li><strong>Use Cases:</strong> Historical analysis, ETL jobs, aggregations.</li>
+      <li><strong>Tools:</strong> Hadoop, Apache Spark (batch mode).</li>
+      <li><strong>Trade-offs:</strong> High throughput, but higher latency.</li>
+    </ul>
+
+    <h4>Stream Processing</h4>
+    <ul>
+      <li><strong>Definition:</strong> Processes data in real-time as it arrives.</li>
+      <li><strong>Use Cases:</strong> Monitoring, fraud detection, real-time recommendations.</li>
+      <li><strong>Tools:</strong> Apache Kafka, Spark Streaming, Apache Flink.</li>
+      <li><strong>Trade-offs:</strong> Low latency, continuous insights, but may need more complex infrastructure.</li>
+    </ul>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Batch Processing</th><th>Stream Processing</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Large data chunks</td><td>Real-time, continuous</td></tr>
+          <tr><td>High throughput</td><td>Low latency</td></tr>
+          <tr><td>Higher latency</td><td>Continuous insights</td></tr>
+          <tr><td>Example: Hadoop, Spark</td><td>Example: Kafka, Flink</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4>Batch vs. Stream Pipeline</h4>
+    <div class="archd" aria-label="Big data ingestion and processing pipeline">
+      <div class="archd-node is-user"><span class="archd-icon">📡</span><span>Data Source<br><small style="font-weight:400;opacity:0.85;">Sensors, Logs, Apps</small></span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">📥</span><span>Ingestion<br><small style="font-weight:400;opacity:0.75;">Kafka, Flume</small></span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🧮</span><span>Batch Processing<br><small style="font-weight:400;opacity:0.75;">Hadoop, Spark</small></span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🌊</span><span>Stream Processing<br><small style="font-weight:400;opacity:0.75;">Spark Streaming, Flink</small></span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🏞️</span><span>Data Lake / Analytics</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">📊</span><span>Real-Time Dashboards / Alerts</span></div>
+      </div>
+    </div>
+
+    <h3>Code Example: Simple Batch &amp; Stream Processing</h3>
+
+    <p><strong>Batch Example — Apache Spark (PySpark):</strong></p>
+<pre><code class="language-python">from pyspark.sql import SparkSession
+
+spark = SparkSession.builder.appName("BatchExample").getOrCreate()
+df = spark.read.json("logs/2024-06-01.json")
+agg = df.groupBy("event_type").count()
+agg.show()</code></pre>
+
+    <p><strong>Stream Example — Kafka Consumer (Python):</strong></p>
+<pre><code class="language-python">from kafka import KafkaConsumer
+
+consumer = KafkaConsumer('iot-stream', bootstrap_servers='localhost:9092')
+for msg in consumer:
+    process(msg.value)   # Custom function for real-time processing</code></pre>
+
+    <h3>Big Data Architecture Diagrams</h3>
+
+    <h4>Storage &amp; Processing Pipeline</h4>
+    <div class="archd" aria-label="End-to-end big data architecture">
+      <div class="archd-row">
+        <div class="archd-node is-user"><span class="archd-icon">🛰️</span><span>IoT Sensors</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Web Logs</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">🖱️</span><span>App Clickstreams</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">📥</span><span>Ingestion Layer<br><small style="font-weight:400;opacity:0.75;">Kafka, Flume</small></span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Distributed Storage<br><small style="font-weight:400;opacity:0.75;">HDFS, S3</small></span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🧮</span><span>Batch Processing<br><small style="font-weight:400;opacity:0.75;">Spark, Hadoop</small></span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🌊</span><span>Stream Processing<br><small style="font-weight:400;opacity:0.75;">Flink, Spark Streaming</small></span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">📈</span><span>Analytics / BI</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">⏱️</span><span>Real-Time Dashboards</span></div>
+      </div>
+    </div>
+
+    <h4>HDFS Cluster</h4>
+    <div class="archd" aria-label="HDFS cluster with NameNode and three DataNodes">
+      <div class="archd-node is-infra"><span class="archd-icon">🧠</span><span>NameNode<br><small style="font-weight:400;opacity:0.85;">Metadata Manager</small></span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">💾</span><span>DataNode 1</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">💾</span><span>DataNode 2</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">💾</span><span>DataNode 3</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Peer Sync</span></div>
+      <div class="archd-node is-service"><span class="archd-icon">🔁</span><span>DataNodes replicate blocks among themselves</span></div>
+    </div>
+
+    <h2 id="consistency-models">Consistency Models — A Spectrum, Not a Binary</h2>
+    <p>CAP says "C or A." Reality is more nuanced — between strict serializability and pure eventual consistency lies a useful spectrum:</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Guarantee</th><th>Where you see it</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Strict Serializability</strong></td><td>Operations appear to happen in some total order, in real time</td><td>Spanner, FoundationDB</td></tr>
+          <tr><td><strong>Linearizability</strong></td><td>A read returns the most-recent committed write</td><td>Standalone PostgreSQL</td></tr>
+          <tr><td><strong>Sequential consistency</strong></td><td>All clients see operations in the same order</td><td>etcd, Zookeeper</td></tr>
+          <tr><td><strong>Causal consistency</strong></td><td>If A causes B, all clients see A before B (concurrent ops may differ)</td><td>Many distributed databases</td></tr>
+          <tr><td><strong>Read-your-writes</strong></td><td>A client sees its own writes immediately</td><td>Important for UX (your tweet shows up after you post it)</td></tr>
+          <tr><td><strong>Monotonic reads</strong></td><td>A client never sees data going "backward"</td><td>Avoids confusing UI flickers</td></tr>
+          <tr><td><strong>Eventual</strong></td><td>Replicas converge eventually (no time bound)</td><td>DynamoDB defaults, S3</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Practical Takeaway</div>
+        <p>Most apps want <strong>read-your-writes + monotonic reads</strong> at minimum. Pure "eventual" is usually too weak — users will see things appear and disappear. Most modern databases offer read-your-writes via <em>session consistency</em> or <em>primary-read</em>.</p>
+      </div>
+    </div>
+
+    <h2 id="storage-engines">Storage Engines: B-Tree vs LSM-Tree</h2>
+    <p>Two foundational data structures power almost every database. Knowing which one your DB uses tells you what it's good at.</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Engine</th><th>Used by</th><th>Optimized for</th><th>Cost</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>B-Tree</strong></td><td>PostgreSQL, MySQL (InnoDB), SQLite</td><td>Read-heavy, point lookups, range queries</td><td>Write amplification on update; in-place updates</td></tr>
+          <tr><td><strong>LSM-Tree</strong></td><td>Cassandra, RocksDB, LevelDB, HBase, ScyllaDB</td><td>Write-heavy, append-only</td><td>Reads may touch multiple SSTables; needs compaction</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Rule of thumb:</strong></p>
+    <ul>
+      <li>Mostly reads? <strong>B-tree DB.</strong></li>
+      <li>Mostly writes (time series, log ingest, IoT)? <strong>LSM-tree DB.</strong></li>
+      <li>Mixed? Most modern OLTP DBs (Postgres, MySQL) work fine — don't over-optimize.</li>
+    </ul>
+
+    <h2 id="block-file-object">Block vs File vs Object Storage — They're NOT Interchangeable</h2>
+    <p>Probably the most common confusion in storage design.</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Type</th><th>Access pattern</th><th>Examples</th><th>Use case</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Block</strong></td><td>Raw blocks, low-level, fast</td><td>AWS EBS, Azure Disk, on-prem SAN</td><td>Database disks, VM filesystems</td></tr>
+          <tr><td><strong>File</strong></td><td>Hierarchical filesystem, POSIX</td><td>AWS EFS, Azure Files, NFS</td><td>Shared filesystem across servers</td></tr>
+          <tr><td><strong>Object</strong></td><td>HTTP API, no hierarchy</td><td>S3, GCS, Azure Blob</td><td>Media, backups, data lakes, static sites</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Rule</div>
+        <p>Use <strong>block</strong> for things that need a filesystem (DBs, VMs). Use <strong>file</strong> for legacy apps that need shared file access. Use <strong>object</strong> for everything else — it's cheaper, infinitely scalable, and HTTP-native.</p>
+      </div>
+    </div>
+
+    <h2 id="specialized-dbs">Specialized Database Types Worth Knowing</h2>
+    <p>Beyond SQL and the four NoSQL categories, modern systems often use specialized stores:</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Type</th><th>Examples</th><th>Use case</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Time-series</strong></td><td>InfluxDB, TimescaleDB, Prometheus</td><td>Metrics, IoT, financial ticks</td></tr>
+          <tr><td><strong>Search</strong></td><td>Elasticsearch, OpenSearch, Meilisearch</td><td>Full-text search, faceting, log analytics</td></tr>
+          <tr><td><strong>Vector</strong></td><td>Pinecone, Weaviate, Milvus, pgvector</td><td>Embeddings for ML/AI (semantic search, RAG)</td></tr>
+          <tr><td><strong>Graph</strong></td><td>Neo4j, JanusGraph, Neptune</td><td>Highly connected data (social, fraud, knowledge graphs)</td></tr>
+          <tr><td><strong>Wide-column</strong></td><td>Cassandra, HBase, ScyllaDB</td><td>Huge write throughput, time-series scale</td></tr>
+          <tr><td><strong>In-memory KV</strong></td><td>Redis, Memcached</td><td>Caching, rate limiting, leaderboards</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Polyglot Persistence</div>
+        <p><strong>Polyglot persistence</strong> means using multiple databases for different parts of one system. Modern apps routinely mix PostgreSQL + Redis + Elasticsearch + S3.</p>
+      </div>
+    </div>
+
+    <h2 id="choosing-storage">Choosing the Right Storage Solution</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Requirement</th><th>Best Storage Type</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Structured, relational data</td><td>SQL (e.g., PostgreSQL, MySQL)</td></tr>
+          <tr><td>Flexible, large-scale, evolving</td><td>NoSQL (e.g., MongoDB, Cassandra)</td></tr>
+          <tr><td>Unstructured, large media/files</td><td>Object Storage (e.g., S3, GCS)</td></tr>
+          <tr><td>High throughput, analytics</td><td>Distributed File Systems (e.g., HDFS, CephFS)</td></tr>
+          <tr><td>Real-time or batch big data</td><td>Distributed Storage + Processing (HDFS, S3, Delta Lake)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="tips-tricks">Combined Tips &amp; Tricks</h2>
+    <p>A consolidated master list drawn from across all sections.</p>
+
+    <h3>Data Modeling</h3>
+    <ul>
+      <li><strong>Always know your data!</strong> Structured or unstructured? This guides storage and DB choice.</li>
+      <li>For SQL, design normalized schemas; for NoSQL, optimize for access patterns.</li>
+      <li><strong>Know your consistency needs:</strong> Financial or mission-critical systems need strong consistency (ACID/CP). For social feeds or caching, availability (AP/BASE) is often more valuable.</li>
+    </ul>
+
+    <h3>Scaling</h3>
+    <ul>
+      <li><strong>Design for scale from day one:</strong> Use distributed storage and sharding for growth.</li>
+      <li><strong>Plan for scale:</strong> If you expect massive growth, design for horizontal scaling — favor NoSQL or distributed SQL solutions.</li>
+      <li><strong>Always anticipate growth:</strong> Use horizontal scaling and sharding from the beginning if you expect rapid user/data growth.</li>
+      <li><strong>Mix and match (polyglot) for best results:</strong> Use the right database for the right task.</li>
+      <li><strong>Use consistent hashing for dynamic clusters</strong>, especially if you expect nodes to be added/removed frequently.</li>
+      <li><strong>Document your sharding key choices:</strong> Poorly chosen sharding keys can lead to hotspots or unbalanced data.</li>
+    </ul>
+
+    <h3>Reliability &amp; Replication</h3>
+    <ul>
+      <li><strong>Replication for read-heavy systems:</strong> Deploy read replicas to distribute load but monitor replication lag.</li>
+      <li><strong>Automate failover and recovery:</strong> Use managed database services or robust orchestration for quick failover.</li>
+      <li><strong>Test failover and replication regularly:</strong> Don't just set it and forget it.</li>
+      <li><strong>Simulate failures:</strong> Test your replication and failover strategies (e.g., using Chaos Engineering).</li>
+    </ul>
+
+    <h3>Trade-offs</h3>
+    <ul>
+      <li><strong>Monitor the CAP trade-offs:</strong> Decide early if your system values consistency over availability, or vice versa.</li>
+      <li><strong>Monitor trade-offs:</strong> Optimize for the property (scalability, reliability, or performance) that aligns with your business needs.</li>
+    </ul>
+
+    <h3>Object &amp; Distributed Storage</h3>
+    <ul>
+      <li><strong>Use object storage for unstructured, growing data:</strong> Images, backups, logs belong here.</li>
+      <li><strong>Choose storage class wisely:</strong> For S3, select Standard, Infrequent Access, or Glacier based on retrieval needs and cost.</li>
+      <li><strong>Automate lifecycle management:</strong> Set up archiving/deletion policies to control costs.</li>
+      <li><strong>Object Storage Cost:</strong> Use lifecycle policies to move old data to cheaper storage classes (e.g., S3 Glacier).</li>
+      <li><strong>DFS for Analytics:</strong> Choose HDFS or similar for big data processing pipelines, ensuring replication and scalability.</li>
+    </ul>
+
+    <h3>Big Data</h3>
+    <ul>
+      <li><strong>Know your 6 V's:</strong> Always consider volume, velocity, variety, veracity, value, and variability.</li>
+      <li><strong>Hybrid processing:</strong> Combine batch (for large-scale analytics) and stream (for real-time actions) for robust solutions.</li>
+      <li><strong>Choose storage wisely:</strong> Use distributed file/object storage for unstructured or high-scale data.</li>
+      <li><strong>Design for failure:</strong> Plan for node failures — replication and redundancy are non-negotiable.</li>
+      <li><strong>Optimize cost:</strong> Leverage storage class tiers for hot vs. cold data.</li>
+      <li><strong>Processing tool selection:</strong> Spark/Hadoop for batch, Kafka/Flink/Spark Streaming for real-time.</li>
+      <li><strong>Monitor and clean data:</strong> Poor veracity can taint downstream analytics.</li>
+      <li><strong>Scalability first:</strong> Assume your data will grow — design horizontally scalable systems from the start.</li>
+    </ul>
+
+    <h3>Security &amp; Operations</h3>
+    <ul>
+      <li><strong>Security:</strong> Implement access controls and encryption, especially for object and distributed storage.</li>
+      <li><strong>Backup:</strong> Regularly backup critical data, and test restoration procedures.</li>
+      <li><strong>Utilize managed services:</strong> Cloud databases (AWS RDS, DynamoDB, Google Cloud Firestore) can offload maintenance and scalability headaches.</li>
+      <li><strong>Monitor and revisit:</strong> Periodically reassess data models, scaling strategies, and storage trade-offs.</li>
+    </ul>
+
+    <h2 id="interview-questions">Sample Interview Questions</h2>
+    <ol>
+      <li>Why is storage a critical component in system design?</li>
+      <li>How do you differentiate between structured and unstructured data?</li>
+      <li>What are the different types of storage systems and their use cases?</li>
+      <li>Explain the CAP theorem with real-world examples.</li>
+      <li>When would you use SQL vs. NoSQL?</li>
+      <li>How would you architect storage for a photo-sharing app?</li>
+      <li>What are the pros and cons of sharding and replication?</li>
+      <li>How do object, file, and block storage differ in access patterns and scalability?</li>
+      <li>What is object storage and how is it different from file or block storage?</li>
+      <li>When would you choose object storage over a traditional file system?</li>
+      <li>Design a media hosting platform (e.g., YouTube) — how would you use object storage?</li>
+      <li>What are the core constraints of REST?</li>
+      <li>Explain the difference between PUT and PATCH.</li>
+    </ol>
+
+    <h2 id="summary">Summary &amp; Key Takeaways</h2>
+    <ul>
+      <li><strong>Storage is foundational:</strong> Impacts every system's performance, reliability, and cost.</li>
+      <li><strong>Understand your data:</strong> Structured vs. unstructured shapes your architecture.</li>
+      <li><strong>No one-size-fits-all:</strong> Use the right combination of storage types — real-world systems often combine several.</li>
+      <li><strong>CAP theorem drives trade-offs:</strong> Know where your system stands.</li>
+      <li><strong>SQL and NoSQL both matter:</strong> Choose based on access patterns, schema, and scale.</li>
+      <li><strong>Scale smart:</strong> Use sharding, replication, and polyglot persistence for modern workloads.</li>
+      <li><strong>Object and distributed file storage:</strong> Power unstructured data and big data analytics.</li>
+      <li><strong>Plan for big data:</strong> Use distributed storage and batch/stream processing for large, fast data.</li>
+      <li><strong>Big Data</strong> is defined not just by size, but by its speed, diversity, quality, and business value.</li>
+      <li><strong>System design</strong> for Big Data is about managing trade-offs: scale, reliability, consistency, and cost.</li>
+    </ul>
+
+    <h2 id="further-reading">📚 Further Reading</h2>
+    <ul>
+      <li><a href="https://aws.amazon.com/products/storage/" target="_blank">AWS Storage Services Overview</a></li>
+      <li><a href="https://cloud.google.com/storage/docs/" target="_blank">Google Cloud Storage Documentation</a></li>
+      <li><a href="https://aws.amazon.com/s3/" target="_blank">Amazon S3 Overview</a></li>
+      <li><a href="https://en.wikipedia.org/wiki/CAP_theorem" target="_blank">CAP Theorem on Wikipedia</a></li>
+      <li><a href="https://martin.kleppmann.com/2012/05/14/cap-theorem.html" target="_blank">CAP Theorem Explained (Martin Kleppmann)</a></li>
+      <li><a href="https://martinfowler.com/bliki/PolyglotPersistence.html" target="_blank">Polyglot Persistence Patterns (Martin Fowler)</a></li>
+      <li><a href="https://www.ibm.com/cloud/blog/acid-vs-base" target="_blank">ACID vs. BASE Explained</a></li>
+      <li><a href="https://jepsen.io/" target="_blank">Jepsen: Consistency Models</a></li>
+      <li><a href="https://aws.amazon.com/architecture/databases/" target="_blank">AWS Architecture Blog: Scaling Databases</a></li>
+      <li><a href="https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html" target="_blank">HDFS Architecture Guide (Apache)</a></li>
+      <li><a href="https://hadoop.apache.org/docs/r1.2.1/hdfs_design.html" target="_blank">HDFS Design Doc</a></li>
+      <li><a href="https://docs.ceph.com/en/latest/cephfs/" target="_blank">CephFS Documentation</a></li>
+      <li><a href="https://docs.gluster.org/en/latest/" target="_blank">GlusterFS Overview</a></li>
+      <li><a href="https://spark.apache.org/streaming/" target="_blank">Apache Spark Streaming</a></li>
+    </ul>
+
+    <p><strong>Next Up:</strong> Chapter 8 — Performance: Concepts, Tools &amp; Techniques — making systems not just work, but work <em>fast and efficiently</em>.</p>
+
+    <nav class="chapter-nav">
+      <a class="chapter-nav-card" href="6 - Scalability in System Design.html">
+        <div class="chapter-nav-label">← Previous</div>
+        <div class="chapter-nav-title">Chapter 6 — Scalability</div>
+      </a>
+      <a class="chapter-nav-card next" href="8 - Performance - Concepts, Tools %26 Techniques.html">
+        <div class="chapter-nav-label">Next chapter →</div>
+        <div class="chapter-nav-title">Chapter 8 — Performance</div>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="../assets/system-design.js"></script>
+
+</body>
+</html>

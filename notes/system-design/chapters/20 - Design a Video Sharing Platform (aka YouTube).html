@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chapter 20 — Video Sharing (YouTube)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<link rel="stylesheet" href="../assets/system-design.css">
+</head>
+<body><a href="../../../notes.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;z-index:99999;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600;background:#0f172a;color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.28)">&#8592; AI Library</a>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">
+    <span class="brand-icon">SD</span>
+    <span>Mastering System Design</span>
+  </a>
+  <div class="topbar-actions">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Chapter 20 — On This Page</h3>
+    <ul class="toc-list" id="tocList">
+      <li><a href="#learning-outcomes">Learning Outcomes</a></li>
+      <li><a href="#what-are-we-building">What Are We Building?</a></li>
+      <li><a href="#functional-requirements">Functional Requirements</a></li>
+      <li><a href="#non-functional-requirements">Non-Functional Requirements</a></li>
+      <li><a href="#architecture-overview">Architecture Overview</a></li>
+      <li><a href="#core-components">Core Components</a></li>
+      <li><a href="#scale-estimation">Scale Estimation</a></li>
+      <li><a href="#storage-estimation">Storage Estimation</a></li>
+      <li><a href="#network-bandwidth">Network &amp; Bandwidth</a></li>
+      <li><a href="#bottlenecks-solutions">Bottlenecks &amp; Solutions</a></li>
+      <li><a href="#communication-patterns">Communication Patterns</a></li>
+      <li><a href="#end-to-end-upload-workflow">End-to-End Upload Workflow</a></li>
+      <li><a href="#encoding-pipeline">Encoding Pipeline</a></li>
+      <li><a href="#storage-design">Storage Design</a></li>
+      <li><a href="#database-schema">Database Schema</a></li>
+      <li><a href="#api-design">API Design</a></li>
+      <li><a href="#search-recommendations">Search &amp; Recommendations</a></li>
+      <li><a href="#tech-stack">Tech Stack</a></li>
+      <li><a href="#security-abuse-prevention">Security &amp; Abuse Prevention</a></li>
+      <li><a href="#beyond-mvp">Beyond MVP — Senior Designer</a></li>
+      <li><a href="#tips-tricks">Tips &amp; Tricks</a></li>
+      <li><a href="#conclusion">Conclusion</a></li>
+      <li><a href="#further-reading">Further Reading</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <span class="chapter-label">Chapter 20 · Case Study</span>
+      <h1>Designing a Scalable Video Sharing Platform (YouTube)</h1>
+      <p class="hero-subtitle">
+        Walk through the end-to-end architecture of a modern video platform — chunked uploads, a multi-resolution encoding pipeline, global CDN delivery, HLS/DASH adaptive streaming, sharded view counters, and a two-stage recommendation engine.
+      </p>
+      <div class="hero-author">By Charikshith</div>
+    </section>
+
+    <p>In today's world, video sharing platforms like YouTube handle <strong>hundreds of millions of users</strong>, <strong>billions of videos</strong>, and <strong>petabytes of daily traffic</strong>. Building such a platform requires not only robust functional design, but also careful attention to scalability, performance, reliability, and cost.</p>
+
+    <p>In this case study, we'll walk through the <strong>end-to-end architecture</strong> of a modern video sharing platform — requirements, scale estimation, encoding pipeline, storage strategy, CDN delivery, real-time engagement, and recommendation systems.</p>
+
+    <h2 id="learning-outcomes">🎯 Learning Outcomes</h2>
+    <p>After working through this case study, you'll be able to:</p>
+    <ol class="outcomes-list">
+      <li><span class="outcome-num">1</span><span>Design a <strong>multi-resolution encoding pipeline</strong> with HLS/DASH for adaptive streaming.</span></li>
+      <li><span class="outcome-num">2</span><span>Choose between <strong>VOD (video on demand) and live streaming</strong> architectures.</span></li>
+      <li><span class="outcome-num">3</span><span>Build a <strong>view-counter</strong> that handles 100K updates/sec without exploding the DB.</span></li>
+      <li><span class="outcome-num">4</span><span>Reason about <strong>CDN costs</strong> and how to minimize them with tiered storage.</span></li>
+      <li><span class="outcome-num">5</span><span>Outline a <strong>recommendation engine</strong> at a high level (candidate generation + ranking).</span></li>
+    </ol>
+
+    <h2 id="what-are-we-building">What Are We Building?</h2>
+    <p>A platform where users can:</p>
+    <ul>
+      <li><strong>Upload and watch videos.</strong></li>
+      <li><strong>Like, comment, and share.</strong></li>
+      <li><strong>Search and browse content.</strong></li>
+      <li><strong>Subscribe to channels.</strong></li>
+      <li><strong>View personalized recommendations.</strong></li>
+    </ul>
+
+    <h3>Core User Workflows</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Workflow</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Upload a Video</strong></td><td>Chunked upload → Processing (encoding, thumbnail) → Storage → Ready for playback</td></tr>
+          <tr><td><strong>Watch a Video</strong></td><td>Stream from CDN using adaptive bitrate (HLS/DASH) based on device/network</td></tr>
+          <tr><td><strong>Search &amp; Browse</strong></td><td>Filter and discover content by tags, categories, or popularity</td></tr>
+          <tr><td><strong>Engagement</strong></td><td>Like, comment, share, subscribe — social actions that boost stickiness</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="functional-requirements">Functional Requirements</h2>
+    <ol>
+      <li><strong>User registration and authentication</strong> (OAuth2/JWT).</li>
+      <li><strong>Upload large video files</strong> (chunked, resumable).</li>
+      <li><strong>Encode videos to multiple resolutions</strong> (240p–4K).</li>
+      <li><strong>On-demand adaptive streaming</strong> (HLS/DASH protocols).</li>
+      <li><strong>Metadata management</strong> (title, description, tags, timestamps).</li>
+      <li><strong>Engagement tracking</strong> (likes, comments, views, subscriptions).</li>
+      <li><strong>Powerful search &amp; discovery.</strong></li>
+      <li><strong>Personalized home/feed</strong> (recommendations).</li>
+    </ol>
+
+    <h2 id="non-functional-requirements">Non-Functional Requirements</h2>
+    <ul>
+      <li><strong>Low latency streaming</strong> (instant video start, smooth seek).</li>
+      <li><strong>High availability</strong> (24/7, geo-replicated, fault-tolerant).</li>
+      <li><strong>Horizontal scalability</strong> (support billions of videos/users).</li>
+      <li><strong>Efficient storage &amp; cost management</strong> (tiered, object storage).</li>
+      <li><strong>Global delivery</strong> (CDN-backed, regional routing).</li>
+      <li><strong>Security and abuse prevention</strong> (secure uploads, spam/copyright/DoS filters).</li>
+    </ul>
+
+    <h2 id="architecture-overview">Architecture Overview</h2>
+
+    <h3>High-Level Block Diagram</h3>
+    <div class="archd" aria-label="High-level video sharing platform architecture">
+      <div class="archd-node is-user"><span class="archd-icon">📱</span><span>Client Apps</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">👥</span><span>User Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">❤️</span><span>Engagement Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📝</span><span>Metadata Service</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload &amp; Ingestion</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🎬</span><span>Encoding Pipeline</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Blob Storage (S3/GCS)</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Event Queue (Kafka/SQS)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔎</span><span>Search &amp; Discovery</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🤖</span><span>Recommendation Engine</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-external"><span class="archd-icon">🌍</span><span>CDN (Global Edge Delivery)</span></div>
+    </div>
+
+    <h3>Detailed Architecture</h3>
+    <p>A more detailed view of how the major services interact, including caches per concern:</p>
+    <div class="archd" aria-label="Detailed video platform architecture">
+      <div class="archd-node is-user"><span class="archd-icon">📱</span><span>Client (Web/Mobile App)</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">REST / gRPC</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload / Ingestion</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📝</span><span>Metadata Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">👥</span><span>User Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">❤️</span><span>Engagement Service</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">async msg</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Encoding Job Queue</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🎬</span><span>Encoding Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔎</span><span>Search &amp; Discovery</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🤖</span><span>Recommendation Engine</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Video Object Storage</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">⚡</span><span>Metadata Cache</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">⚡</span><span>Search Cache</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">⚡</span><span>Recommendation Cache</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-external"><span class="archd-icon">🌍</span><span>CDN streams to client</span></div>
+    </div>
+
+    <h2 id="core-components">Core Components</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Component</th><th>Role</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>API Gateway</strong></td><td>Entry point; routes requests, enforces authentication, rate-limits, logs</td></tr>
+          <tr><td><strong>Upload &amp; Ingestion</strong></td><td>Handles file uploads, stores temp files, triggers encoding jobs via queue</td></tr>
+          <tr><td><strong>Encoding Service</strong></td><td>Transcodes video to multiple resolutions, generates thumbnails, prepares HLS/DASH manifests</td></tr>
+          <tr><td><strong>Video Storage &amp; CDN</strong></td><td>Stores video blobs; CDN serves videos globally with low latency</td></tr>
+          <tr><td><strong>Metadata Service</strong></td><td>Stores video info (title, tags), provides mapping between ID and location</td></tr>
+          <tr><td><strong>User Service</strong></td><td>Manages user profiles, authentication, subscriptions</td></tr>
+          <tr><td><strong>Engagement Service</strong></td><td>Tracks views, likes, comments, anti-abuse logic, async event logging</td></tr>
+          <tr><td><strong>Search &amp; Discovery</strong></td><td>Real-time search for videos/channels using tags, titles, trends</td></tr>
+          <tr><td><strong>Recommendation Engine</strong></td><td>Personalizes feeds using behavior, collaborative filtering, ML models</td></tr>
+          <tr><td><strong>Caches</strong></td><td>Redis/Memcached for metadata, recommendations, search fast-paths</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="scale-estimation">Scale Estimation</h2>
+    <p>Designing for <strong>100M users, 10M uploads/day, 500M daily views</strong>.</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>Assumption</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Registered Users</td><td>100 million</td></tr>
+          <tr><td>Daily Video Uploads</td><td>10 million</td></tr>
+          <tr><td>Daily Video Views</td><td>500 million</td></tr>
+          <tr><td>Daily Engagement Events</td><td>100 million (likes, comments, shares, etc.)</td></tr>
+          <tr><td>Average Video Length</td><td>10 minutes</td></tr>
+          <tr><td>Video Metadata Size</td><td>~1 KB per video</td></tr>
+          <tr><td>Engagement Event Size</td><td>~500 bytes/event</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Why These Numbers Matter</h3>
+    <ul>
+      <li><strong>Authentication and Profile Management</strong> must scale to millions of users.</li>
+      <li><strong>Ingestion Pipeline</strong> must handle concurrent uploads and multi-format transcoding.</li>
+      <li><strong>Streaming</strong> requires massive CDN bandwidth for half a billion daily views.</li>
+      <li><strong>Storage</strong> must efficiently handle raw and encoded video, plus metadata and engagement logs.</li>
+      <li><strong>Metadata and Engagement</strong> drive read/write loads and require real-time indexing.</li>
+    </ul>
+
+    <h2 id="storage-estimation">Storage Estimation</h2>
+
+    <h3>Raw Video Storage</h3>
+    <ul>
+      <li><strong>Average Upload:</strong> 10 minutes × 5 MB/minute = <strong>50 MB/video.</strong></li>
+      <li><strong>Daily Uploads:</strong> 10M × 50 MB = <strong>500 TB/day</strong> raw ingestion.</li>
+      <li><strong>Temporary Buffer:</strong> Retain for 30 days → <strong>15 PB/month</strong> rolling buffer.</li>
+    </ul>
+
+    <h3>Encoded Versions</h3>
+    <ul>
+      <li><strong>4-5 resolutions:</strong> Storage multiplies ~3× (240p, 480p, 720p, 1080p).</li>
+      <li><strong>Daily Storage:</strong> 1.5 PB/day (including transcoded versions).</li>
+      <li><strong>Monthly Storage:</strong> 1.5 PB × 30 = <strong>45 PB/month</strong> (permanent, durable storage).</li>
+    </ul>
+
+<pre><code class="language-python">def estimate_storage(avg_mb_per_video, uploads_per_day, days, encoding_multiplier):
+    return avg_mb_per_video * uploads_per_day * encoding_multiplier * days / 1024 / 1024  # in PB
+
+# 50 MB/video, 10 million uploads, 30 days, 3x (encoded)
+permanent_storage_pb = estimate_storage(50, 10_000_000, 30, 3)
+print(f"Estimated permanent storage: {permanent_storage_pb:.2f} PB")
+# Output: Estimated permanent storage: 45.00 PB</code></pre>
+
+    <h2 id="network-bandwidth">Network &amp; Bandwidth</h2>
+
+    <h3>Daily Video Streaming Egress</h3>
+    <ul>
+      <li><strong>Active Users:</strong> 100M × 3 videos/day = 300M video views.</li>
+      <li><strong>Total Watch Time:</strong> 300M × 10 min = 3B minutes = <strong>50M hours/day.</strong></li>
+      <li><strong>Average Streaming Rate:</strong> 1 Mbps (~0.45 GB/hour).</li>
+      <li><strong>Egress:</strong> 50M hours × 0.45 GB = <strong>22.5 PB/day.</strong></li>
+      <li>(Note: Some assumptions push this higher; always sanity-check calculations.)</li>
+    </ul>
+
+    <h3>Peak Load</h3>
+    <ul>
+      <li><strong>Peak Concurrent Streams:</strong> 10M users × 1 Mbps = <strong>10 Tbps egress.</strong></li>
+    </ul>
+
+    <h3>Metadata &amp; Engagement Scale</h3>
+    <ul>
+      <li><strong>Video Metadata:</strong> 10M new rows/day (~1 KB each).</li>
+      <li><strong>Engagement Events:</strong> 100M/day (~500 bytes each) → ~50 GB/day.</li>
+      <li><strong>Indexing:</strong> Real-time updates for search and feed freshness.</li>
+      <li><strong>Read Patterns:</strong> Hot content triggers thousands of queries/sec.</li>
+    </ul>
+
+    <h2 id="bottlenecks-solutions">Bottlenecks &amp; Solutions</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Area</th><th>Bottleneck / Challenge</th><th>Solution(s)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Storage</td><td>Petabyte-scale video &amp; variants</td><td>Tiered blob storage; lifecycle policies; cold storage</td></tr>
+          <tr><td>Processing</td><td>Encoding 10M uploads/day × multi-res</td><td>Autoscaling GPU workers; distributed queue (Kafka/SQS)</td></tr>
+          <tr><td>Network/CDN</td><td>100s of PB egress, 10M concurrent streams</td><td>Global CDN, edge caching, adaptive bitrate streaming</td></tr>
+          <tr><td>Engagement Data</td><td>100M+ writes/day, real-time analytics/aggregation</td><td>Event queues, sharded counters, async aggregation</td></tr>
+          <tr><td>Search/Discovery</td><td>Real-time indexing, high QPS</td><td>Distributed search (Elasticsearch), in-memory cache</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="communication-patterns">Communication Patterns</h2>
+    <p>A <strong>hybrid model</strong> ensures both responsiveness and scalability.</p>
+    <ul>
+      <li><strong>Synchronous (REST/gRPC):</strong> For real-time interactions (metadata fetch, user info, search).
+        <ul>
+          <li>Client ↔ API Gateway: REST (OAuth2/JWT secured).</li>
+          <li>Service ↔ Service: gRPC favored for speed and type safety.</li>
+        </ul>
+      </li>
+      <li><strong>Asynchronous (Event Bus/Queue):</strong> For background processing (uploads, encoding, engagement).
+        <ul>
+          <li>Video upload triggers an event; encoding processes queue asynchronously.</li>
+          <li>Engagement events (like, comment) flow into analytics.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h2 id="end-to-end-upload-workflow">End-to-End Upload Workflow</h2>
+    <ol>
+      <li><strong>User initiates upload:</strong> Client app sends <code>POST /upload</code> (chunked upload) to API Gateway.</li>
+      <li><strong>Upload &amp; ingestion:</strong> API Gateway routes to Upload Service, which temporarily stores the video. Generates a unique <code>video_id</code>. Triggers encoding job via Encoding Job Queue.</li>
+      <li><strong>Encoding &amp; processing:</strong> Encoding Service picks up the job, transcodes to multiple formats (240p–4K). Generates thumbnails, manifests (HLS/DASH), stores in Object Storage.</li>
+      <li><strong>Final storage &amp; CDN:</strong> Processed video uploaded to object storage. CDN automatically ingests for global edge serving.</li>
+      <li><strong>Metadata update:</strong> Metadata Service stores video title, description, tags, uploader, status. Updates search index and caches.</li>
+      <li><strong>Ready for search/playback:</strong> User can now search for the video, view recommendations, or play.</li>
+      <li><strong>Engagement tracking:</strong> Likes, comments, views are sent as async events to Engagement Service.</li>
+    </ol>
+
+    <h3>Sequence Diagram — Upload Path</h3>
+    <div class="archd-seq" aria-label="Upload sequence diagram">
+      <div class="archd-seq-step"><span class="num">1</span>User selects video to upload</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">selects video</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Frontend</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Frontend submits upload through API Gateway</div>
+      <div class="archd-seq-row">
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Frontend</span></div>
+        <div class="archd-seq-arrow right"><span class="label">POST /upload (video)</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+        <div class="archd-seq-arrow right"><span class="label">forward</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Upload Service persists raw video and enqueues encoding job</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">store raw video</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Object Storage</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">publish encoding job</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Kafka / SQS</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Encoding Service consumes job and writes variants</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Kafka / SQS</span></div>
+        <div class="archd-seq-arrow right"><span class="label">consume job</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🎬</span><span>Encoding Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">upload encoded variants</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Object Storage</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">5</span>CDN picks up, frontend notifies user</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Object Storage</span></div>
+        <div class="archd-seq-arrow right"><span class="label">CDN pickup</span></div>
+        <div class="archd-node is-external"><span class="archd-icon">🌍</span><span>CDN</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Frontend</span></div>
+        <div class="archd-seq-arrow right"><span class="label">notify upload complete</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      </div>
+    </div>
+
+    <h3>Sequence Diagram — Metadata + Playback Path</h3>
+    <p>A simpler version focusing on the metadata-update path:</p>
+    <div class="archd-seq" aria-label="Metadata update sequence diagram">
+      <div class="archd-seq-step"><span class="num">1</span>Client uploads via API Gateway</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">POST /upload</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+        <div class="archd-seq-arrow right"><span class="label">forward</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload / Ingestion</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Encoding Queue triggers Encoding Service</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload / Ingestion</span></div>
+        <div class="archd-seq-arrow right"><span class="label">enqueue encoding job</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Encoding Queue</span></div>
+        <div class="archd-seq-arrow right"><span class="label">notify</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🎬</span><span>Encoding Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Encoding writes outputs and updates metadata</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🎬</span><span>Encoding Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">upload transcoded files</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Object Storage</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🎬</span><span>Encoding Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">update status, metadata</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📝</span><span>Metadata Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>CDN ingests; client requests playback</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Object Storage</span></div>
+        <div class="archd-seq-arrow right"><span class="label">trigger CDN cache</span></div>
+        <div class="archd-node is-external"><span class="archd-icon">🌍</span><span>CDN</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">GET /videos/{id}</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+        <div class="archd-seq-arrow right"><span class="label">serve video stream</span></div>
+        <div class="archd-node is-external"><span class="archd-icon">🌍</span><span>CDN</span></div>
+      </div>
+    </div>
+
+    <h2 id="encoding-pipeline">Encoding Pipeline</h2>
+
+    <h3>Async Trigger (Pseudocode)</h3>
+<pre><code class="language-python">def handle_upload(file, metadata):
+    video_id = generate_id()
+    store_temp(file, video_id)
+    publish_event("encoding_requested", {"video_id": video_id, /* ... */})</code></pre>
+
+    <h3>Encoding Job Queue (Python + SQS + ffmpeg)</h3>
+<pre><code class="language-python">import boto3
+import subprocess
+import json
+
+sqs = boto3.client('sqs')
+QUEUE_URL = 'https://sqs.us-west-2.amazonaws.com/123/video-encode'
+
+def process_jobs():
+    while True:
+        messages = sqs.receive_message(QueueUrl=QUEUE_URL, MaxNumberOfMessages=1)
+        for msg in messages.get('Messages', []):
+            job = json.loads(msg['Body'])
+            video_path = download_temp_file(job['temp_url'])
+            for res in [240, 480, 720, 1080]:
+                out_path = f'/tmp/{job["video_id"]}_{res}p.mp4'
+                subprocess.run(['ffmpeg', '-i', video_path, '-s', f'{res}x{res//9*16}', out_path])
+                upload_to_s3(out_path, f'videos/{job["video_id"]}/{res}p.mp4')
+            update_metadata(job['video_id'], status='READY')
+            sqs.delete_message(QueueUrl=QUEUE_URL, ReceiptHandle=msg['ReceiptHandle'])</code></pre>
+
+    <h3>Kafka Producer / Consumer (Node.js)</h3>
+<pre><code class="language-javascript">// Upload Service: publish encoding job
+producer.send({
+  topic: 'video-uploads',
+  messages: [
+    { key: videoId, value: JSON.stringify({ videoId, tempLocation }) }
+  ]
+});
+
+// Encoding Service: subscribe to encoding jobs
+consumer.subscribe({ topic: 'video-uploads' });
+consumer.run({
+  eachMessage: async ({ message }) => {
+    const job = JSON.parse(message.value);
+    await transcodeAndStore(job.videoId, job.tempLocation);
+  }
+});</code></pre>
+
+    <h2 id="storage-design">Storage Design</h2>
+
+    <h3>Video Files</h3>
+    <ul>
+      <li><strong>Object storage:</strong> AWS S3, Google Cloud Storage, Azure Blob.</li>
+      <li><strong>CDN:</strong> Cloudflare, Akamai, AWS CloudFront for global edge caching.</li>
+    </ul>
+
+    <h3>Metadata &amp; Engagement</h3>
+    <ul>
+      <li><strong>Relational DB:</strong> PostgreSQL/MySQL for structured metadata.</li>
+      <li><strong>NoSQL:</strong> MongoDB for flexible user preferences, recommendations.</li>
+      <li><strong>Cache:</strong> Redis/Memcached for hot data (sessions, metadata).</li>
+    </ul>
+
+    <h3>Data Storage Decisions</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Data Type</th><th>Storage Layer</th><th>Tech Examples</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Video Files</td><td>Object Storage + CDN</td><td>AWS S3, GCS + Cloudflare</td></tr>
+          <tr><td>Metadata</td><td>Relational DB &amp; Cache</td><td>PostgreSQL/MySQL, Redis</td></tr>
+          <tr><td>User Profiles</td><td>Relational/NoSQL DB</td><td>PostgreSQL, MongoDB</td></tr>
+          <tr><td>Engagement Data</td><td>Event Queue + NoSQL/Cache</td><td>Kafka/SQS, Redis, Cassandra</td></tr>
+          <tr><td>Search Index</td><td>Distributed Search Engine</td><td>Elasticsearch, Meilisearch</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="database-schema">Database Schema</h2>
+    <p>A simplified relational schema (PostgreSQL):</p>
+<pre><code class="language-sql">-- Videos (simple)
+CREATE TABLE videos (
+  video_id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(user_id),
+  title VARCHAR(200),
+  description TEXT,
+  upload_date TIMESTAMP,
+  status VARCHAR(20),
+  thumbnail_url TEXT
+);</code></pre>
+
+    <p>A more complete schema:</p>
+<pre><code class="language-sql">-- Users
+CREATE TABLE users (
+    user_id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    username VARCHAR(64) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    join_date TIMESTAMP DEFAULT NOW(),
+    profile_picture TEXT
+);
+
+-- Videos
+CREATE TABLE videos (
+    video_id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(user_id),
+    title VARCHAR(255),
+    description TEXT,
+    upload_date TIMESTAMP DEFAULT NOW(),
+    status VARCHAR(32),
+    thumbnail_url TEXT
+);
+
+-- Likes
+CREATE TABLE likes (
+    like_id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(user_id),
+    video_id INT REFERENCES videos(video_id),
+    timestamp TIMESTAMP DEFAULT NOW()
+);
+
+-- Comments
+CREATE TABLE comments (
+    comment_id SERIAL PRIMARY KEY,
+    video_id INT REFERENCES videos(video_id),
+    user_id INT REFERENCES users(user_id),
+    comment_text TEXT,
+    timestamp TIMESTAMP DEFAULT NOW()
+);
+
+-- Watch History
+CREATE TABLE watch_history (
+    history_id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(user_id),
+    video_id INT REFERENCES videos(video_id),
+    watch_timestamp TIMESTAMP DEFAULT NOW()
+);
+
+-- Video Analytics (aggregated)
+CREATE TABLE video_analytics (
+    video_id INT REFERENCES videos(video_id),
+    views BIGINT,
+    likes BIGINT,
+    shares BIGINT,
+    dislikes BIGINT,
+    comments_count BIGINT,
+    PRIMARY KEY (video_id)
+);</code></pre>
+
+    <h2 id="api-design">API Design</h2>
+
+    <h3>REST Endpoints</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Endpoint</th><th>Method</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>/api/register</code></td><td>POST</td><td>User registration</td></tr>
+          <tr><td><code>/api/login</code></td><td>POST</td><td>Issue JWT token</td></tr>
+          <tr><td><code>/api/upload</code></td><td>POST</td><td>Initiate video upload (chunked)</td></tr>
+          <tr><td><code>/api/videos/{id}</code></td><td>GET</td><td>Fetch video metadata &amp; stream URLs</td></tr>
+          <tr><td><code>/api/like</code></td><td>POST</td><td>Like a video</td></tr>
+          <tr><td><code>/api/search</code></td><td>GET</td><td>Search videos by keyword/tags</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Upload (with JWT)</h3>
+<pre><code class="language-bash">POST /api/upload
+Authorization: Bearer &lt;token&gt;
+Content-Type: multipart/form-data
+Body: { video_file, title, description }
+
+200 OK
+{
+  "video_id": "abc123",
+  "status": "processing"
+}</code></pre>
+
+    <h3>JWT Authentication Middleware (Express.js)</h3>
+<pre><code class="language-javascript">const jwt = require('jsonwebtoken');
+
+app.post('/api/upload', authenticateJWT, (req, res) =&gt; {
+  // Handle video upload
+});
+
+function authenticateJWT(req, res, next) {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (token) {
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) =&gt; {
+      if (err) return res.sendStatus(403);
+      req.user = user;
+      next();
+    });
+  } else {
+    res.sendStatus(401);
+  }
+}</code></pre>
+
+    <h3>Express Upload Endpoint (Multer)</h3>
+<pre><code class="language-javascript">const express = require('express');
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' });
+const app = express();
+
+app.post('/api/upload', upload.single('video'), (req, res) =&gt; {
+  // Process file, trigger encoding, etc.
+  res.json({ status: 'uploaded', file: req.file });
+});</code></pre>
+
+    <h3>React Video Upload Component</h3>
+<pre><code class="language-javascript">import React, { useState } from "react";
+
+function VideoUpload() {
+  const [file, setFile] = useState(null);
+
+  const handleChange = (e) =&gt; setFile(e.target.files[0]);
+  const handleSubmit = async (e) =&gt; {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append('video', file);
+    await fetch('/api/upload', { method: 'POST', body: formData });
+  };
+
+  return (
+    &lt;form onSubmit={handleSubmit}&gt;
+      &lt;input type="file" onChange={handleChange} accept="video/*" /&gt;
+      &lt;button type="submit"&gt;Upload&lt;/button&gt;
+    &lt;/form&gt;
+  );
+}</code></pre>
+
+    <h3>JWT Issue Example</h3>
+<pre><code class="language-javascript">const jwt = require('jsonwebtoken');
+const token = jwt.sign({ userId: 123 }, 'SECRET', { expiresIn: '1h' });</code></pre>
+
+    <h2 id="search-recommendations">Search &amp; Recommendations</h2>
+    <ul>
+      <li><strong>Real-time indexing:</strong> As soon as videos are uploaded, metadata is indexed for search.</li>
+      <li><strong>Distributed search infra:</strong> Use Elasticsearch for sharded, full-text, and filtered queries.</li>
+      <li><strong>Caching:</strong> Hot queries/results (trending, popular) cached in Redis.</li>
+      <li><strong>Recommendation engine:</strong> Personalizes feeds using behavior data and collaborative filtering.</li>
+    </ul>
+
+    <h3>Search API Endpoint (Node.js / Express + Elasticsearch)</h3>
+<pre><code class="language-javascript">app.get('/search', async (req, res) =&gt; {
+  const query = req.query.q;
+  const results = await elastic.search({
+    index: 'videos',
+    body: {
+      query: {
+        multi_match: {
+          query, fields: ['title', 'description', 'tags']
+        }
+      }
+    }
+  });
+  res.json(results.hits.hits);
+});</code></pre>
+
+    <h2 id="tech-stack">Tech Stack</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Layer</th><th>Suggested Tech</th><th>Why</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Frontend</td><td>React.js / Vue.js</td><td>Component-based, modular, responsive UIs</td></tr>
+          <tr><td>Backend</td><td>Node.js + Express</td><td>Asynchronous, scalable for high concurrency</td></tr>
+          <tr><td>Video Storage</td><td>AWS S3 / GCS, multi-region</td><td>Scalable, durable object storage</td></tr>
+          <tr><td>CDN</td><td>Cloudflare / CloudFront</td><td>Global, low-latency streaming via edge caching</td></tr>
+          <tr><td>DB (Metadata)</td><td>PostgreSQL / MySQL</td><td>ACID compliance, structured relational data</td></tr>
+          <tr><td>DB (NoSQL)</td><td>MongoDB</td><td>Schema-less, flexible for user prefs/recommendations</td></tr>
+          <tr><td>Search</td><td>Elasticsearch / Meilisearch</td><td>Sharded full-text &amp; filtered queries</td></tr>
+          <tr><td>Event Processing</td><td>Kafka / SQS</td><td>Decoupling, async processing</td></tr>
+          <tr><td>Orchestration</td><td>Kubernetes</td><td>Automated deployment, scaling</td></tr>
+          <tr><td>Auth</td><td>OAuth2 / JWT</td><td>Modern, secure, token-based, stateless</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="security-abuse-prevention">Security &amp; Abuse Prevention</h2>
+    <ul>
+      <li><strong>Authentication:</strong> OAuth2/JWT for all client requests.</li>
+      <li><strong>Secure uploads:</strong> Signed URLs for direct client uploads to storage.</li>
+      <li><strong>Rate limiting:</strong> API Gateway enforces per-user/IP quotas.</li>
+      <li><strong>Abuse detection:</strong> Asynchronous moderation jobs for spam/copyright/explicit content.</li>
+    </ul>
+
+    <h2 id="beyond-mvp">Beyond MVP — What a Senior Designer Adds</h2>
+
+    <h3>Adaptive Bitrate Streaming (HLS / DASH)</h3>
+    <p>You don't actually serve one video file — you serve a <strong>manifest</strong> that points to many short segments (~6s each) at multiple bitrates (240p, 480p, 720p, 1080p, 4K). The player picks the bitrate based on the user's network speed and switches mid-stream as conditions change.</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Protocol</th><th>Origin</th><th>Manifest</th><th>Segments</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>HLS</strong> (HTTP Live Streaming)</td><td>Apple's standard</td><td><code>.m3u8</code></td><td><code>.ts</code></td></tr>
+          <tr><td><strong>DASH</strong> (Dynamic Adaptive Streaming over HTTP)</td><td>MPEG standard</td><td><code>.mpd</code></td><td><code>.m4s</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Both are HTTP-based — work over CDNs, no special protocols needed.</p>
+
+    <h3>View Counter at Scale</h3>
+    <div class="callout callout-warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-content">
+        <div class="callout-title">Naive Counter = Lock Contention Disaster</div>
+        <p>A naive <code>UPDATE videos SET view_count = view_count + 1</code> on every view = lock contention disaster.</p>
+      </div>
+    </div>
+    <p><strong>Pattern:</strong></p>
+    <ol>
+      <li>Each view → emit event to Kafka.</li>
+      <li>Worker buckets events into 1-minute windows and increments a Redis counter.</li>
+      <li>Background job rolls Redis counters into the DB every N minutes.</li>
+      <li>The "view count" shown to users is read from Redis (eventually consistent, that's fine).</li>
+    </ol>
+    <p>This easily handles 100K+ views/sec without the DB ever seeing single-row contention.</p>
+
+    <h3>VOD vs Live Streaming</h3>
+    <p>Most of this chapter is VOD (encode once, serve forever). Live is different:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Aspect</th><th>VOD (this chapter)</th><th>Live Streaming</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Ingest protocol</td><td>HTTP chunked upload</td><td>RTMP (legacy) or WebRTC/SRT (modern low-latency)</td></tr>
+          <tr><td>Transcoding</td><td>Batch, post-upload</td><td>Real-time, to multiple bitrates</td></tr>
+          <tr><td>Manifest</td><td>Static once encoded</td><td>Updated continuously as new segments are produced</td></tr>
+          <tr><td>End-to-end latency</td><td>N/A (on-demand)</td><td>10–30 s for traditional HLS; &lt;1 s for low-latency HLS / WebRTC</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Recommendation Engine (At a Glance)</h3>
+    <p>Two-stage system used by all major platforms:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Stage</th><th>Goal</th><th>Technique</th><th>Optimized for</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>1. Candidate generation</strong></td><td>From billions of videos, pick ~1000 candidates the user <em>might</em> like</td><td>Collaborative filtering, embeddings, knowledge graphs</td><td>Recall (not precision)</td></tr>
+          <tr><td><strong>2. Ranking</strong></td><td>Score the 1000 candidates and return top 20</td><td>Heavier ML model (deep neural net considering user features, video features, freshness, watch-time priors)</td><td>Precision</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Total budget: ~100ms end-to-end. Candidate generation does most of the work.</p>
+
+    <h3>Content ID (Copyright Detection)</h3>
+    <p>YouTube famously runs uploaded videos against a fingerprint database (Shazam-like, but for video + audio). Matches trigger monetization claims, restrictions, or takedowns.</p>
+    <p><strong>Pattern:</strong> extract audio/video fingerprints offline; index in a specialized DB (Annoy, FAISS for embeddings). On upload, fingerprint the new video, query the index, evaluate matches against business rules.</p>
+
+    <h3>Cost Optimization (Storage Lifecycle)</h3>
+    <p>A 4-year-old video with 12 lifetime views shouldn't sit on "hot" SSD. Move it to cheaper tiers:</p>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">🔥</div>
+        <div class="card-title">Hot (last 30 days, popular)</div>
+        <div class="card-body">S3 Standard / regional SSDs. Fast first byte.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🌤️</div>
+        <div class="card-title">Warm (30–365 days, occasional)</div>
+        <div class="card-body">S3 Standard-IA. Slower retrievals but cheaper storage.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">❄️</div>
+        <div class="card-title">Cold (&gt;1 year, rare views)</div>
+        <div class="card-body">S3 Glacier, minutes-to-restore. Acceptable for long-tail.</div>
+      </div>
+    </div>
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Tiered Storage Math</div>
+        <p>Lifecycle policies automate the transitions. Done right, <strong>storage costs can drop 5–10×.</strong></p>
+      </div>
+    </div>
+
+    <h3>Live Chat (for Live Streams)</h3>
+    <p>Real-time chat overlay on live streams hits a different scaling problem than the video itself. 100K concurrent chatters all writing → all watchers receiving = huge fan-out.</p>
+    <p><strong>Pattern:</strong> chat is its own service (separate from video). Pub/Sub (Redis Streams or Kafka) for fan-out. Aggressively shard by <code>stream_id</code>.</p>
+
+    <h2 id="tips-tricks">💡 Tips &amp; Tricks</h2>
+
+    <h3>System Design Approach</h3>
+    <ol>
+      <li><strong>Start with the user journey.</strong> Map out core workflows before jumping to tech.</li>
+      <li><strong>Quantify everything.</strong> Estimate users, uploads, storage, bandwidth.</li>
+      <li><strong>Prioritize non-functional requirements.</strong> Latency, availability, and scalability drive your infra decisions.</li>
+      <li><strong>Always draw diagrams.</strong> Even ASCII diagrams help clarify your architecture in interviews.</li>
+    </ol>
+
+    <h3>Architecture</h3>
+    <ol start="5">
+      <li><strong>Embrace asynchronous processing.</strong> Use queues for uploads, encoding, and engagement events.</li>
+      <li><strong>Decouple processing with queues.</strong> All heavy processing (like encoding) should be async via queues.</li>
+      <li><strong>Horizontal scalability is key.</strong> Design every stateless service to scale horizontally.</li>
+      <li><strong>Always separate hot and cold paths.</strong> Use object storage and CDN for hot content; move old/rarely accessed videos to cold storage.</li>
+      <li><strong>Separate reads and writes:</strong> Employ CQRS for heavy analytics.</li>
+    </ol>
+
+    <h3>Storage &amp; Delivery</h3>
+    <ol start="10">
+      <li><strong>Use tiered storage.</strong> Hot/warm/cold storage cuts costs for older/less-viewed content.</li>
+      <li><strong>Leverage CDNs.</strong> Global delivery isn't optional for video at scale.</li>
+      <li><strong>CDN cache invalidation.</strong> When a video is updated, trigger CDN cache purge.</li>
+      <li><strong>Secure video URLs:</strong> Use signed URLs with short TTL for playback links.</li>
+    </ol>
+
+    <h3>Encoding</h3>
+    <ol start="14">
+      <li><strong>Autoscale encoding.</strong> Use Kubernetes jobs with GPU support for parallel encoding.</li>
+      <li><strong>Chunked uploads.</strong> For large files, implement chunked uploads (Tus or S3 multipart) — resumable &amp; prevents server overloads.</li>
+    </ol>
+
+    <h3>Engagement</h3>
+    <ol start="16">
+      <li><strong>Sharded counters.</strong> For views/likes, use sharded counters to avoid single-point bottlenecks.</li>
+      <li><strong>Async aggregation.</strong> Aggregate stats like views and likes in the background, not on write path.</li>
+      <li><strong>Eventual consistency.</strong> Not all counters (views, likes) need strong consistency.</li>
+      <li><strong>Batch &amp; shard engagement data.</strong> Process in batches, store in sharded stores.</li>
+    </ol>
+
+    <h3>Search &amp; Discovery</h3>
+    <ol start="20">
+      <li><strong>Real-time indexing.</strong> Use event-driven updates (Kafka → Elasticsearch) for instant searchability.</li>
+      <li><strong>Search optimization:</strong> Use Elasticsearch or Meilisearch with real-time indexing.</li>
+    </ol>
+
+    <h3>Performance</h3>
+    <ol start="22">
+      <li><strong>Cache aggressively.</strong> Use Redis/Memcached for hot metadata, search results, personalized feeds.</li>
+      <li><strong>Optimize for hot content.</strong> Pre-cache popular videos and metadata; use CDN edge prefetching.</li>
+    </ol>
+
+    <h3>Operations</h3>
+    <ol start="24">
+      <li><strong>Cold storage policies.</strong> Automatically move old, rarely accessed videos to cheaper storage.</li>
+      <li><strong>Monitoring &amp; autoscaling.</strong> Track ingestion, processing, and streaming metrics. Use cloud-native autoscaling.</li>
+      <li><strong>Abuse prevention.</strong> Rate limit at API Gateway, moderate comments via ML models, filter uploads for spam/content violations.</li>
+      <li><strong>API versioning.</strong> Plan for forward/backward compatibility.</li>
+      <li><strong>Data consistency.</strong> Use eventual consistency for engagement; strict consistency for user auth and metadata.</li>
+    </ol>
+
+    <h3>Reliability</h3>
+    <ol start="29">
+      <li><strong>Schema design matters.</strong> Plan for append-only and high-write tables. Use time-based or hash-based sharding.</li>
+      <li><strong>Prepare for failure.</strong> Graceful degradation: even if encoding or recommendation fails, the rest of the platform should function.</li>
+    </ol>
+
+    <h2 id="conclusion">Conclusion</h2>
+    <p>By combining <strong>microservices</strong>, <strong>object storage</strong>, <strong>CDN</strong>, <strong>caching</strong>, and <strong>event-driven processing</strong>, this architecture ensures that your video sharing platform will be <strong>scalable, reliable, and performant.</strong> Each service is easily maintainable, independently deployable, and can scale to billions of videos and users.</p>
+    <p>Whether preparing for a system design interview or architecting a real-world solution, remember: <strong>modularity, decoupling, and scalability</strong> should drive your design decisions.</p>
+
+    <h2 id="further-reading">📚 Further Reading</h2>
+    <ul>
+      <li><a href="http://highscalability.com/blog/2012/3/12/you-tube-architecture.html" target="_blank">YouTube Architecture (High Scalability)</a></li>
+      <li><a href="https://www.infoq.com/articles/YouTube-Architecture/" target="_blank">YouTube Architecture 101</a></li>
+      <li><a href="https://aws.amazon.com/solutions/case-studies/video-streaming/" target="_blank">AWS Reference: Video Streaming at Scale</a></li>
+      <li><a href="https://aws.amazon.com/solutions/implementations/video-on-demand-on-aws/" target="_blank">AWS Video on Demand Solution</a></li>
+      <li><a href="https://www.cloudflare.com/learning/cdn/what-is-a-cdn/" target="_blank">CDNs Explained</a></li>
+      <li><a href="https://microservices.io/" target="_blank">Microservices Patterns</a></li>
+    </ul>
+
+    <nav class="chapter-nav">
+      <a class="chapter-nav-card" href="19 - Design a Cloud Storage Solution (aka Google Drive, Dropbox).html">
+        <div class="chapter-nav-label">← Previous</div>
+        <div class="chapter-nav-title">Chapter 19 — Cloud Storage</div>
+      </a>
+      <a class="chapter-nav-card next" href="21 - Design a Search Engine(aka Google).html">
+        <div class="chapter-nav-label">Next chapter →</div>
+        <div class="chapter-nav-title">Chapter 21 — Search Engine (Google)</div>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../assets/system-design.js"></script>
+
+</body>
+</html>

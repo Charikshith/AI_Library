@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chapter 12 — URL Shortener (TinyURL)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<link rel="stylesheet" href="../assets/system-design.css">
+</head>
+<body><a href="../../../notes.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;z-index:99999;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600;background:#0f172a;color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.28)">&#8592; AI Library</a>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">
+    <span class="brand-icon">SD</span>
+    <span>Mastering System Design</span>
+  </a>
+  <div class="topbar-actions">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Chapter 12 — On This Page</h3>
+    <ul class="toc-list" id="tocList">
+      <li><a href="#learning-outcomes">Learning Outcomes</a></li>
+      <li><a href="#introduction">Introduction &amp; Why Build One?</a></li>
+      <li><a href="#functional-requirements">Functional Requirements</a></li>
+      <li><a href="#non-functional-requirements">Non-Functional Requirements</a></li>
+      <li><a href="#unique-key-generation">Unique Key Generation</a></li>
+      <li><a href="#estimating-scale">Estimating Scale &amp; Bottlenecks</a></li>
+      <li><a href="#api-design">API Design</a></li>
+      <li><a href="#high-level-architecture">High-Level Architecture</a></li>
+      <li><a href="#zookeeper">Distributed Collision Handling</a></li>
+      <li><a href="#tech-stack">Tech Stack &amp; Infrastructure</a></li>
+      <li><a href="#critical-flows">Critical Flows</a></li>
+      <li><a href="#sample-code">Sample Code Walkthrough</a></li>
+      <li><a href="#beyond-mvp">Beyond MVP — Senior Designer Adds</a></li>
+      <li><a href="#tips-and-tricks">Tips and Tricks</a></li>
+      <li><a href="#summary">Summary</a></li>
+      <li><a href="#further-reading">Further Reading</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <span class="chapter-label">Chapter 12 · Case Study</span>
+      <h1>Designing a URL Shortener (TinyURL)</h1>
+      <p class="hero-subtitle">
+        A complete bit.ly-style case study: from extreme read-write asymmetry and base62 encoding to Zookeeper-coordinated ID generation, hot-URL caching, custom aliases, and abuse prevention — applying the 4-step blueprint end-to-end.
+      </p>
+      <div class="hero-author">By Charikshith</div>
+    </section>
+
+    <p>Welcome to our first case study: a comprehensive guide on designing a <strong>URL shortener service</strong> like <a href="https://tinyurl.com/" target="_blank">TinyURL</a> from the ground up. We'll apply the 4-step blueprint from Chapter 11 to cover everything from <strong>requirements gathering</strong> to <strong>distributed coordination</strong>, with code snippets, diagrams, and practical tips.</p>
+
+    <p>URL shorteners like TinyURL and <a href="https://bitly.com" target="_blank">Bitly</a> are essential for condensing long URLs into compact, shareable links — crucial for platforms with character limits or for branding and analytics.</p>
+
+    <h2 id="learning-outcomes">🎯 Learning Outcomes</h2>
+    <p>After working through this case study, you'll be able to:</p>
+    <ol class="outcomes-list">
+      <li><span class="outcome-num">1</span><span>Design a system optimized for <strong>extreme read-write asymmetry</strong> (500:1 reads to writes).</span></li>
+      <li><span class="outcome-num">2</span><span>Choose between <strong>counter+base62</strong>, <strong>hashing</strong>, <strong>UUID</strong>, and <strong>random</strong> for unique ID generation — and explain when each fails.</span></li>
+      <li><span class="outcome-num">3</span><span>Apply <strong>Zookeeper or Snowflake-style ID generation</strong> for distributed coordination.</span></li>
+      <li><span class="outcome-num">4</span><span>Design click analytics that <strong>don't slow down the hot path</strong> (302 redirect).</span></li>
+      <li><span class="outcome-num">5</span><span>Defend against <strong>abuse vectors</strong> (phishing, malicious redirects, scraping).</span></li>
+    </ol>
+
+    <h2 id="introduction">Introduction &amp; Why Build a URL Shortener?</h2>
+    <p>A <strong>URL shortener</strong> transforms a long, complex URL into a short, unique, and manageable link:</p>
+<pre><code class="language-bash">https://www.example.com/very/long/path/to/resource
+→ https://tinyurl.com/abc123</code></pre>
+
+    <h3>Why Build One?</h3>
+    <ul>
+      <li><strong>Compact links:</strong> Ideal for Twitter, SMS, QR codes, or anywhere with length limits.</li>
+      <li><strong>Enhanced UX:</strong> Clean, readable, easy to share.</li>
+      <li><strong>Click tracking:</strong> Analytics for link performance.</li>
+      <li><strong>Branding:</strong> Custom domains for businesses.</li>
+      <li><strong>Cross-channel friendly:</strong> Works across emails, chat, and even print.</li>
+    </ul>
+
+    <h3>How Does It Work?</h3>
+    <ol>
+      <li><strong>User submits a long URL.</strong></li>
+      <li><strong>System generates a unique short key.</strong></li>
+      <li><strong>Stores the mapping</strong> (short key → original URL) in a database.</li>
+      <li><strong>When the short URL is accessed,</strong> the system redirects to the original URL.</li>
+    </ol>
+
+    <h2 id="functional-requirements">Functional Requirements</h2>
+    <ol>
+      <li><strong>Shorten a URL:</strong> Accept a valid long URL and return a shortened URL.
+        <ul><li><em>If the same URL is submitted, return the same short URL (unless a custom alias is used).</em></li></ul>
+      </li>
+      <li><strong>Redirect to original URL:</strong> On accessing the short URL, redirect (HTTP 302) to the original.</li>
+      <li><strong>Prevent duplicate short URLs:</strong> Avoid multiple short URLs for the same long URL by default.</li>
+      <li><strong>User authentication:</strong> Allow user registration/login to manage URLs, view analytics, set expiration, delete links.</li>
+    </ol>
+
+    <h2 id="non-functional-requirements">Non-Functional Requirements</h2>
+    <ul>
+      <li><strong>High availability:</strong> 24/7 uptime, &gt;99.9%.</li>
+      <li><strong>Performance &amp; low latency:</strong> Redirections in milliseconds; URL shortening near-instantaneous.</li>
+      <li><strong>Scalability:</strong> Support millions to billions of URLs. High read volume (redirects); moderate write volume (new URLs).</li>
+      <li><strong>Reliability:</strong> No data loss even during failures; use durable storage, replication, and backups.</li>
+    </ul>
+
+    <h2 id="unique-key-generation">Unique Key Generation Strategies</h2>
+    <p>Key generation is critical for uniqueness, compactness, and scalability.</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Strategy</th><th>Pros</th><th>Cons</th><th>Suitability for TinyURL</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Random String</strong></td><td>Unpredictable, simple</td><td>Collisions, requires handling</td><td>❌</td></tr>
+          <tr><td><strong>UUID</strong></td><td>Globally unique</td><td>Long, not user-friendly</td><td>❌</td></tr>
+          <tr><td><strong>Hashing + Salt</strong></td><td>Unique, secure, hard to reverse</td><td>Not always short, collision possible</td><td>❌</td></tr>
+          <tr><td><strong>Base62 Encoding (ID)</strong></td><td>Short, compact, deterministic, scalable</td><td>Needs counter management</td><td>✅ <strong>Recommended</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Detailed Strategy Notes</h3>
+    <ul>
+      <li><strong>Random String Generation:</strong> Creates a fixed-length string from random characters.
+        <ul>
+          <li>✅ Unpredictable, no obvious pattern.</li>
+          <li>⚠️ Risk of collisions, requires collision handling.</li>
+        </ul>
+      </li>
+      <li><strong>UUID:</strong> 128-bit globally unique identifier (e.g., <code>123e4567-e89b-12d3-a456...</code>).
+        <ul>
+          <li>✅ Guaranteed uniqueness, no central coordination.</li>
+          <li>⚠️ Very long, not user-friendly.</li>
+        </ul>
+      </li>
+      <li><strong>Hashing with Salt:</strong> Hashes the original URL (e.g., SHA-256 + salt).
+        <ul>
+          <li>✅ Unique, secure, hard to reverse.</li>
+          <li>⚠️ May not be short, collision possible, needs mapping storage.</li>
+        </ul>
+      </li>
+      <li><strong>Base62 Encoding:</strong> Converts incrementing ID to Base62 (0-9, a-z, A-Z).
+        <ul>
+          <li>✅ Short, compact, deterministic, easy to implement.</li>
+          <li>⚠️ Needs counter management to avoid collisions.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h3>Recommended: Base62 Encoding</h3>
+    <ul>
+      <li>Use an incrementing ID, encode in Base62 (<code>0-9</code>, <code>a-z</code>, <code>A-Z</code>) for short, unique keys.</li>
+      <li>Requires a globally unique counter (see <a href="#zookeeper">Distributed Collision Handling with Zookeeper</a>).</li>
+    </ul>
+
+    <h4>Base62 Encoding Code</h4>
+<pre><code class="language-python">import string
+
+BASE62 = string.digits + string.ascii_letters
+
+def encode_base62(num):
+    if num == 0: return BASE62[0]
+    arr = []
+    while num:
+        num, rem = divmod(num, 62)
+        arr.append(BASE62[rem])
+    arr.reverse()
+    return ''.join(arr)
+
+# Example usage:
+print(encode_base62(123456))  # Output: 'w7e'</code></pre>
+
+    <p>A more documented version:</p>
+<pre><code class="language-python">import string
+
+BASE62 = string.digits + string.ascii_letters
+
+def encode_base62(num):
+    """Encodes a number to a Base62 string."""
+    if num == 0:
+        return BASE62[0]
+    arr = []
+    base = len(BASE62)
+    while num:
+        num, rem = divmod(num, base)
+        arr.append(BASE62[rem])
+    arr.reverse()
+    return ''.join(arr)
+
+# Example usage:
+url_id = 12345678  # ID from centralized counter
+short_key = encode_base62(url_id)
+print(short_key)  # e.g., 'BkQmR'</code></pre>
+
+    <p>Another variant:</p>
+<pre><code class="language-python">def encode_base62(num):
+    chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    base = len(chars)
+    result = []
+    while num > 0:
+        num, rem = divmod(num, base)
+        result.append(chars[rem])
+    return ''.join(reversed(result))
+
+# Example: ID 125
+print(encode_base62(125))  # '21'</code></pre>
+
+    <h2 id="estimating-scale">Estimating Scale &amp; Bottlenecks</h2>
+    <p>Before picking a database or thinking about code, we <strong>quantify</strong> what the system must handle.</p>
+
+    <h3>User Traffic Estimates</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>Estimate</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Daily Active Users</td><td>~10 million</td></tr>
+          <tr><td>Monthly Active Users</td><td>~300 million</td></tr>
+          <tr><td>New Short URLs/day</td><td>~100,000 (1% of DAU)</td></tr>
+          <tr><td>Redirects/day</td><td>~50 million (avg. 5 per user)</td></tr>
+          <tr><td>Hot URL Cache Size</td><td>1 million mappings (~500 MB RAM)</td></tr>
+          <tr><td>Storage Growth</td><td>~50 MB/day; ~50 GB/year (with indexes)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Memory for Hot URL Cache</h3>
+    <p>We want redirects to be lightning-fast for popular URLs.</p>
+    <ul>
+      <li><strong>Cache Top 1M URLs:</strong> 1,000,000.</li>
+      <li><strong>Each Mapping:</strong> ~500 bytes (short key, long URL, metadata).</li>
+      <li><strong>Total Cache Memory:</strong> 1M × 500B = <strong>~500 MB.</strong></li>
+    </ul>
+
+    <h3>Network Bandwidth (Redirects)</h3>
+    <ul>
+      <li><strong>Redirects/day:</strong> 50 million.</li>
+      <li><strong>Payload/redirect</strong> (headers + body): ~700 bytes.</li>
+      <li><strong>Total/day:</strong> 50M × 700 = <strong>35 GB/day.</strong></li>
+      <li><strong>Avg. throughput:</strong> ≈ 0.4–0.5 MB/sec.</li>
+      <li><strong>Peak throughput:</strong> ≈ 5 MB/sec.</li>
+    </ul>
+
+    <h3>Storage Requirements</h3>
+    <ul>
+      <li><strong>New URLs/day:</strong> 100,000 × 500 bytes = <strong>~50 MB/day.</strong></li>
+      <li><strong>Year:</strong> ~18 GB raw; plan for <strong>~50 GB/year</strong> (including indexes, logs, backup).</li>
+    </ul>
+
+    <h3>Data Flow &amp; Hot Path</h3>
+    <div class="archd" aria-label="URL shortener data flow diagram">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">request</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔗</span><span>URL Shortener Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">↩️</span><span>Redirect Service</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Cache Layer</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+      </div>
+    </div>
+    <ul>
+      <li><strong>Hot Path:</strong> Redirect checks Cache first; DB on miss.</li>
+      <li><strong>Write Path:</strong> New short URLs go to DB and may pre-warm Cache.</li>
+    </ul>
+
+    <h3>Where Are the Bottlenecks?</h3>
+
+    <h4>A. High Read Volume</h4>
+    <ul>
+      <li><strong>Problem:</strong> 50M+ redirects/day = tons of reads.</li>
+      <li><strong>Solution:</strong> Cache most popular URLs (Redis/Memcached); optimize DB for fast lookups (indexes, sharding).</li>
+    </ul>
+
+    <h4>B. Moderate Write Throughput</h4>
+    <ul>
+      <li><strong>Problem:</strong> 100K short URLs/day — must be consistent.</li>
+      <li><strong>Solution:</strong> Strong consistency for writes; write-optimized DB.</li>
+    </ul>
+
+    <h4>C. Latency Sensitivity</h4>
+    <ul>
+      <li><strong>Problem:</strong> Redirects must feel instant (&lt;50ms ideally).</li>
+      <li><strong>Solution:</strong> Low-latency infra (cache, fast DB); CDN for edge delivery; optimize network paths.</li>
+    </ul>
+
+    <h4>D. Burst Traffic &amp; Scaling</h4>
+    <ul>
+      <li><strong>Problem:</strong> Viral links can spike traffic 10× or 100×.</li>
+      <li><strong>Solution:</strong> Autoscaling backend instances; CDN for static redirect handling; load balancer in front of services.</li>
+    </ul>
+
+    <h3>Summary Table: Key Numbers</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Resource</th><th>Estimate</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Cache</td><td>500 MB (1M hot)</td></tr>
+          <tr><td>Bandwidth</td><td>35 GB/day</td></tr>
+          <tr><td>Storage (1yr)</td><td>50 GB</td></tr>
+          <tr><td>Peak Throughput</td><td>5 MB/sec</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="api-design">API Design</h2>
+
+    <h3>1. Create Short URL</h3>
+<pre><code class="language-bash">POST /api/shorten
+Content-Type: application/json
+Authorization: Bearer &lt;token&gt;
+
+{
+  "long_url": "https://example.com/article?id=1234"
+}</code></pre>
+
+    <p><strong>Response:</strong></p>
+<pre><code class="language-json">{
+  "short_url": "https://tinyurl.com/xYz12",
+  "short_key": "xYz12"
+}</code></pre>
+
+    <p><strong>Notes:</strong></p>
+    <ul>
+      <li>Should check for duplicates: if the same long URL is submitted, return the same short URL.</li>
+      <li>Should be fast (sub-100ms typical).</li>
+    </ul>
+
+    <h3>2. Redirect to Original URL</h3>
+<pre><code class="language-bash">GET /xYz12</code></pre>
+
+    <p><strong>Behavior:</strong> 302 Redirect to the original URL.</p>
+<pre><code class="language-bash">HTTP/1.1 302 Found
+Location: https://example.com/article?id=1234</code></pre>
+
+    <h3>3. Delete a Short URL (Authenticated)</h3>
+<pre><code class="language-bash">DELETE /api/url/xYz12
+Authorization: Bearer &lt;access_token&gt;</code></pre>
+
+    <p><strong>Behavior:</strong> Deletes the short URL mapping if the authenticated user owns it. Returns error if unauthorized.</p>
+
+    <p><strong>cURL example:</strong></p>
+<pre><code class="language-bash">curl -X DELETE https://tinyurl.com/api/url/abc123 \
+  -H "Authorization: Bearer &lt;access_token&gt;"</code></pre>
+
+    <h3>4. User Authentication APIs</h3>
+    <ul>
+      <li><strong>Register:</strong> <code>POST /api/auth/register</code></li>
+      <li><strong>Login:</strong> <code>POST /api/auth/login</code></li>
+      <li>All sensitive endpoints secured with JWT Bearer tokens.</li>
+    </ul>
+
+    <h2 id="high-level-architecture">High-Level System Architecture</h2>
+    <div class="archd" aria-label="High-level URL shortener architecture">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client (User/Browser)</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">HTTPS</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔗</span><span>URL Shortener Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">↩️</span><span>Redirect Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔐</span><span>Auth Service</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🧮</span><span>Zookeeper (ID Gen)</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Cache</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+      </div>
+    </div>
+
+    <p>A more detailed flowchart view:</p>
+    <div class="archd" aria-label="Detailed URL shortener flowchart">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">API Request</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway (APIGW)</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔗</span><span>URL Generation Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">↩️</span><span>Redirection Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔐</span><span>User Management (Auth)</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🧮</span><span>Zookeeper</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Cache</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database (DB)</span></div>
+      </div>
+    </div>
+
+    <p>ASCII view:</p>
+<pre><code class="language-bash">          ┌──────────────┐
+          │   Clients    │
+          └──────┬───────┘
+                 │
+          ┌──────▼───────┐
+          │ API Gateway  │
+          └─────┬────────┘
+     ┌──────────┼─────────────┬───────────────┐
+     │          │             │               │
+┌────▼───┐ ┌────▼────┐   ┌────▼────┐      ┌──▼─────────┐
+│ Auth   │ │URL      │   │Redirect │      │ Zookeeper  │
+│Service │ │Shortener│   │Service  │      │ (ID Gen)   │
+└────┬───┘ └────┬────┘   └────┬────┘      └────▲───────┘
+     │         │             │                   │
+┌────▼─────────▼─────────────▼───────────────────┴──────┐
+│         Database &amp; Cache (Redis/Memcached)            │
+└───────────────────────────────────────────────────────┘</code></pre>
+
+    <h3>Component Responsibilities</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Component</th><th>Responsibility</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>API Gateway</strong></td><td>Entry point; handles routing, authentication, rate-limiting.</td></tr>
+          <tr><td><strong>URL Shortener</strong></td><td>Generates short keys, checks for duplicates, validates custom aliases.</td></tr>
+          <tr><td><strong>Redirect Service</strong></td><td>Resolves short keys to long URLs, optimized for speed.</td></tr>
+          <tr><td><strong>Database</strong></td><td>Persists all mappings (Short URL → Long URL), user data, metadata.</td></tr>
+          <tr><td><strong>Cache Layer</strong></td><td>In-memory cache (Redis/Memcached) for top N most-accessed URLs.</td></tr>
+          <tr><td><strong>Auth Service</strong></td><td>User registration, authentication, session/token management.</td></tr>
+          <tr><td><strong>Zookeeper</strong></td><td>Distributed coordination for unique ID generation, preventing key collisions.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="zookeeper">Distributed Collision Handling with Zookeeper</h2>
+    <p><strong>Problem:</strong> In a distributed system, multiple URL shortener instances must generate unique IDs without collisions.</p>
+
+    <p><strong>Solution:</strong> Use <a href="https://zookeeper.apache.org/" target="_blank">Apache Zookeeper</a> for distributed coordination.</p>
+
+    <p>Zookeeper provides:</p>
+    <ul>
+      <li><strong>Atomic counters:</strong> Each service instance requests the next unique ID from Zookeeper.</li>
+      <li><strong>Distributed locks:</strong> Serializes ID generation; ensures global uniqueness.</li>
+    </ul>
+
+    <h3>Flow</h3>
+    <ol>
+      <li><strong>Service requests next unique ID from Zookeeper.</strong></li>
+      <li><strong>Zookeeper increments the global counter atomically.</strong></li>
+      <li><strong>Service encodes the ID with Base62, forms short URL.</strong></li>
+      <li><strong>Mapping is stored in DB.</strong></li>
+    </ol>
+
+<pre><code class="language-python"># Pseudocode for atomic ID generation
+def get_next_id():
+    # Connect to Zookeeper and increment the global counter atomically
+    return zookeeper.increment_counter("global_url_id")
+
+new_id = get_next_id()
+short_key = encode_base62(new_id)</code></pre>
+
+    <h3>ASCII Diagram</h3>
+<pre><code class="language-bash">+---------------------+
+| URL Shortener Svc 1 | --+
++---------------------+   |
+                          |   +-------------+
++---------------------+   +--&gt;| Zookeeper   |
+| URL Shortener Svc 2 | --+   | (Counter)   |
++---------------------+       +-------------+
+                               |
+                               v
+                    [Global Unique ID for Base62]</code></pre>
+
+    <p>Or, in another visualization:</p>
+<pre><code class="language-bash">+------------------------+
+| URL Generation Service |
++------------------------+
+           |
+           v
++----------------------+
+|  Zookeeper Counter   |  ---[Atomic ID: 1234567]---&gt;
++----------------------+
+           |
+           v
++----------------------+
+| Base62 Encode (e.g., |
+| "abc123")            |
++----------------------+</code></pre>
+
+    <h3>Advantages</h3>
+    <ul>
+      <li>Each instance gets a unique ID.</li>
+      <li>Supports horizontal scaling.</li>
+      <li>No risk of collision.</li>
+    </ul>
+
+    <h3>Sample Short Key Generation</h3>
+<pre><code class="language-python">def generate_short_key(long_url):
+    # Check if long_url already exists in DB
+    existing = db.get_short_key(long_url)
+    if existing:
+        return existing
+
+    # Request next ID from Zookeeper for uniqueness
+    unique_id = zookeeper.get_next_id()  # e.g., returns 123456789
+    short_key = base62_encode(unique_id)  # e.g., returns "abc123"
+
+    # Store mapping
+    db.save_mapping(short_key, long_url)
+    return short_key</code></pre>
+
+    <h2 id="tech-stack">Tech Stack &amp; Infrastructure Decisions</h2>
+
+    <h3>Database</h3>
+    <ul>
+      <li><strong>SQL</strong> (PostgreSQL with auto-increment IDs) for strong consistency.</li>
+      <li><strong>NoSQL</strong> (DynamoDB, Cassandra) for massive scalability.</li>
+      <li><strong>Hybrid:</strong> SQL for data integrity, Redis for speed.</li>
+    </ul>
+
+    <h3>Cache</h3>
+    <ul>
+      <li><strong>Redis</strong> or <strong>Memcached</strong> for fast lookups.</li>
+    </ul>
+
+    <h3>Distributed Coordination</h3>
+    <ul>
+      <li><strong>Apache Zookeeper</strong> for distributed atomic counter.</li>
+    </ul>
+
+    <h3>Edge &amp; Routing</h3>
+    <ul>
+      <li><strong>API Gateway:</strong> Kong, NGINX, AWS API Gateway.</li>
+      <li><strong>Load Balancer:</strong> NGINX/ELB to distribute traffic.</li>
+    </ul>
+
+    <h3>Authentication</h3>
+    <ul>
+      <li><strong>JWT tokens</strong>, <strong>OAuth</strong> for user sessions.</li>
+    </ul>
+
+    <h3>Scalability &amp; Availability</h3>
+    <ol>
+      <li><strong>Horizontal scaling:</strong> Deploy multiple instances of the URL Shortener and Redirect services.</li>
+      <li><strong>Load balancers:</strong> Distribute requests evenly.</li>
+      <li><strong>Replication &amp; failover:</strong> Use DB replication (primary-replica) and managed cloud services.</li>
+      <li><strong>Caching:</strong> Cache top N URLs in memory (Redis).</li>
+    </ol>
+
+    <h2 id="critical-flows">Critical Flows</h2>
+
+    <h3>1. URL Generation Flow</h3>
+    <ol>
+      <li>User submits a long URL.</li>
+      <li>API Gateway authenticates and rate-limits.</li>
+      <li>URL Generation Service requests a unique ID from Zookeeper.</li>
+      <li>ID is Base62 encoded (short, user-friendly).</li>
+      <li>Mapping (<code>short_key</code> → <code>long_url</code>) stored in the DB.</li>
+      <li>Short URL returned to user.</li>
+    </ol>
+
+    <div class="archd-seq" aria-label="URL generation sequence">
+      <div class="archd-seq-step"><span class="num">1</span>POST /api/shorten (long_url)</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">POST long_url</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+        <div class="archd-seq-arrow right"><span class="label">forward</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔗</span><span>URL Shortener</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Request next unique ID</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔗</span><span>URL Shortener</span></div>
+        <div class="archd-seq-arrow right"><span class="label">get next id</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🧮</span><span>Zookeeper</span></div>
+        <div class="archd-seq-arrow left"><span class="label">id</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔗</span><span>URL Shortener</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Encode ID (Base62) &amp; persist mapping</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔗</span><span>URL Shortener</span></div>
+        <div class="archd-seq-arrow right"><span class="label">store mapping</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+        <div class="archd-seq-arrow left"><span class="label">ok</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔗</span><span>URL Shortener</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Respond with short URL</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔗</span><span>URL Shortener</span></div>
+        <div class="archd-seq-arrow left"><span class="label">short URL</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+        <div class="archd-seq-arrow left"><span class="label">short URL</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      </div>
+    </div>
+
+    <h3>2. Redirection Flow (Fast Path &amp; Cold Path)</h3>
+    <ol>
+      <li>User clicks short URL (e.g., <code>tinyurl.com/abc123</code>).</li>
+      <li>API Gateway routes request to Redirection Service.</li>
+      <li>Redirection Service:
+        <ul>
+          <li>Checks Cache (fast-path). If hit, redirect immediately.</li>
+          <li>If miss, queries Database (cold-path), updates cache, then redirects.</li>
+        </ul>
+      </li>
+      <li>Returns HTTP 302 Redirect to the original URL.</li>
+    </ol>
+
+    <div class="archd-seq" aria-label="Redirection sequence">
+      <div class="archd-seq-step"><span class="num">1</span>GET /xYz12</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">GET /xYz12</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+        <div class="archd-seq-arrow right"><span class="label">forward</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">↩️</span><span>Redirect Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Cache lookup (fast path)</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">↩️</span><span>Redirect Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">lookup short_key</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Cache</span></div>
+        <div class="archd-seq-arrow left"><span class="label">long_url (hit)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">↩️</span><span>Redirect Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Cache miss → DB query &amp; refill (cold path)</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">↩️</span><span>Redirect Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">query short_key</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+        <div class="archd-seq-arrow left"><span class="label">long_url</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">↩️</span><span>Redirect Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>302 Redirect back to user</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">↩️</span><span>Redirect Service</span></div>
+        <div class="archd-seq-arrow left"><span class="label">302 → long_url</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+        <div class="archd-seq-arrow left"><span class="label">302 redirect</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      </div>
+    </div>
+
+    <h2 id="sample-code">Sample Code Walkthrough</h2>
+
+    <h3>Generate Short URL (Python/Flask)</h3>
+<pre><code class="language-python">@app.route('/api/shorten', methods=['POST'])
+def shorten_url():
+    data = request.get_json()
+    long_url = data['long_url']
+    user_id = get_current_user_id()
+
+    # 1. Request a unique ID from Zookeeper (pseudo-code)
+    unique_id = zookeeper.get_next_id()
+
+    # 2. Encode unique ID as Base62
+    short_key = base62_encode(unique_id)
+
+    # 3. Store mapping in DB
+    db.insert({'short_key': short_key, 'long_url': long_url, 'user_id': user_id})
+
+    # 4. Return shortened URL
+    return jsonify({'short_url': f'https://tinyurl.com/{short_key}'})</code></pre>
+
+    <h3>Redirect Handler (Python/Flask)</h3>
+<pre><code class="language-python">@app.route('/&lt;short_key&gt;')
+def redirect_short_url(short_key):
+    # 1. Check cache first
+    long_url = cache.get(short_key)
+    if not long_url:
+        # 2. Fallback to database
+        mapping = db.find_one({'short_key': short_key})
+        if mapping:
+            long_url = mapping['long_url']
+            cache.set(short_key, long_url)
+        else:
+            abort(404)
+
+    # 3. Redirect user
+    return redirect(long_url, code=302)</code></pre>
+
+    <h2 id="beyond-mvp">Beyond MVP — What a Senior Designer Adds</h2>
+
+    <h3>Click Analytics Without Slowing the Redirect</h3>
+    <p>A naive design writes a row to a <code>clicks</code> table on every redirect. <strong>That's the hot path</strong> — you can't add 20ms of DB write to a millisecond-budget redirect.</p>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Better Pattern</div>
+        <ol>
+          <li>Redirect Service issues 302 immediately.</li>
+          <li><em>Asynchronously</em> writes click event to Kafka.</li>
+          <li>A separate consumer aggregates clicks → analytics DB (e.g., ClickHouse, BigQuery).</li>
+        </ol>
+        <p>The redirect stays fast (&lt;10ms); analytics get hourly/daily rollups instead of real-time, which is almost always fine.</p>
+      </div>
+    </div>
+
+    <h3>Custom Aliases (with Collision Handling)</h3>
+    <p>Users want to pick <code>tinyurl.com/my-product</code>. Now you need:</p>
+    <ul>
+      <li>Uniqueness check on the alias (DB query).</li>
+      <li>Reservation lock to prevent two users picking the same alias simultaneously.</li>
+      <li>Validation: no profanity, no impersonating well-known names, length limits.</li>
+    </ul>
+    <p><strong>Implementation:</strong> add <code>alias</code> column with unique constraint. On collision: HTTP 409.</p>
+
+    <h3>Abuse Prevention</h3>
+    <div class="callout callout-warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-content">
+        <div class="callout-title">URL Shorteners Are Catnip for Phishers</div>
+        <p>Without controls, your domain reputation tanks (Google Safe Browsing flags it).</p>
+      </div>
+    </div>
+    <p><strong>Defenses:</strong></p>
+    <ol>
+      <li><strong>URL scanning at submission time</strong> — integrate with Google Safe Browsing API, VirusTotal, PhishTank.</li>
+      <li><strong>Rate limiting</strong> — per-IP and per-user quotas to prevent mass-submission.</li>
+      <li><strong>Domain blocklist</strong> — known phishing/malware destinations.</li>
+      <li><strong>User flagging</strong> — anyone can report a short link; suspicious links get manual review.</li>
+      <li><strong>Auto-disable on abuse score</strong> — multiple reports + heuristics → temporarily disable.</li>
+    </ol>
+
+    <h3>Geo-Distribution</h3>
+    <p>For a global service, the redirect should hit a local edge — adding 150ms cross-continent on every click is unacceptable.</p>
+    <p><strong>Pattern:</strong> push read-path data (short_key → long_url) to all regions; writes go to a primary, async-replicated globally. Eventual consistency is fine — a brand new URL working in some regions but not others for 5 seconds is OK.</p>
+
+    <h3>Privacy &amp; PII</h3>
+    <p>If your service is in the EU or serves EU users:</p>
+    <ul>
+      <li>Click logs may contain IP + URL = personal data under GDPR.</li>
+      <li>Need retention limits, right-to-delete, and clear consent.</li>
+      <li>Consider hashing IPs before storage; rotate the hash salt.</li>
+    </ul>
+
+    <h2 id="tips-and-tricks">💡 Tips and Tricks</h2>
+    <ul>
+      <li><strong>Cache hot URLs:</strong> Store top N most accessed URLs in Redis/Memcached to drastically cut down read latency.</li>
+      <li><strong>Cache wisely:</strong> Cache the top 1M URLs to reduce DB load by 90%+.</li>
+      <li><strong>Eviction policy:</strong> Use LRU (Least Recently Used) or LFU (Least Frequently Used) for hot URL cache.</li>
+      <li><strong>Prevent duplicates:</strong> Hash the long URL; if already present, reuse the existing short key.</li>
+      <li><strong>CDN-friendly redirects:</strong> Serve 302 redirects via CDN for global low-latency.</li>
+      <li><strong>Bulk pre-warming:</strong> Preload cache with the most popular URLs during off-peak hours.</li>
+      <li><strong>Autoscaling:</strong> Use container orchestration (Kubernetes, ECS) to handle burst traffic.</li>
+      <li><strong>CDN integration:</strong> Offload static asset delivery and some redirect logic to CDN.</li>
+      <li><strong>Monitoring:</strong> Instrument metrics for response times, error rates, traffic spikes, cache hit/miss ratios.</li>
+      <li><strong>Security:</strong> Rate-limit API, sanitize inputs, use HTTPS everywhere.</li>
+      <li><strong>Backups:</strong> Regularly back up your mapping database; replicate across regions for disaster recovery.</li>
+      <li><strong>Expiration policies:</strong> Allow users to set expiration dates; periodically clean up expired entries.</li>
+      <li><strong>Data retention:</strong> Periodically archive or delete old/expired URLs to keep storage lean.</li>
+      <li><strong>Misuse protection:</strong> Implement link scanning and user reports against phishing.</li>
+      <li><strong>Custom aliases:</strong> Allow users to set custom short keys with collision check logic.</li>
+      <li><strong>Atomic operations:</strong> Always generate IDs atomically (Zookeeper or DB sequences) to avoid key collisions.</li>
+      <li><strong>Custom domains:</strong> Let enterprises use their own branded domains for shortened URLs.</li>
+      <li><strong>Analytics:</strong> Store access logs for each short URL for click tracking and analytics.</li>
+    </ul>
+
+    <h2 id="summary">Summary</h2>
+
+    <h3>Final Design Flow</h3>
+
+    <h4>URL Generation:</h4>
+    <ol>
+      <li>User submits long URL via API.</li>
+      <li>API Gateway authenticates &amp; rate limits.</li>
+      <li>URL Generation Service requests next global ID (Zookeeper).</li>
+      <li>Encodes ID to Base62, creates short key.</li>
+      <li>Stores mapping in DB.</li>
+      <li>Returns short URL.</li>
+    </ol>
+
+    <h4>Redirection:</h4>
+    <ol>
+      <li>User visits short URL.</li>
+      <li>API Gateway forwards to Redirect Service.</li>
+      <li>Service checks Redis cache for mapping.</li>
+      <li>If not found, queries DB and updates cache.</li>
+      <li>Responds with HTTP 302 redirect.</li>
+    </ol>
+
+    <h3>Scale Estimates Recap</h3>
+    <ul>
+      <li><strong>Users:</strong> 10M DAU, 300M MAU.</li>
+      <li><strong>New URLs/day:</strong> 100K.</li>
+      <li><strong>Redirect requests/day:</strong> 50M.</li>
+      <li><strong>Memory for hot cache:</strong> 500MB (1M URLs).</li>
+      <li><strong>Storage/year:</strong> ~50GB.</li>
+    </ul>
+
+    <p>Designing a scalable, reliable, and high-performance URL shortener requires careful design choices at every layer — from unique key generation to distributed systems coordination and robust API design. By adopting best practices in caching, database selection, and distributed counter management, you can deliver a production-grade service like TinyURL that stands up to real-world demands.</p>
+
+    <h2 id="further-reading">📚 Further Reading</h2>
+    <ul>
+      <li><a href="https://zookeeper.apache.org/" target="_blank">Apache Zookeeper</a></li>
+      <li><a href="https://zookeeper.apache.org/doc/" target="_blank">Apache Zookeeper Docs</a></li>
+      <li><a href="https://redis.io/" target="_blank">Redis</a></li>
+      <li><a href="https://redis.io/docs/management/cache/" target="_blank">Redis caching strategies</a></li>
+      <li><a href="https://en.wikipedia.org/wiki/Base62" target="_blank">Base62 Encoding (Wikipedia)</a></li>
+      <li><a href="https://github.com/donnemartin/system-design-primer" target="_blank">System Design Primer</a></li>
+      <li><a href="https://dataintensive.net/" target="_blank">Designing Data-Intensive Applications</a></li>
+      <li><a href="https://jwt.io/" target="_blank">JWT.io: JSON Web Tokens</a></li>
+    </ul>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Next Up</div>
+        <p><em>(Chapters 13-16 reserved.)</em> Continue to <a href="17 - Design an Auction Platform (aka eBay).html">Chapter 17 — Design an Auction Platform (eBay) →</a></p>
+      </div>
+    </div>
+
+    <nav class="chapter-nav">
+      <a class="chapter-nav-card" href="11 - The System Design Blueprint.html">
+        <div class="chapter-nav-label">← Previous</div>
+        <div class="chapter-nav-title">Chapter 11 — System Design Blueprint</div>
+      </a>
+      <a class="chapter-nav-card next" href="17 - Design an Auction Platform (aka eBay).html">
+        <div class="chapter-nav-label">Next chapter →</div>
+        <div class="chapter-nav-title">Chapter 17 — Auction Platform (eBay)</div>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../assets/system-design.js"></script>
+
+</body>
+</html>

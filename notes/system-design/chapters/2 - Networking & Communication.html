@@ -1,0 +1,2234 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chapter 2 — Networking &amp; Communication</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<link rel="stylesheet" href="../assets/system-design.css">
+<style>
+/* ===== Chapter 2-specific: Stack Map ===== */
+.stack-map {
+  display: grid;
+  grid-template-columns: 130px 1fr 1fr;
+  gap: 2px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin: 24px 0;
+  font-size: 14px;
+}
+.stack-map .cell {
+  background: var(--bg-elevated);
+  padding: 14px 16px;
+}
+.stack-map .head {
+  background: var(--bg-muted);
+  font-weight: 700;
+  color: var(--text);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.stack-map .layer {
+  font-weight: 700;
+  color: var(--primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+}
+.stack-map .layer.l7 { color: var(--success); }
+.stack-map .layer.l4 { color: var(--warning); }
+.stack-map .layer.l3 { color: var(--primary); }
+.stack-map .layer.l2 { color: var(--text-muted); }
+@media (max-width: 720px) {
+  .stack-map { grid-template-columns: 90px 1fr; font-size: 13px; }
+  .stack-map .col-topics { display: none; }
+}
+
+/* Trace timeline */
+.trace-timeline {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  padding: 18px 22px;
+  margin: 24px 0;
+}
+.trace-step {
+  display: grid;
+  grid-template-columns: 38px 1fr auto;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px dashed var(--border);
+  align-items: start;
+}
+.trace-step:last-child { border-bottom: none; }
+.trace-step .tnum {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+}
+.trace-step .tbody { font-size: 14px; color: var(--text); }
+.trace-step .tbody .ttitle { font-weight: 600; margin-bottom: 4px; }
+.trace-step .tbody .tdesc { color: var(--text-muted); font-size: 13.5px; line-height: 1.55; }
+.trace-step .tcost {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  background: var(--bg-muted);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+</style>
+</head>
+<body><a href="../../../notes.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;z-index:99999;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600;background:#0f172a;color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.28)">&#8592; AI Library</a>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">
+    <span class="brand-icon">SD</span>
+    <span>Mastering System Design</span>
+  </a>
+  <div class="topbar-actions">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Chapter 2 — On This Page</h3>
+    <ul class="toc-list" id="tocList">
+      <li><a href="#learning-outcomes">Learning Outcomes</a></li>
+      <li><a href="#networking-stack">The Networking Stack</a></li>
+      <li><a href="#why-networking-matters">Why Networking Matters</a></li>
+      <li><a href="#ip-addresses">IP Addresses</a></li>
+      <li><a href="#dns">DNS — Domain Name System</a></li>
+      <li><a href="#client-server">The Client-Server Model</a></li>
+      <li><a href="#proxies">Proxies — Forward &amp; Reverse</a></li>
+      <li><a href="#load-balancing">Load Balancing</a></li>
+      <li><a href="#api-gateways">API Gateways</a></li>
+      <li><a href="#cdns">Content Delivery Networks</a></li>
+      <li><a href="#api-gw-vs-cdn">API Gateway vs. CDN</a></li>
+      <li><a href="#combining">Combining API Gateway &amp; CDN</a></li>
+      <li><a href="#canonical-trace">The Canonical Trace</a></li>
+      <li><a href="#combined-tips">Combined Tips &amp; Tricks</a></li>
+      <li><a href="#interview-questions">Sample Interview Questions</a></li>
+      <li><a href="#summary">Summary</a></li>
+      <li><a href="#further-reading">Further Reading</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <span class="chapter-label">Chapter 2</span>
+      <h1>Networking &amp; Communication Fundamentals</h1>
+      <p class="hero-subtitle">
+        Networking is the backbone of every large-scale system. This chapter walks through IP addresses, DNS, the client-server model, proxies, load balancers, API gateways, and CDNs — the building blocks that move bytes between every component you'll ever design.
+      </p>
+    </section>
+
+    <p>Networking forms the backbone of every large-scale system. Whether you're building a web application, a distributed microservice, or a cloud-native service, understanding how data flows between components is key to creating scalable, high-performance, and resilient architectures.</p>
+
+    <blockquote>
+      "Networking forms the backbone of modern system architecture. Performance, scalability, and security all depend on robust networking practices."
+    </blockquote>
+
+    <p>In this chapter we'll cover every essential networking and communication concept a system designer must know:</p>
+    <ul>
+      <li>IP addresses (IPv4 &amp; IPv6, public vs. private, NAT)</li>
+      <li>DNS and domain name resolution</li>
+      <li>The client-server model</li>
+      <li>Proxies (forward &amp; reverse)</li>
+      <li>Load balancing strategies</li>
+      <li>API gateways</li>
+      <li>Content delivery networks (CDNs)</li>
+    </ul>
+
+    <h2 id="learning-outcomes">🎯 Learning Outcomes</h2>
+    <p>After reading this chapter, you'll be able to:</p>
+    <ol class="outcomes-list">
+      <li><span class="outcome-num">1</span><span>Place each networking component (DNS, TCP, HTTP, LB, CDN, etc.) on the <strong>OSI / TCP-IP stack</strong>.</span></li>
+      <li><span class="outcome-num">2</span><span>Trace a full request end-to-end: what happens between typing <code>google.com</code> and seeing the page.</span></li>
+      <li><span class="outcome-num">3</span><span>Read <strong>CIDR notation</strong> like <code>10.0.0.0/8</code> and explain what it means.</span></li>
+      <li><span class="outcome-num">4</span><span>Choose between <strong>L4 vs L7</strong> load balancers, <strong>forward vs reverse</strong> proxies, and <strong>reverse proxy vs API gateway</strong> for a given problem.</span></li>
+      <li><span class="outcome-num">5</span><span>Explain <strong>sticky sessions, SSL termination, health checks, anycast, and Geo-DNS</strong> in one sentence each.</span></li>
+    </ol>
+
+    <h2 id="networking-stack">The Networking Stack — A Map</h2>
+    <p>Before we dive in, here's the mental map for <em>where each topic in this chapter lives</em>. Every networking concept fits somewhere in this stack.</p>
+
+    <div class="stack-map">
+      <div class="cell head">Layer</div>
+      <div class="cell head">Examples</div>
+      <div class="cell head col-topics">Topics in this chapter</div>
+
+      <div class="cell layer l7">Application (L7)</div>
+      <div class="cell">HTTP, HTTPS, DNS, gRPC, WebSocket</div>
+      <div class="cell col-topics">API Gateway, L7 LB, CDN</div>
+
+      <div class="cell layer l4">Transport (L4)</div>
+      <div class="cell">TCP, UDP</div>
+      <div class="cell col-topics">L4 LB, NAT</div>
+
+      <div class="cell layer l3">Network (L3)</div>
+      <div class="cell">IP (v4, v6), ICMP</div>
+      <div class="cell col-topics">IP addresses, routing</div>
+
+      <div class="cell layer l2">Link (L2)</div>
+      <div class="cell">Ethernet, Wi-Fi</div>
+      <div class="cell col-topics">(out of scope here)</div>
+    </div>
+
+    <p><strong>Two terms you'll see constantly:</strong></p>
+    <ul>
+      <li><strong>"Layer 4 (L4)"</strong> = decisions made on IP address and port (no idea what's inside the packet).</li>
+      <li><strong>"Layer 7 (L7)"</strong> = decisions made on the actual application data (URL, headers, cookies).</li>
+    </ul>
+    <p>When you read "L4 load balancer" later in this chapter, picture a thing that only sees <code>source_ip:port → dest_ip:port</code>. An "L7 load balancer" sees <code>GET /api/users → Cookie: session=abc</code>.</p>
+
+    <h2 id="why-networking-matters">Why Networking Matters in System Design</h2>
+    <p>Every system relies on data exchange between components. Networking enables this by allowing communication between clients, servers, databases, and other services. It's not just about connectivity — it's about ensuring:</p>
+    <ul>
+      <li><strong>Seamless Communication:</strong> All system components must exchange data efficiently.</li>
+      <li><strong>Scalability:</strong> Well-designed networks can handle millions of users and high traffic.</li>
+      <li><strong>Reliability &amp; Performance:</strong> Good networking minimizes downtime and latency.</li>
+      <li><strong>Security:</strong> Protects data and infrastructure from unauthorized access.</li>
+    </ul>
+
+    <h3>Key Networking Areas</h3>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">🔗</div>
+        <div class="card-title">Communication</div>
+        <div class="card-body">Client-server, server-database, microservice-to-microservice.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚖️</div>
+        <div class="card-title">Load Balancing</div>
+        <div class="card-body">Preventing overload and distributing traffic.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔒</div>
+        <div class="card-title">Security</div>
+        <div class="card-body">Firewalls, private networks, DDoS protection.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <div class="card-title">Efficiency</div>
+        <div class="card-body">Optimizing latency and throughput.</div>
+      </div>
+    </div>
+    <p>These concepts are foundational to nearly every chapter that follows: protocols (Ch. 3), scalability (Ch. 6), and security (Ch. 10) all build directly on top of them.</p>
+
+    <h2 id="ip-addresses">IP Addresses</h2>
+    <blockquote>
+      <em>Imagine trying to send a letter without an address. The postal service wouldn't know where to deliver it, and your letter would never reach its destination. The same principle applies to the internet. Every device needs an address to send and receive data — this is where IP addresses come in.</em>
+    </blockquote>
+
+    <h3>What is an IP Address?</h3>
+    <p>An <strong>IP address (Internet Protocol address)</strong> is a unique numerical label assigned to each device connected to a computer network that uses the Internet Protocol for communication. Think of it as a home address for your computer or phone — without it, your device would never receive the data it requests.</p>
+    <p><strong>Key Purposes:</strong></p>
+    <ul>
+      <li>Identifies a device on a network.</li>
+      <li>Enables routing of data between devices.</li>
+    </ul>
+
+    <h3>Why Are IP Addresses Important in System Design?</h3>
+    <ul>
+      <li><strong>Foundation of all networking:</strong> Without IP addresses, devices couldn't locate or communicate with each other.</li>
+      <li><strong>Crucial for scalability:</strong> Managing and segmenting networks using IPs enables systems to grow.</li>
+      <li><strong>Security and management:</strong> Allows for isolation between internal and external systems, vital for cloud and corporate environments.</li>
+    </ul>
+
+    <h3>IPv4 (Internet Protocol Version 4)</h3>
+    <ul>
+      <li><strong>Most widely used addressing system.</strong></li>
+      <li><strong>32-bit address format</strong> (e.g., <code>192.168.1.1</code>).</li>
+      <li><strong>~4.3 billion unique addresses.</strong></li>
+      <li>Used in traditional networking, web servers, most internet devices.</li>
+      <li><strong>Limitations:</strong> Address exhaustion, fragmentation, and some security concerns.</li>
+    </ul>
+
+    <p><strong>IPv4 Address Format (octets):</strong></p>
+<pre><code class="language-text">+----+----+----+----+
+|192 |168 | 1  | 15 |
++----+----+----+----+</code></pre>
+    <p>Each group is called an <strong>octet</strong> (8 bits), separated by dots.</p>
+
+<pre><code class="language-python"># Python: Get local IPv4 address
+import socket
+hostname = socket.gethostname()
+local_ip = socket.gethostbyname(hostname)
+print(f"My IPv4 address: {local_ip}")</code></pre>
+
+    <h3>IPv6 (Internet Protocol Version 6)</h3>
+    <ul>
+      <li><strong>Next-generation IP.</strong></li>
+      <li><strong>128-bit address format</strong> (e.g., <code>2001:0db8:85a3:0000:0000:8a2e:0370:7334</code>).</li>
+      <li><strong>340 undecillion (virtually unlimited) addresses.</strong></li>
+      <li>Designed for IoT, mobile networks, future scalability.</li>
+      <li><strong>Key benefits:</strong> Larger address space, improved security, efficient routing.</li>
+    </ul>
+
+    <p><strong>IPv6 Address Format:</strong></p>
+<pre><code class="language-text">2001:0db8:85a3:0000:0000:8a2e:0370:7334</code></pre>
+    <p>Eight groups of four hexadecimal digits, separated by colons.</p>
+
+<pre><code class="language-bash"># Linux: Show IPv6 addresses
+ip -6 addr show</code></pre>
+
+    <h3>IPv4 vs. IPv6: At a Glance</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>IPv4</th><th>IPv6</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Address Length / Size</td><td>32 bits</td><td>128 bits</td></tr>
+          <tr><td>Address Format</td><td>Dotted decimal</td><td>Colon-separated hexadecimal</td></tr>
+          <tr><td>Example</td><td><code>192.168.1.1</code></td><td><code>2001:0db8:85a3::8a2e:0370:7334</code></td></tr>
+          <tr><td>Address Space</td><td>~4.3 billion</td><td>340 undecillion (3.4×10³⁸)</td></tr>
+          <tr><td>NAT Needed?</td><td>Yes (for address sharing)</td><td>Not required (enough addresses for all)</td></tr>
+          <tr><td>Security</td><td>Optional (IPSec)</td><td>Built-in (IPSec mandatory)</td></tr>
+          <tr><td>Use Cases</td><td>Legacy/Current Web</td><td>IoT, new networks, future scalability</td></tr>
+          <tr><td>Deployment</td><td>Universal</td><td>Rapidly increasing, especially in IoT/cloud</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Address space visualization:</strong></p>
+<pre><code class="language-text">IPv4: [ 00000000.00000000.00000000.00000000 ] (32 bits)
+IPv6: [ 0000:0000:0000:0000:0000:0000:0000:0000 ] (128 bits)</code></pre>
+
+    <h3>Public vs. Private IP Addresses</h3>
+
+    <h4>Public IP Addresses</h4>
+    <ul>
+      <li><strong>Assigned by ISPs.</strong></li>
+      <li><strong>Globally unique;</strong> used to communicate over the Internet.</li>
+      <li>Example: <code>192.203.23.45</code>.</li>
+    </ul>
+
+    <h4>Private IP Addresses</h4>
+    <ul>
+      <li><strong>Used within local networks</strong> (homes, offices, data centers).</li>
+      <li><strong>Not routable on the public Internet;</strong> reusable in different networks.</li>
+      <li>Typical ranges (IPv4):
+        <ul>
+          <li><code>10.0.0.0</code> – <code>10.255.255.255</code></li>
+          <li><code>172.16.0.0</code> – <code>172.31.255.255</code></li>
+          <li><code>192.168.0.0</code> – <code>192.168.255.255</code></li>
+        </ul>
+      </li>
+    </ul>
+
+    <h4>A Quick Primer on CIDR Notation</h4>
+    <p>You'll see ranges written like <code>10.0.0.0/8</code> or <code>192.168.1.0/24</code>. This is <strong>CIDR notation</strong> (Classless Inter-Domain Routing). The number after the slash is the number of <strong>fixed (network) bits</strong>; the remaining bits are available for hosts.</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Notation</th><th>Network bits</th><th>Host bits</th><th>Number of addresses</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>10.0.0.0/8</code></td><td>8</td><td>24</td><td>~16.7 million</td></tr>
+          <tr><td><code>172.16.0.0/12</code></td><td>12</td><td>20</td><td>~1 million</td></tr>
+          <tr><td><code>192.168.0.0/16</code></td><td>16</td><td>16</td><td>65,536</td></tr>
+          <tr><td><code>10.0.1.0/24</code></td><td>24</td><td>8</td><td>256</td></tr>
+          <tr><td><code>10.0.1.0/30</code></td><td>30</td><td>2</td><td>4</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">🧭</span>
+      <div class="callout-content">
+        <div class="callout-title">Rule of Thumb</div>
+        <p><code>/24</code> = a small subnet with 256 IPs. <code>/16</code> = a large network with 65k IPs. <code>/8</code> = a <em>huge</em> private range (the entire <code>10.x.x.x</code> block). When AWS creates a VPC, it usually gives you a <code>/16</code> and you subdivide into <code>/24</code> subnets per AZ.</p>
+      </div>
+    </div>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">IPv6 Changes Things</div>
+        <p>There is no NAT in IPv6 by design. Every device gets a globally routable address. That doesn't mean every device is <em>reachable</em> — firewalls still apply — but the addressing concept fundamentally shifts.</p>
+      </div>
+    </div>
+
+    <h4>Home Network Example</h4>
+    <div class="archd" aria-label="Home network with NAT">
+      <div class="archd-node is-external"><span class="archd-icon">🌐</span><span>Internet</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🔌</span><span>Public IP: 203.0.113.5</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">📡</span><span>Router (NAT)</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">💻</span><span>192.168.1.2 — Laptop</span></div>
+        <div class="archd-node"><span class="archd-icon">📺</span><span>192.168.1.3 — TV</span></div>
+        <div class="archd-node"><span class="archd-icon">📱</span><span>192.168.1.4 — Phone</span></div>
+      </div>
+    </div>
+    <p>All devices inside the home share the same public IP for internet access, but each has a unique private IP within the local network.</p>
+
+    <h3>Why Do We Need Private IPs and NAT?</h3>
+    <ul>
+      <li><strong>Address Conservation:</strong> Allows reuse of IP ranges, avoiding exhaustion of public IPv4 space.</li>
+      <li><strong>Enhanced Security:</strong> Devices with private IPs are not directly accessible from the internet.</li>
+      <li><strong>Efficient Network Management:</strong> Internal communication is separated from external exposure.</li>
+      <li><strong>Cost-Effective:</strong> Reduces the number of public IPs needed.</li>
+      <li><strong>Enables NAT (Network Address Translation):</strong> so multiple devices share one public IP.</li>
+    </ul>
+
+    <h3>Network Address Translation (NAT) in Action</h3>
+    <p>NAT translates private IP addresses to a public IP for internet communication.</p>
+
+    <div class="archd-seq" aria-label="NAT translation flow">
+      <div class="archd-seq-step"><span class="num">1</span>Private devices send requests through the NAT router</div>
+      <div class="archd-seq-row">
+        <div class="archd-node"><span class="archd-icon">💻</span><span>192.168.1.2</span></div>
+        <div class="archd-seq-arrow right"><span class="label">request</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">📡</span><span>NAT Router</span></div>
+        <div class="archd-seq-arrow right"><span class="label">203.0.113.5</span></div>
+        <div class="archd-node is-external"><span class="archd-icon">🌐</span><span>Internet</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Internet responds; router forwards to the right private device</div>
+      <div class="archd-seq-row">
+        <div class="archd-node"><span class="archd-icon">📱</span><span>192.168.1.3</span></div>
+        <div class="archd-seq-arrow left"><span class="label">forwarded</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">📡</span><span>NAT Router</span></div>
+        <div class="archd-seq-arrow left"><span class="label">response</span></div>
+        <div class="archd-node is-external"><span class="archd-icon">🌐</span><span>Internet</span></div>
+      </div>
+    </div>
+    <p>Multiple devices share one public IP via NAT.</p>
+
+    <h3>Role of IPs in System Design</h3>
+    <ul>
+      <li><strong>Scalability:</strong> Use private IPs to create large, distributed, multi-region architectures (e.g., microservices in the cloud).</li>
+      <li><strong>Security:</strong> Isolate internal services with firewalls and VPNs using private IPs.</li>
+      <li><strong>Load Balancing:</strong> Use IPs to distribute traffic among servers.</li>
+      <li><strong>Cloud Networking:</strong> Manage both public and private IPs for flexible and secure deployments (AWS, GCP, Azure).</li>
+      <li><strong>Microservices:</strong> Internal services communicate using private IPs, exposed to the internet via public IPs and load balancers.</li>
+    </ul>
+
+    <h3>Practical Code: Checking Your IP Addresses</h3>
+
+    <h4>Get all local (private) IP addresses</h4>
+<pre><code class="language-python">import socket
+
+def get_local_ips():
+    hostname = socket.gethostname()
+    ips = socket.gethostbyname_ex(hostname)[2]
+    return ips
+
+print("Local (private) IP addresses:", get_local_ips())</code></pre>
+
+    <h4>Get your public IP</h4>
+<pre><code class="language-bash"># Requires curl
+curl ifconfig.me</code></pre>
+
+    <h4>Check whether an IP is private or public</h4>
+<pre><code class="language-python">import ipaddress
+
+def ip_type(ip):
+    ip_obj = ipaddress.ip_address(ip)
+    if ip_obj.is_private:
+        return "Private"
+    else:
+        return "Public"
+
+print(ip_type("192.168.1.1"))           # Private
+print(ip_type("8.8.8.8"))               # Public
+print(ip_type("2001:4860:4860::8888"))  # Public (IPv6)</code></pre>
+
+    <h3>IP Addresses — Tips for System Design Interviews</h3>
+    <ul>
+      <li><strong>Always clarify:</strong> Are you being asked about public or private IPs? Their roles differ significantly.</li>
+      <li><strong>Remember ranges:</strong> Know the standard private IP ranges (10.x.x.x, 172.16-31.x.x, 192.168.x.x).</li>
+      <li><strong>Mention NAT:</strong> For IPv4, highlight how NAT enables homes and offices to share a single public IP.</li>
+      <li><strong>IPv6 is the future:</strong> Stress that IPv6 solves the address-exhaustion problem and brings better security and performance.</li>
+      <li><strong>Design for scalability:</strong> Use private IPs internally and public IPs only where needed (e.g., front-end load balancers).</li>
+      <li><strong>Security first:</strong> Keep internal services on private IPs; control access with firewalls and VPNs.</li>
+      <li><strong>Draw diagrams:</strong> Visually represent network topology in interviews or documentation.</li>
+    </ul>
+
+    <h3>IP Addresses — Key Takeaways</h3>
+    <ul>
+      <li><strong>IPv4 vs. IPv6:</strong> IPv4 is common but limited; IPv6 offers vast address space and new features.</li>
+      <li><strong>Public vs. Private:</strong> Public IPs are unique and internet-facing; private IPs are internal and reusable.</li>
+      <li><strong>System Design:</strong> Correct IP management is crucial for scalability, security, and performance in modern distributed systems.</li>
+    </ul>
+
+    <h3>IP Addresses — FAQ</h3>
+    <div class="callout callout-info">
+      <span class="callout-icon">❓</span>
+      <div class="callout-content">
+        <div class="callout-title">Q: Can two devices on the global internet have the same public IP?</div>
+        <p>No. Public IP addresses are unique globally. However, many devices can share the same public IP behind a NAT within a private network.</p>
+      </div>
+    </div>
+    <div class="callout callout-info">
+      <span class="callout-icon">❓</span>
+      <div class="callout-content">
+        <div class="callout-title">Q: Is IPv6 backward compatible with IPv4?</div>
+        <p>No. IPv6 and IPv4 are separate protocols. Devices and networks often run both in parallel (dual stack).</p>
+      </div>
+    </div>
+
+    <h2 id="dns">DNS — The Domain Name System</h2>
+    <p>DNS is often called the <strong>phone book of the Internet</strong>. Its main job is to translate <strong>human-readable domain names</strong> (like <code>google.com</code>) into <strong>machine-friendly IP addresses</strong> (<code>142.250.190.78</code>), enabling seamless connectivity.</p>
+
+    <h3>Why is DNS Critical?</h3>
+    <ul>
+      <li><strong>Usability:</strong> Without DNS, users would need to remember numeric IP addresses for every website.</li>
+      <li><strong>Scalability:</strong> DNS provides a hierarchical, distributed system that can handle billions of devices.</li>
+      <li><strong>Performance:</strong> Through caching and geographic distribution, DNS speeds up website access.</li>
+      <li><strong>Foundation for Modern Networking:</strong> Key for load balancing, CDNs, failover, and cloud architectures.</li>
+    </ul>
+
+    <h3>Types of DNS Servers</h3>
+    <p>DNS resolution is a collaborative process involving several specialized servers:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Server Type</th><th>Role</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Root Name Servers</strong></td><td>Direct queries for TLDs (e.g., <code>.com</code>, <code>.org</code>) to the correct TLD name servers.</td></tr>
+          <tr><td><strong>TLD Name Servers</strong></td><td>Manage domains under a specific TLD (e.g., <code>google.com</code>, <code>amazon.com</code>).</td></tr>
+          <tr><td><strong>Authoritative Name Servers</strong></td><td>Store actual DNS records (A, CNAME, MX, etc.) and resolve domains to IP addresses.</td></tr>
+          <tr><td><strong>Recursive Resolvers</strong></td><td>Provided by ISPs or organizations; perform lookups on behalf of clients and cache results.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Common DNS Record Types</h3>
+    <p>The records you'll actually deal with as a developer:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Record</th><th>Maps</th><th>Example use</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>A</strong></td><td>name → IPv4 address</td><td><code>google.com</code> → <code>142.250.190.78</code></td></tr>
+          <tr><td><strong>AAAA</strong></td><td>name → IPv6 address</td><td>IPv6 equivalent of A</td></tr>
+          <tr><td><strong>CNAME</strong></td><td>name → another name</td><td><code>www.example.com</code> → <code>example.com</code></td></tr>
+          <tr><td><strong>MX</strong></td><td>domain → mail server</td><td>Routes email to your mail provider</td></tr>
+          <tr><td><strong>NS</strong></td><td>zone → authoritative DNS server</td><td>Delegation (which servers are authoritative)</td></tr>
+          <tr><td><strong>TXT</strong></td><td>name → arbitrary text</td><td>SPF/DKIM (email auth), domain ownership proofs</td></tr>
+          <tr><td><strong>SOA</strong></td><td>zone → admin metadata</td><td>One per zone; lists the primary nameserver</td></tr>
+          <tr><td><strong>PTR</strong></td><td>IP → name</td><td>Reverse DNS lookup</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-content">
+        <div class="callout-title">Most Common Confusion: A vs. CNAME</div>
+        <p><strong>A</strong> gives an IP; <strong>CNAME</strong> gives another name to look up. You can't have a CNAME at the apex (e.g., <code>example.com</code> itself) — you need an A record there. Use CNAME for <code>www</code> and other subdomains.</p>
+      </div>
+    </div>
+
+    <h3>DNS Resolution: Step-by-Step</h3>
+    <p>Here's what happens when you type <code>google.com</code> in your browser:</p>
+    <ol>
+      <li><strong>Browser Cache Check:</strong> Is the IP address already cached? If yes, use it.</li>
+      <li><strong>OS Cache Check:</strong> If not in browser, the OS checks its own cache.</li>
+      <li><strong>Query to Recursive Resolver:</strong> If the OS doesn't know, it asks the local DNS resolver (usually at your ISP).</li>
+      <li><strong>Cache Check at Resolver:</strong> If the resolver has it cached, it responds immediately.</li>
+      <li><strong>Root Server Query:</strong> If not, the resolver queries a root name server.</li>
+      <li><strong>TLD Server Query:</strong> The root server directs to the relevant TLD name server.</li>
+      <li><strong>Authoritative Name Server Query:</strong> The TLD server directs to the authoritative name server for <code>google.com</code>.</li>
+      <li><strong>IP Address Returned:</strong> The authoritative server responds with the IP address.</li>
+      <li><strong>Caches Populated:</strong> Every layer caches the response for future requests.</li>
+      <li><strong>Browser Connects to IP:</strong> The browser uses the IP to fetch the website.</li>
+    </ol>
+
+    <h3>DNS Resolution Flow (Simplified)</h3>
+    <div class="archd-seq" aria-label="Simplified DNS resolution">
+      <div class="archd-seq-step"><span class="num">1</span>User asks recursive resolver</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User / Browser</span></div>
+        <div class="archd-seq-arrow right"><span class="label">query example.com</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🔁</span><span>Recursive Resolver</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Resolver walks the hierarchy</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🔁</span><span>Resolver</span></div>
+        <div class="archd-seq-arrow right"><span class="label">. → .com → example.com</span></div>
+        <div class="archd-node"><span class="archd-icon">🌳</span><span>Root → TLD → Auth</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Authoritative server returns the IP</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-data"><span class="archd-icon">📚</span><span>Authoritative DNS</span></div>
+        <div class="archd-seq-arrow right"><span class="label">A record</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🔁</span><span>Resolver</span></div>
+        <div class="archd-seq-arrow right"><span class="label">IP address</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      </div>
+    </div>
+
+    <h3>DNS Resolution Flow (Detailed, with browser &amp; OS layers)</h3>
+    <div class="archd-seq" aria-label="Detailed DNS resolution flow">
+      <div class="archd-seq-step"><span class="num">1</span>Browser checks its own cache</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">enter domain</span></div>
+        <div class="archd-node"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow right"><span class="label">cache lookup</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🧠</span><span>OS Cache</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Miss → ask resolver</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🧠</span><span>OS</span></div>
+        <div class="archd-seq-arrow right"><span class="label">query</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🔁</span><span>Resolver</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Resolver climbs hierarchy</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🔁</span><span>Resolver</span></div>
+        <div class="archd-seq-arrow right"><span class="label">TLD lookup</span></div>
+        <div class="archd-node"><span class="archd-icon">🌍</span><span>Root</span></div>
+        <div class="archd-seq-arrow right"><span class="label">.com server</span></div>
+        <div class="archd-node"><span class="archd-icon">📂</span><span>TLD</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Authoritative answer flows back</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-data"><span class="archd-icon">📚</span><span>Authoritative</span></div>
+        <div class="archd-seq-arrow left"><span class="label">IP</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🔁</span><span>Resolver</span></div>
+        <div class="archd-seq-arrow left"><span class="label">IP</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Browser → Load site</span></div>
+      </div>
+    </div>
+
+    <h3>DNS Server Hierarchy</h3>
+    <div class="archd" aria-label="DNS server hierarchy">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User Browser / OS</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🔁</span><span>Recursive Resolver (ISP)</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node"><span class="archd-icon">🌍</span><span>Root Name Server</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node"><span class="archd-icon">📂</span><span>TLD Name Server (.com, .org)</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">📚</span><span>Authoritative Name Server</span></div>
+    </div>
+
+    <h3>Resolution Flow (ASCII for plain-text viewers)</h3>
+<pre><code class="language-text">User (Browser)
+  |
+  v
+Browser Cache --> OS Cache --> Recursive Resolver (ISP) --> Root Server --> TLD Server --> Authoritative Server
+                                                                                               |
+                                                                                               v
+                                                                               IP Address Response</code></pre>
+
+    <h3>DNS Caching and Performance</h3>
+
+    <h4>Why is Caching Important?</h4>
+    <ul>
+      <li><strong>Reduces Latency:</strong> Cached records allow instant DNS resolution.</li>
+      <li><strong>Lowers Server Load:</strong> Fewer queries hit the authoritative servers.</li>
+      <li><strong>Improves User Experience:</strong> Faster page loads, especially for repeat visits.</li>
+    </ul>
+
+    <h4>Where Does DNS Caching Happen?</h4>
+    <ol>
+      <li><strong>Browser cache</strong></li>
+      <li><strong>Operating system cache</strong> (e.g., <code>/etc/hosts</code>)</li>
+      <li><strong>Recursive resolver cache</strong> (ISP level)</li>
+      <li><strong>Authoritative server cache</strong> (optional, for negative responses)</li>
+    </ol>
+
+    <h4>The Role of TTL (Time-to-Live)</h4>
+    <p><strong>TTL</strong> determines how long a DNS record stays in cache.</p>
+    <ul>
+      <li><strong>Short TTL:</strong> Faster updates, higher traffic to DNS servers.</li>
+      <li><strong>Long TTL:</strong> Lower DNS traffic, but slower propagation of record changes.</li>
+    </ul>
+
+    <h3>DNS in Large-Scale Systems</h3>
+    <p>DNS is a keystone in scalable, resilient architectures:</p>
+    <ul>
+      <li><strong>DNS Load Balancing:</strong> Distributes user requests across multiple servers (e.g., round-robin DNS, geo-based routing).</li>
+      <li><strong>Anycast DNS:</strong> Multiple DNS servers share the same IP; users are routed to the nearest, fastest server.</li>
+      <li><strong>Failover:</strong> Primary and secondary DNS servers ensure availability if one goes down.</li>
+      <li><strong>CDN Integration:</strong> DNS routes users to the nearest edge node — this is exactly the mechanism that powers CDNs in Section 8.</li>
+      <li><strong>Security:</strong> Needs protection against DNS poisoning and DDoS.</li>
+    </ul>
+
+    <h3>Anycast — One IP, Many Servers</h3>
+    <p><strong>Anycast</strong> is the foundational trick behind global DNS, modern CDNs, and DDoS mitigation. The same IP address is advertised from many physical locations using BGP (the internet's routing protocol). When you query that IP, the network automatically routes you to the <strong>closest</strong> instance.</p>
+
+    <div class="archd" aria-label="Anycast routing">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>You query 1.1.1.1</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">BGP picks nearest</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🇬🇧</span><span>London</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🇩🇪</span><span>Frankfurt</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🇮🇳</span><span>Mumbai</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🇯🇵</span><span>Tokyo</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🇺🇸</span><span>Virginia</span></div>
+      </div>
+    </div>
+    <p>This is why Cloudflare's <code>1.1.1.1</code> resolver answers in &lt;10ms from almost anywhere in the world. Same IP, hundreds of physical locations.</p>
+
+    <p><strong>Anycast vs DNS load balancing:</strong></p>
+    <ul>
+      <li><strong>DNS LB</strong> returns a <em>different IP</em> depending on who's asking → routing decision is at DNS lookup time.</li>
+      <li><strong>Anycast</strong> uses the <em>same IP</em> everywhere → routing decision is made by BGP at every hop.</li>
+    </ul>
+
+    <h3>Geo-DNS / GSLB</h3>
+    <p><strong>Geo-DNS</strong> (also called Global Server Load Balancing, or GSLB) returns different DNS answers based on the <em>querying client's location</em>. The user in Tokyo gets the Tokyo region's IP; the user in São Paulo gets the São Paulo region's IP. Implemented by Route 53 (AWS), Cloud DNS (GCP), Azure Traffic Manager, Cloudflare, Akamai, etc.</p>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">⏱️</span>
+      <div class="callout-content">
+        <div class="callout-title">Performance Note</div>
+        <p>A DNS lookup typically takes 20-120ms the first time (often cached afterward). That's why DNS caching matters: from Chapter 1's table, a network round-trip within a datacenter is ~0.5ms; DNS adds the equivalent of ~100 round trips on a miss.</p>
+      </div>
+    </div>
+
+    <h3>DNS Security Considerations</h3>
+    <p>DNS is a frequent target for cyber attacks:</p>
+    <ul>
+      <li><strong>DNS Cache Poisoning:</strong> Attackers inject false records into DNS caches, redirecting users to malicious sites.</li>
+      <li><strong>DDoS Attacks:</strong> Overwhelm DNS servers with requests, making websites unreachable.</li>
+      <li><strong>Mitigation:</strong> Use DNSSEC (DNS Security Extensions), monitoring, and secure configurations to protect infrastructure.</li>
+    </ul>
+
+    <h3>Code Snippet: Querying DNS in Python</h3>
+    <p>Using <a href="https://www.dnspython.org/" target="_blank">dnspython</a>:</p>
+<pre><code class="language-python">import dns.resolver
+
+def resolve_domain(domain):
+    try:
+        result = dns.resolver.resolve(domain, 'A')
+        for ipval in result:
+            print(f"{domain} has IP address: {ipval.to_text()}")
+    except Exception as e:
+        print(f"Could not resolve {domain}: {e}")
+
+resolve_domain('google.com')</code></pre>
+
+    <p><strong>Output:</strong></p>
+<pre><code class="language-text">google.com has IP address: 142.250.190.78</code></pre>
+
+    <h3>DNS — Tips and Best Practices</h3>
+    <ul>
+      <li><strong>Set Appropriate TTLs:</strong> Balance between freshness and efficiency. Short TTLs for frequently updated records, longer for static domains.</li>
+      <li><strong>Use Multiple DNS Providers:</strong> Improve redundancy with primary and secondary DNS providers.</li>
+      <li><strong>Monitor DNS Health:</strong> Use health checks and alerts for failover.</li>
+      <li><strong>Leverage Anycast for Global Scale:</strong> Deploy DNS servers in multiple regions for faster resolution.</li>
+      <li><strong>Implement DNSSEC:</strong> Protect against cache poisoning and DNS spoofing.</li>
+      <li><strong>Optimize Caching Layers:</strong> Understand cache hierarchies — browser, OS, resolver.</li>
+      <li><strong>Document DNS Changes:</strong> Keep detailed records for auditing and rollback.</li>
+    </ul>
+
+    <h3>DNS — Common Interview Questions</h3>
+    <ul>
+      <li>Explain the DNS resolution process step by step.</li>
+      <li>What is the difference between authoritative and recursive DNS servers?</li>
+      <li>How does DNS caching improve performance? Where does it occur?</li>
+      <li>What is TTL in DNS, and why is it important?</li>
+      <li>How does DNS-based load balancing work in large-scale systems?</li>
+      <li>What are common DNS-related security threats, and how can they be mitigated?</li>
+    </ul>
+
+    <h3>DNS — Further Reading</h3>
+    <ul>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc1035" target="_blank">RFC 1035: Domain Names Implementation and Specification</a></li>
+      <li><a href="https://developers.google.com/speed/public-dns/docs/using" target="_blank">Google Public DNS Documentation</a></li>
+      <li><a href="https://www.icann.org/resources/pages/dnssec-what-is-it-why-important-2019-03-05-en" target="_blank">DNSSEC – DNS Security Extensions</a></li>
+    </ul>
+
+    <h2 id="client-server">The Client-Server Model</h2>
+    <p>In the world of modern computing, <strong>networking and communication</strong> form the backbone of scalable, high-performance systems. Whether you're browsing the web, using your favorite app, or streaming a movie, you interact with the <strong>client-server model</strong> every day. Understanding this model is fundamental for developers, architects, and anyone preparing for system design interviews.</p>
+
+    <h3>What is the Client-Server Model?</h3>
+    <p>The <strong>client-server model</strong> is a distributed application structure that separates tasks between service requesters (clients) and service providers (servers).</p>
+
+    <div class="archd-seq" aria-label="Basic client-server model">
+      <div class="archd-seq-step"><span class="num">1</span>Request / Response loop</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client (Browser, App, Device)</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Request</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server (Web, DB, API)</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Response</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+    </div>
+    <p><em>Communication happens over a network (Internet, LAN, Wi-Fi, etc.).</em></p>
+
+    <p><strong>Key Components:</strong></p>
+    <ul>
+      <li><strong>Client:</strong> The user-facing application (web browser, mobile app, API consumer) that initiates a request.</li>
+      <li><strong>Server:</strong> Processes the request and sends back a response (web server, database server, mail server).</li>
+      <li><strong>Network:</strong> The medium (Internet, LAN, Wi-Fi, 5G, etc.) that connects clients and servers.</li>
+    </ul>
+
+    <h3>Why is the Client-Server Model Important?</h3>
+    <ul>
+      <li><strong>Resource Management:</strong> Centralizes computation, storage, and management on powerful servers rather than individual devices.</li>
+      <li><strong>Scalability:</strong> Easy to add or remove resources at the server side as demand changes.</li>
+      <li><strong>Seamless Communication:</strong> Standardizes data exchange between diverse devices and platforms.</li>
+      <li><strong>Real-World Applications:</strong> Powers everything from web browsing and email to cloud services, APIs, and IoT.</li>
+    </ul>
+
+    <h3>The Basic Request-Response Cycle</h3>
+    <p>Every digital action — opening a website, sending an email, fetching an API — follows a basic pattern:</p>
+    <ol>
+      <li><strong>Client sends a request</strong> (GET, POST, SQL query, etc.)</li>
+      <li><strong>Network transmits the request</strong> to the server</li>
+      <li><strong>Server processes the request</strong> (fetches data, computes results)</li>
+      <li><strong>Server sends a response</strong> back</li>
+      <li><strong>Client processes the response</strong> (displays webpage, updates UI, etc.)</li>
+    </ol>
+
+    <div class="archd-seq" aria-label="Request response cycle">
+      <div class="archd-seq-step"><span class="num">1</span>Client → Network → Server</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Send Request</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🌐</span><span>Network</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Forward</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Server → Network → Client</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Forward</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🌐</span><span>Network</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Send Response</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+    </div>
+
+    <p>A more detailed example showing a web-server backed by a database:</p>
+
+    <div class="archd-seq" aria-label="Web server with database">
+      <div class="archd-seq-step"><span class="num">1</span>Browser → Web Server → DB</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow right"><span class="label">HTTP GET /page</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Web Server</span></div>
+        <div class="archd-seq-arrow right"><span class="label">SQL Query</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Data flows back as HTML</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow left"><span class="label">HTML Response</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Web Server</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Data rows</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+      </div>
+    </div>
+
+    <h3>Types of Communication</h3>
+
+    <h4>Synchronous (Request-Response)</h4>
+    <ul>
+      <li><strong>Pattern:</strong> Client sends a request and waits for the server's response before proceeding.</li>
+      <li><strong>Examples:</strong> HTTP requests, REST APIs, form submissions.</li>
+    </ul>
+
+    <h4>Asynchronous (Persistent Connection)</h4>
+    <ul>
+      <li><strong>Pattern:</strong> Client and server maintain an open connection for real-time, two-way communication.</li>
+      <li><strong>Examples:</strong> WebSockets (live chat, notifications), FTP sessions, multiplayer games.</li>
+    </ul>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>Synchronous</th><th>Asynchronous</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Client Waits?</td><td>Yes</td><td>No</td></tr>
+          <tr><td>Typical Pattern</td><td>Blocking (waits for response)</td><td>Non-blocking (can do other work)</td></tr>
+          <tr><td>Example</td><td>REST API call, form submission</td><td>WebSocket chat, AJAX, polling</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">📞</span>
+      <div class="callout-content">
+        <div class="callout-title">Analogy</div>
+        <ul>
+          <li><em>Synchronous</em>: Calling a friend and waiting for them to answer before hanging up.</li>
+          <li><em>Asynchronous</em>: Sending a text message and doing other things while waiting for a reply.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Stateless vs. Stateful Servers</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>Stateless</th><th>Stateful</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Session Memory?</td><td>No memory of past requests</td><td>Maintains session info</td></tr>
+          <tr><td>Scalability</td><td>High (easy to distribute/cache)</td><td>Harder (sessions must be tracked)</td></tr>
+          <tr><td>Example</td><td>REST APIs, HTTP servers</td><td>WebSockets, online games, banking</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Practical Examples:</strong></p>
+    <ul>
+      <li><strong>Stateless:</strong> Every API call to a REST service must include all needed information (e.g., authentication token), because the server does not remember previous requests.</li>
+      <li><strong>Stateful:</strong> A WebSocket server remembers each user's connection, allowing for real-time chat or game state to persist.</li>
+    </ul>
+
+    <h3>Example: HTTP Request-Response Cycle</h3>
+    <p>Let's walk through what happens when you load a website (<code>https://example.com</code>) in your browser.</p>
+    <ol>
+      <li><strong>DNS Lookup:</strong> Browser resolves domain to an IP address.</li>
+      <li><strong>Browser sends an HTTP GET request</strong> to the web server.</li>
+      <li><strong>Server processes the request:</strong> Queries database, generates HTML.</li>
+      <li><strong>Server responds:</strong> Sends HTML, CSS, JS files, status code (200 OK or 404 Not Found).</li>
+      <li><strong>Browser processes the response:</strong> Renders the page.</li>
+    </ol>
+
+    <p><strong>Code Example: Simple HTTP Client in Python</strong></p>
+<pre><code class="language-python">import requests
+
+response = requests.get('https://example.com')
+print(response.status_code)  # 200
+print(response.text)         # HTML content of the page</code></pre>
+
+    <p><strong>Fetching JSON:</strong></p>
+<pre><code class="language-python">import requests
+
+response = requests.get('https://jsonplaceholder.typicode.com/posts/1')
+print(response.json())</code></pre>
+
+    <h3>Real-World Examples</h3>
+    <ul>
+      <li><strong>Web Browsing:</strong> Browser (client) requests pages from a web server.</li>
+      <li><strong>API Calls:</strong> Mobile app (client) fetches data from backend APIs (server).</li>
+      <li><strong>Database Queries:</strong> Application server (client) queries a database server.</li>
+      <li><strong>Messaging:</strong> WhatsApp or Slack uses WebSockets to maintain a persistent connection for real-time communication.</li>
+    </ul>
+
+    <h3>Code Snippet: A Simple HTTP Server</h3>
+    <p>A minimal HTTP server in Python:</p>
+<pre><code class="language-python">from http.server import HTTPServer, BaseHTTPRequestHandler
+
+class SimpleHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b'Hello, Client-Server World!')
+
+if __name__ == '__main__':
+    server_address = ('', 8000)
+    httpd = HTTPServer(server_address, SimpleHandler)
+    print("Serving on port 8000...")
+    httpd.serve_forever()</code></pre>
+    <p><strong>Test it:</strong> Open your browser to <code>http://localhost:8000</code> and see the response.</p>
+
+    <h3>Client-Server Model — Tips for System Design Interviews</h3>
+    <ol>
+      <li><strong>Clarify Requirements.</strong> Ask whether the system needs to be stateless or stateful. Stateless systems scale more easily; stateful ones are required for sessions and personalization.</li>
+      <li><strong>Consider Scalability.</strong> Use stateless servers and load balancers for large-scale systems. For real-time features (chat), stateful or persistent connections are needed.</li>
+      <li><strong>Network Efficiency.</strong> Minimize data transfer. Use compression, caching (CDN, HTTP cache), and optimize request/response payloads.</li>
+      <li><strong>Security First.</strong> Always authenticate and authorize requests. Use HTTPS for all communications.</li>
+      <li><strong>Choose the Right Protocol.</strong> HTTP is great for request-response. Use WebSockets or gRPC for real-time, bi-directional communication. (See Ch. 3 — Protocols.)</li>
+      <li><strong>Logging and Monitoring.</strong> Implement request/response logging, error tracking, and metrics.</li>
+      <li><strong>Handle Failures Gracefully.</strong> Design with retries, fallbacks, and error handling.</li>
+    </ol>
+
+    <h3>Client-Server Model — Sample Interview Questions</h3>
+    <ul>
+      <li>What is the client-server model, and how does it work?</li>
+      <li>How does a browser load a webpage? Walk through the request-response cycle.</li>
+      <li>Explain the difference between stateless and stateful servers. When would you use each?</li>
+      <li>How can you design a scalable client-server architecture for millions of users?</li>
+      <li>What are the security challenges in the client-server model?</li>
+      <li>How does WebSocket communication differ from REST APIs?</li>
+      <li>How would you implement load balancing in a client-server system?</li>
+    </ul>
+
+    <h3>Client-Server Model — Resources</h3>
+    <ul>
+      <li><a href="https://docs.python.org/3/library/http.server.html" target="_blank">Python http.server Documentation</a></li>
+      <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview" target="_blank">MDN Web Docs: HTTP Overview</a></li>
+      <li><a href="https://mermaid-js.github.io/mermaid-live-editor/" target="_blank">Mermaid Live Editor</a></li>
+    </ul>
+
+    <h2 id="proxies">Proxies — Forward and Reverse</h2>
+    <p>In modern distributed architectures, <strong>proxies</strong> play a crucial role in securing, optimizing, and managing network traffic. However, not all proxies are created equal. Two fundamental types — <strong>forward proxies</strong> and <strong>reverse proxies</strong> — serve very different purposes.</p>
+
+    <h3>What is a Proxy?</h3>
+    <p>A <strong>proxy server</strong> acts as an intermediary between a client (browser, app, etc.) and a server (web server, API, etc.). Instead of clients communicating directly with servers, requests pass through a proxy, which can inspect, modify, or redirect them.</p>
+
+    <p><strong>Key Benefits of Proxies:</strong></p>
+    <ul>
+      <li><strong>Security:</strong> Protect clients and servers from threats.</li>
+      <li><strong>Caching:</strong> Store frequently accessed content to reduce latency.</li>
+      <li><strong>Traffic Control:</strong> Efficiently distribute requests, preventing overload.</li>
+      <li><strong>Anonymity:</strong> Mask client IPs to maintain privacy.</li>
+    </ul>
+
+    <h3>Forward Proxy</h3>
+    <p>A <strong>forward proxy</strong> sits between the client and the internet. It acts on behalf of the client, forwarding client requests to servers.</p>
+
+    <p><strong>How It Works:</strong></p>
+    <div class="archd" aria-label="Forward proxy flow">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🛡️</span><span>Forward Proxy</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-external"><span class="archd-icon">🌐</span><span>Internet / Server</span></div>
+    </div>
+
+    <p><strong>Flow:</strong></p>
+    <ol>
+      <li>Client sends a request to the forward proxy.</li>
+      <li>Proxy evaluates the request (may filter or log).</li>
+      <li>Proxy forwards the request to the destination server.</li>
+      <li>Server responds to the proxy.</li>
+      <li>Proxy returns the response to the client.</li>
+    </ol>
+
+    <p><strong>Use Cases:</strong></p>
+    <ul>
+      <li><strong>Content Filtering:</strong> Restrict access to certain sites (e.g., in companies or schools).</li>
+      <li><strong>Anonymity:</strong> Hide client IPs (VPNs, TOR).</li>
+      <li><strong>Bypass Geo-restrictions:</strong> Access blocked content from other regions.</li>
+      <li><strong>Caching:</strong> Reduce bandwidth and accelerate web access.</li>
+    </ul>
+
+    <p><strong>Example: Python Requests via Forward Proxy</strong></p>
+<pre><code class="language-python">import requests
+
+proxies = {
+    "http": "http://forward-proxy.example.com:3128",
+    "https": "http://forward-proxy.example.com:3128",
+}
+
+response = requests.get("http://example.com", proxies=proxies)
+print(response.text)</code></pre>
+
+    <p><strong>Quick test with cURL:</strong></p>
+<pre><code class="language-bash">curl -x http://proxy.example.com:8080 http://example.com</code></pre>
+
+    <h3>Reverse Proxy</h3>
+    <p>A <strong>reverse proxy</strong> sits in front of backend servers. Clients interact with the reverse proxy, which in turn communicates with the servers.</p>
+
+    <p><strong>How It Works:</strong></p>
+    <div class="archd" aria-label="Reverse proxy flow">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🛡️</span><span>Reverse Proxy</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Backend 1</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Backend 2</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Backend 3</span></div>
+      </div>
+    </div>
+
+    <p><strong>Flow:</strong></p>
+    <ol>
+      <li>Client sends a request to the reverse proxy.</li>
+      <li>Reverse proxy evaluates, authenticates, or manipulates the request.</li>
+      <li>Proxy forwards the request to the appropriate backend server.</li>
+      <li>Server responds to the proxy.</li>
+      <li>Proxy returns the response to the client.</li>
+    </ol>
+
+    <p><strong>Use Cases:</strong></p>
+    <ul>
+      <li><strong>Load Balancing:</strong> Distribute incoming requests across multiple servers.</li>
+      <li><strong>Caching:</strong> Store frequently requested resources to improve performance.</li>
+      <li><strong>Security &amp; DDoS Protection:</strong> Hide backend servers, filter malicious traffic.</li>
+      <li><strong>SSL Termination:</strong> Offload SSL/TLS encryption from backend servers.</li>
+    </ul>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">🔐</span>
+      <div class="callout-content">
+        <div class="callout-title">What "SSL Termination" actually means</div>
+        <p>The proxy decrypts incoming HTTPS traffic and forwards plain HTTP to backends. Why do this? You manage one TLS certificate (on the proxy) instead of N (one per backend), and the CPU cost of encryption happens once at the edge instead of on every backend. <strong>The catch:</strong> traffic between the proxy and your backends is now unencrypted, so this assumes a trusted private network. If that assumption doesn't hold (e.g., backends are in a different VPC, or compliance requires end-to-end encryption), use <strong>mTLS</strong> between proxy and backends instead.</p>
+      </div>
+    </div>
+
+    <p><strong>Example: NGINX as a Reverse Proxy</strong></p>
+<pre><code class="language-bash">server {
+    listen 80;
+
+    location / {
+        proxy_pass http://backend_servers;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+
+upstream backend_servers {
+    server app1.internal:8080;
+    server app2.internal:8080;
+}</code></pre>
+
+    <p><strong>Minimal reverse proxy snippet:</strong></p>
+<pre><code class="language-bash">location /api/ {
+    proxy_pass http://api-backend.internal/;
+}</code></pre>
+
+    <h3>Combined View of Forward + Reverse</h3>
+    <div class="archd" aria-label="Forward + reverse proxies combined">
+      <div class="archd-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🛡️</span><span>Forward Proxy</span></div>
+        <div class="archd-node is-external"><span class="archd-icon">🌐</span><span>Internet</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🛡️</span><span>Reverse Proxy</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Backend</span></div>
+      </div>
+    </div>
+
+    <h3>Forward Proxy vs. Reverse Proxy: Key Differences</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Aspect</th><th>Forward Proxy</th><th>Reverse Proxy</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Placement</td><td>In front of clients</td><td>In front of backend servers</td></tr>
+          <tr><td>Protects</td><td>Clients</td><td>Servers</td></tr>
+          <tr><td>Use Case</td><td>Anonymity, filtering, caching</td><td>Load balancing, security, caching</td></tr>
+          <tr><td>Common Users</td><td>Individuals, organizations</td><td>Web apps, APIs, cloud services</td></tr>
+          <tr><td>Examples</td><td>Squid, VPN, Tor</td><td>NGINX, HAProxy, Cloudflare, AWS ELB</td></tr>
+          <tr><td>Visibility</td><td>Hides client from server</td><td>Hides server from client</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Proxy Placement in the Network</h3>
+<pre><code class="language-text">          [Client]
+              |
+      -----------------
+      |               |
+[Forward Proxy]   (Direct, no proxy)
+      |
+  [Internet]
+      |
+[Reverse Proxy]
+      |
+[Backend Servers]</code></pre>
+
+    <h3>Proxies — Tips for System Design Interviews</h3>
+    <ul>
+      <li><strong>When to use a Forward Proxy?</strong> Use when clients need anonymity, content filtering, or must bypass restrictions. Example: A corporate environment restricting social media access.</li>
+      <li><strong>When to use a Reverse Proxy?</strong> Use when you need to scale backend services, balance load, add security layers, or centralize SSL. Example: Deploying an e-commerce platform serving millions of users.</li>
+      <li><strong>Common Pitfalls:</strong>
+        <ul>
+          <li>Don't confuse direction: Forward proxy = client-side; Reverse proxy = server-side.</li>
+          <li>Avoid exposing backend servers directly — always use a reverse proxy for public-facing services.</li>
+          <li>Remember that caching exists in both, but for different reasons and different content.</li>
+        </ul>
+      </li>
+      <li><strong>Interview-Ready Phrases:</strong>
+        <ul>
+          <li><em>"A forward proxy is client-facing, mainly for outbound traffic; a reverse proxy is server-facing, mainly for inbound traffic."</em></li>
+          <li><em>"Reverse proxies enable seamless scaling and high availability by distributing requests across backend servers."</em></li>
+        </ul>
+      </li>
+      <li><strong>Real-World Examples:</strong>
+        <ul>
+          <li>Forward Proxy: Corporate web proxy, VPN, Tor exit node.</li>
+          <li>Reverse Proxy: NGINX as load balancer, Cloudflare for DDoS protection, API Gateway.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h3>Proxies — Further Reading</h3>
+    <ul>
+      <li><a href="https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/" target="_blank">NGINX Reverse Proxy Documentation</a></li>
+      <li><a href="http://www.squid-cache.org/" target="_blank">Squid Forward Proxy</a></li>
+      <li><a href="https://www.cloudflare.com/learning/cdn/glossary/reverse-proxy/" target="_blank">Cloudflare: What is a Reverse Proxy?</a></li>
+    </ul>
+
+    <h2 id="load-balancing">Load Balancing</h2>
+    <p>Load balancing is a foundational building block in scalable, reliable, and high-performing system architectures. Whether you're designing for millions of users or just want smooth user experiences, understanding load balancing — its types, strategies, and real-world applications — is non-negotiable.</p>
+
+    <h3>Why Load Balancing Matters</h3>
+    <p>Modern applications must handle fluctuating traffic, minimize downtime, and ensure fast response times. <strong>Load balancers</strong> sit between clients and backend servers, distributing requests efficiently to prevent any one server from being overwhelmed.</p>
+
+    <p><strong>Key Benefits:</strong></p>
+    <ul>
+      <li><strong>High Availability:</strong> Keeps systems running even during traffic spikes or server failures.</li>
+      <li><strong>Traffic Distribution:</strong> Spreads requests evenly, so no single server bears excessive load.</li>
+      <li><strong>Failure Handling:</strong> Automatically redirects traffic if a server becomes unhealthy.</li>
+      <li><strong>Improved Performance:</strong> Reduces latency by routing requests to the least busy or fastest server.</li>
+      <li><strong>Scalability:</strong> Easily add servers as your application grows — load balancers distribute requests automatically.</li>
+    </ul>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">🛒</span>
+      <div class="callout-content">
+        <div class="callout-title">Real-World Example</div>
+        <p>Consider a high-traffic e-commerce platform during a sale. Without load balancing, a single server could easily be swamped, causing slow performance or downtime. With load balancing, requests are smoothly distributed, ensuring a seamless experience for all users.</p>
+      </div>
+    </div>
+
+    <h3>Types of Load Balancers</h3>
+    <p>Load balancers can be categorized by <strong>network layer</strong> and <strong>deployment model</strong>.</p>
+
+    <h4>By Network Layer</h4>
+
+    <p><strong>Layer 4 Load Balancers (Transport Layer):</strong></p>
+    <ul>
+      <li>Operate at TCP/UDP level.</li>
+      <li>Make routing decisions based on IP addresses and ports.</li>
+      <li>Very fast, ideal for raw network traffic.</li>
+      <li><strong>Example:</strong> AWS Network Load Balancer, HAProxy (L4 mode).</li>
+    </ul>
+
+    <p><strong>Layer 7 Load Balancers (Application Layer):</strong></p>
+    <ul>
+      <li>Operate at HTTP/HTTPS level.</li>
+      <li>Inspect the actual content — HTTP headers, cookies, URLs.</li>
+      <li>Can route requests based on content (e.g., send <code>/checkout</code> to a different server pool).</li>
+      <li><strong>Example:</strong> AWS Application Load Balancer, NGINX.</li>
+    </ul>
+
+    <div class="archd" aria-label="Load balancer fan-out to backends">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client Request</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">⚖️</span><span>Load Balancer (L4: IP/Port • L7: Content-aware)</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>S1</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>S2</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>S3</span></div>
+      </div>
+    </div>
+
+    <h4>By Deployment Model</h4>
+    <ul>
+      <li><strong>Hardware Load Balancers:</strong> Dedicated devices for enterprises and data centers (e.g., F5 BIG-IP).</li>
+      <li><strong>Software Load Balancers:</strong> Run on general servers or VMs. Flexible and cost-effective (e.g., NGINX, HAProxy, Envoy).</li>
+      <li><strong>Cloud-Based Load Balancers:</strong> Managed by cloud providers, offer auto-scaling and easy integration (e.g., AWS ELB, GCP Load Balancer, Azure Load Balancer).</li>
+    </ul>
+
+    <h3>Load Balancing Strategies</h3>
+    <p>The strategy you choose impacts performance, reliability, and cost. Strategies are broadly classified as <strong>static</strong> or <strong>dynamic</strong>.</p>
+
+    <h4>Static Load Balancing</h4>
+    <p><strong>1. Round Robin</strong> — distributes requests sequentially across servers.</p>
+<pre><code class="language-python">servers = ['S1', 'S2', 'S3']
+request_count = 0
+
+def get_next_server():
+    global request_count
+    server = servers[request_count % len(servers)]
+    request_count += 1
+    return server</code></pre>
+
+    <p><strong>2. Least Connections</strong> — routes new requests to the server with the fewest active connections.</p>
+
+    <p><strong>3. IP Hashing</strong> — routes requests based on a hash of the client's IP, providing session persistence.</p>
+<pre><code class="language-python">import hashlib
+
+def get_server_by_ip(client_ip, servers):
+    index = int(hashlib.sha256(client_ip.encode()).hexdigest(), 16) % len(servers)
+    return servers[index]</code></pre>
+
+    <h4>Dynamic Load Balancing</h4>
+    <p><strong>1. Least Response Time</strong> — routes to the server with the fastest current response.</p>
+    <p><strong>2. Adaptive Load Balancing</strong> — dynamically adjusts based on real-time metrics (CPU, memory, health).</p>
+    <p><strong>3. Weighted Load Balancing</strong> — assigns more traffic to higher-capacity servers.</p>
+<pre><code class="language-python">servers = [('S1', 3), ('S2', 1)]  # (server, weight)
+
+def weighted_round_robin(request_id):
+    flat_list = [s for s, w in servers for _ in range(w)]
+    return flat_list[request_id % len(flat_list)]</code></pre>
+
+    <p><strong>Example: NGINX Weighted Load Balancer Config</strong></p>
+<pre><code class="language-bash">http {
+    upstream backend {
+        server backend1.example.com weight=3;
+        server backend2.example.com weight=1;
+    }
+
+    server {
+        listen 80;
+        location / {
+            proxy_pass http://backend;
+        }
+    }
+}</code></pre>
+
+    <h3>Load Balancers in Action</h3>
+    <div class="archd" aria-label="Load balancers in action">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">⚖️</span><span>Load Balancer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server 1</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server 2</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server 3</span></div>
+      </div>
+    </div>
+
+    <p><strong>How it works:</strong></p>
+    <ul>
+      <li>Client sends a request to the Load Balancer.</li>
+      <li>Load Balancer chooses a backend server based on the configured strategy.</li>
+      <li>If a server fails, the Load Balancer reroutes traffic to healthy servers.</li>
+    </ul>
+
+    <h3>Choosing the Right Load Balancer</h3>
+    <ul>
+      <li><strong>Layer:</strong> L4 for speed, L7 for content-aware routing.</li>
+      <li><strong>Scalability:</strong> Will you need auto-scaling? Use cloud-based solutions.</li>
+      <li><strong>Security:</strong> Need SSL termination or DDoS protection?</li>
+      <li><strong>Cost &amp; Flexibility:</strong> Software load balancers are more flexible, hardware for enterprise performance.</li>
+      <li><strong>Use Case:</strong> API gateways, microservices, high-traffic web apps, etc.</li>
+    </ul>
+
+    <h3>Health Checks — What They Are</h3>
+    <p>The LB needs to know which backends are alive. It does this via <strong>health checks</strong>:</p>
+    <ul>
+      <li><strong>Active health check (most common):</strong> the LB hits a <code>/health</code> endpoint on each backend every N seconds (typically 5-30s). If it gets HTTP 200, backend stays in the pool; if it fails K times in a row, it's removed.</li>
+      <li><strong>Passive health check:</strong> the LB tracks real user traffic and ejects a backend after K consecutive failed requests.</li>
+    </ul>
+
+    <p>A good <code>/health</code> endpoint should:</p>
+    <ul>
+      <li>Return fast (&lt; 50 ms) — never block on slow dependencies.</li>
+      <li>Reflect <em>only the local</em> health (don't fail if a downstream is slow; that's a separate concern).</li>
+      <li>Optionally have a separate <code>/ready</code> endpoint for "I've finished startup and am ready to serve."</li>
+    </ul>
+
+    <h3>Sticky Sessions — What They Are and When to Avoid</h3>
+    <p><strong>Sticky sessions</strong> (a.k.a. <em>session affinity</em>) mean the LB always routes a given user to the <em>same</em> backend. Typically implemented via:</p>
+    <ul>
+      <li><strong>IP-hash sticky:</strong> hash(client_IP) % N. Free but breaks if user's IP changes.</li>
+      <li><strong>Cookie-based sticky:</strong> LB injects a cookie identifying the backend.</li>
+    </ul>
+
+    <p><strong>Why you might need it:</strong> legacy apps that hold per-user state (session data, in-memory caches) on a specific backend.</p>
+
+    <p><strong>Why you should usually avoid it:</strong></p>
+    <ul>
+      <li>Breaks horizontal scaling — one user can't be load-balanced.</li>
+      <li>A backend death loses that user's session.</li>
+      <li>Some backends end up hot, others cold.</li>
+    </ul>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">The Modern Alternative</div>
+        <p>Make backends <em>stateless</em> and externalize session state to Redis/Memcached. Any backend can serve any user.</p>
+      </div>
+    </div>
+
+    <h3>Load Balancing — Tips &amp; Best Practices</h3>
+    <ul>
+      <li><strong>Monitor Health:</strong> Always enable health checks for backend servers.</li>
+      <li><strong>Sticky Sessions:</strong> Use session persistence (IP hash, cookies) if user state is needed.</li>
+      <li><strong>SSL Offloading:</strong> Terminate SSL at the load balancer to reduce backend load.</li>
+      <li><strong>Auto Scaling:</strong> For cloud setups, integrate load balancers with auto-scaling groups.</li>
+      <li><strong>Rate Limiting:</strong> Prevent abuse by integrating rate limiting at the load balancer or API gateway.</li>
+      <li><strong>Failover:</strong> Design for graceful failover — use multiple load balancers or DNS-based failover.</li>
+      <li><strong>Logging &amp; Monitoring:</strong> Track traffic, errors, and latency at the load balancer for troubleshooting and analytics.</li>
+      <li><strong>Security:</strong> Use WAFs (Web Application Firewalls) and DDoS protection features available on most advanced load balancers.</li>
+    </ul>
+
+    <h3>Load Balancing — Interview Quick Reference</h3>
+    <ul>
+      <li><strong>What is load balancing and why is it important?</strong> Distributes traffic to ensure high availability, performance, and reliability.</li>
+      <li><strong>Layer 4 vs. Layer 7 Load Balancers?</strong>
+        <ul>
+          <li>L4: Fast, IP/Port-based.</li>
+          <li>L7: Content-aware, supports complex rules.</li>
+        </ul>
+      </li>
+      <li><strong>Static vs. Dynamic strategies?</strong>
+        <ul>
+          <li>Static: Predefined rules, simple.</li>
+          <li>Dynamic: Adapt to real-time load/health.</li>
+        </ul>
+      </li>
+      <li><strong>How does a load balancer improve security?</strong> Can perform SSL/TLS termination, DDoS filtering, hide backend servers.</li>
+    </ul>
+
+    <h3>Load Balancing — Further Reading</h3>
+    <ul>
+      <li><a href="https://docs.nginx.com/nginx/admin-guide/load-balancer/http-load-balancer/" target="_blank">NGINX as a Load Balancer</a></li>
+      <li><a href="https://aws.amazon.com/elasticloadbalancing/" target="_blank">AWS Elastic Load Balancing</a></li>
+      <li><a href="https://www.haproxy.org/" target="_blank">HAProxy Documentation</a></li>
+      <li><a href="https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/" target="_blank">Kubernetes Ingress Controllers</a></li>
+    </ul>
+
+    <h2 id="api-gateways">API Gateways</h2>
+    <p>An <strong>API Gateway</strong> is a server that acts as a centralized entry point for all client requests to your backend services. It is responsible for request routing, composition, protocol translation, authentication, rate limiting, caching, logging, and more.</p>
+
+    <h3>Key Functions</h3>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">🔐</div>
+        <div class="card-title">Authentication &amp; Authorization</div>
+        <div class="card-body">OAuth, JWT, API keys.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🛡️</div>
+        <div class="card-title">Security</div>
+        <div class="card-body">DDoS protection, SSL termination, bot protection.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🧭</div>
+        <div class="card-title">Routing</div>
+        <div class="card-body">Forwards requests to the correct backend service.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">⏱️</div>
+        <div class="card-title">Rate Limiting &amp; Throttling</div>
+        <div class="card-body">Protect APIs from abuse and runaway clients.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <div class="card-title">Caching</div>
+        <div class="card-body">Stores common responses to reduce backend load and response time.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔄</div>
+        <div class="card-title">Request/Response Transformation</div>
+        <div class="card-body">Modifies formats between client and backend.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📊</div>
+        <div class="card-title">Logging &amp; Monitoring</div>
+        <div class="card-body">Centralized observability across APIs.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🧩</div>
+        <div class="card-title">API Composition</div>
+        <div class="card-body">Aggregates calls to multiple backend services.</div>
+      </div>
+    </div>
+
+    <h3>API Gateway Diagram</h3>
+    <div class="archd" aria-label="API Gateway routing">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">API Request</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Service 1</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Service 2</span></div>
+      </div>
+    </div>
+
+    <p>A more detailed view showing aggregation:</p>
+    <div class="archd" aria-label="API Gateway with aggregation">
+      <div class="archd-node is-user"><span class="archd-icon">📱</span><span>Web / Mobile Client</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">API Request</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway (Auth, Transform, Compose)</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Service 1</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Service 2</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Service 3</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Aggregated / Transformed Response</span></div>
+      <div class="archd-node is-user"><span class="archd-icon">📱</span><span>Client</span></div>
+    </div>
+
+    <h3>Sample API Gateway Implementation (Node.js + Express + http-proxy-middleware)</h3>
+<pre><code class="language-javascript">const express = require('express');
+const { createProxyMiddleware } = require('http-proxy-middleware');
+const rateLimit = require('express-rate-limit');
+const app = express();
+
+// Rate Limiting
+const limiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute window
+  max: 60                  // limit each IP to 60 requests per windowMs
+});
+app.use(limiter);
+
+// Simple auth middleware
+app.use((req, res, next) => {
+  if (req.headers['x-api-key'] !== 'your-api-key') {
+    return res.status(401).send('Unauthorized');
+  }
+  next();
+});
+
+// Proxy setup
+app.use('/service1', createProxyMiddleware({ target: 'http://localhost:5001', changeOrigin: true }));
+app.use('/service2', createProxyMiddleware({ target: 'http://localhost:5002', changeOrigin: true }));
+
+app.listen(3000, () => console.log('API Gateway running on port 3000'));</code></pre>
+
+    <h3>API Gateway vs. Reverse Proxy — When to Use Which</h3>
+    <p>This is <em>the</em> most common confusion. Both sit in front of your services. Both can route, terminate TLS, and load-balance. So what's different?</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Concern</th><th>Reverse Proxy (NGINX, HAProxy)</th><th>API Gateway (Kong, AWS API GW, Apigee)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Routing</td><td>✓ by URL/host</td><td>✓ by URL/host + API contract</td></tr>
+          <tr><td>SSL termination</td><td>✓</td><td>✓</td></tr>
+          <tr><td>Load balancing</td><td>✓ first-class</td><td>sometimes (often delegates to LB)</td></tr>
+          <tr><td>Authentication</td><td>basic (mTLS, basic auth)</td><td>first-class (OAuth, JWT, API keys)</td></tr>
+          <tr><td>Rate limiting</td><td>basic (global, per-IP)</td><td>rich (per-API key, per-route, per-tier)</td></tr>
+          <tr><td>API composition</td><td>✗</td><td>✓</td></tr>
+          <tr><td>Request transform</td><td>basic (headers)</td><td>✓ (body, schema)</td></tr>
+          <tr><td>Schema validation</td><td>✗</td><td>✓ (OpenAPI / GraphQL)</td></tr>
+          <tr><td>Developer portal</td><td>✗</td><td>✓</td></tr>
+          <tr><td>Pricing model</td><td>free, open-source</td><td>often per-API-call (managed services)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">🧭</span>
+      <div class="callout-content">
+        <div class="callout-title">Rule of Thumb</div>
+        <ul>
+          <li><strong>Reverse proxy</strong> = traffic infrastructure. You'd run it for any web service.</li>
+          <li><strong>API Gateway</strong> = API product surface. Use it when you're exposing APIs to external developers, multiple internal teams, or partners — anywhere you need quotas, plans, and a polished contract.</li>
+          <li><strong>In practice you often use both:</strong> a reverse proxy (e.g., NGINX) close to your services for routing/TLS, plus a managed API gateway at the edge for auth, quotas, and developer experience.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>API Gateways — Tips</h3>
+    <ul>
+      <li><strong>Use JWT/OAuth2</strong> for robust authentication and authorization.</li>
+      <li><strong>Implement rate limiting</strong> at the gateway to prevent abuse.</li>
+      <li><strong>Aggregate requests</strong> in the gateway to reduce client-server roundtrips (API composition).</li>
+      <li><strong>Monitor logs</strong> for suspicious activity and performance bottlenecks.</li>
+      <li><strong>Cache GET responses</strong> for expensive, non-sensitive data.</li>
+    </ul>
+
+    <h3>API Gateways — Interview Questions</h3>
+    <ul>
+      <li>What is an API gateway and why is it important?</li>
+      <li>How does an API gateway differ from a load balancer?</li>
+      <li>How would you implement rate limiting and authentication in an API gateway?</li>
+      <li>Describe a scenario where API aggregation/composition is beneficial.</li>
+    </ul>
+
+    <h2 id="cdns">Content Delivery Networks (CDNs)</h2>
+    <p>A <strong>Content Delivery Network (CDN)</strong> is a globally distributed network of servers (also called Points of Presence, or PoPs) designed to deliver content (web pages, images, videos, APIs, etc.) to users efficiently, reliably, and securely. By caching content closer to users, CDNs reduce latency, enhance availability, and offload traffic from origin servers.</p>
+
+    <h3>Why Do We Need CDNs?</h3>
+    <p>Without a CDN, every client request must travel the entire distance to the origin server (which could be on another continent), resulting in:</p>
+    <ul>
+      <li><strong>High latency</strong> due to geographical distance.</li>
+      <li><strong>Overloaded origin servers</strong> under heavy traffic.</li>
+      <li><strong>Bandwidth bottlenecks</strong> and slow load times.</li>
+    </ul>
+
+    <p>CDNs solve these problems by:</p>
+    <ul>
+      <li>Serving content from the nearest edge server.</li>
+      <li>Distributing user load across many servers.</li>
+      <li>Caching and optimizing content to reduce bandwidth and cost.</li>
+      <li>Handling massive traffic and DDoS attacks.</li>
+      <li>Optimizing bandwidth and cost.</li>
+    </ul>
+
+    <h3>CDN Architecture &amp; Components</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Component</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Origin Server</strong></td><td>Central server hosting the original content.</td></tr>
+          <tr><td><strong>Edge Server / PoP</strong></td><td>Distributed servers caching and serving content closer to users.</td></tr>
+          <tr><td><strong>Request Routing</strong></td><td>Logic that directs traffic to the optimal edge server (geo, latency, load).</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Basic CDN Architecture:</strong></p>
+    <div class="archd" aria-label="Basic CDN architecture">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Request</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🛰️</span><span>Edge Server / PoP</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Cache Miss</span></div>
+      <div class="archd-node is-data"><span class="archd-icon">🏛️</span><span>Origin Server</span></div>
+    </div>
+
+    <p><strong>PoP fan-out view:</strong></p>
+    <div class="archd" aria-label="CDN PoP fanout">
+      <div class="archd-node is-data"><span class="archd-icon">🏛️</span><span>Origin Server</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🛰️</span><span>Edge 1 (US-East)</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🛰️</span><span>Edge 2 (EU-West)</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🛰️</span><span>Edge 3 (Asia)</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User 1</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User 2</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User 3</span></div>
+      </div>
+    </div>
+
+    <h3>How a CDN Handles Requests</h3>
+    <ol>
+      <li><strong>User Requests Content:</strong> A user tries to load a resource (e.g., image, video, API data).</li>
+      <li><strong>CDN Resolves to Nearest Edge Server:</strong> DNS and routing logic direct the request to the best PoP (based on geography, latency, load).</li>
+      <li><strong>Cache Hit:</strong> If the content is cached at the edge, it is served instantly.</li>
+      <li><strong>Cache Miss:</strong> If not cached, the edge server fetches from the origin, caches it for future requests, and serves the user.</li>
+      <li><strong>Subsequent Requests:</strong> Future users benefit from the cached content, improving speed and reliability.</li>
+    </ol>
+
+    <p>A combined flow showing the user → edge → origin → cache journey:</p>
+    <div class="archd-seq" aria-label="CDN user-edge-origin flow">
+      <div class="archd-seq-step"><span class="num">1</span>Request hits edge</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Request</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🛰️</span><span>Edge Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2a</span>Cache hit — instant serve</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Cached content</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🛰️</span><span>Edge Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2b</span>Cache miss — fetch origin, then serve</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🛰️</span><span>Edge</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Fetch</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🏛️</span><span>Origin</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Content</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      </div>
+    </div>
+
+    <h3>CDN Request Flow (Sequence)</h3>
+    <div class="archd-seq" aria-label="CDN request sequence with DNS">
+      <div class="archd-seq-step"><span class="num">1</span>Resolve domain to nearest PoP</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">resolve</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🔁</span><span>DNS</span></div>
+        <div class="archd-seq-arrow left"><span class="label">PoP IP</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Request the content</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">GET asset</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🛰️</span><span>Edge / PoP</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3a</span>Cache hit</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🛰️</span><span>Edge</span></div>
+        <div class="archd-seq-arrow right"><span class="label">cached content</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3b</span>Cache miss → fetch origin → serve &amp; cache</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🛰️</span><span>Edge</span></div>
+        <div class="archd-seq-arrow right"><span class="label">fetch</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🏛️</span><span>Origin</span></div>
+        <div class="archd-seq-arrow left"><span class="label">content</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User (and edge caches it)</span></div>
+      </div>
+    </div>
+
+    <h3>Key CDN Features &amp; Benefits</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>Benefit</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Caching &amp; Replication</strong></td><td>Reduces latency and origin server load.</td></tr>
+          <tr><td><strong>Load Balancing</strong></td><td>Handles massive traffic, provides high availability.</td></tr>
+          <tr><td><strong>Compression &amp; Optimization</strong></td><td>Reduces bandwidth, speeds up delivery.</td></tr>
+          <tr><td><strong>Security</strong></td><td>DDoS mitigation, SSL/TLS, bot filtering.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Caching Strategies in CDNs</h3>
+    <p>CDNs cache frequently accessed content at edge servers. Key concepts:</p>
+
+    <p><strong>Cache Expiration (TTL):</strong> determines how long an object stays cached before being refreshed.</p>
+<pre><code class="language-text">Cache-Control: public, max-age=86400</code></pre>
+
+    <p><strong>Cache Invalidation</strong> techniques to ensure freshness:</p>
+    <ul>
+      <li><strong>Manual Purge:</strong> Explicitly remove/refresh objects.</li>
+      <li><strong>Stale-While-Revalidate:</strong> Serve stale content while fetching the latest version asynchronously.</li>
+      <li><strong>Cache-Control Headers:</strong> Fine-tune caching via HTTP headers.</li>
+    </ul>
+
+    <p><strong>Example: Setting Cache-Control headers in Express.js</strong></p>
+<pre><code class="language-javascript">app.get('/static/*', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
+  res.sendFile(/* ... */);
+});</code></pre>
+
+    <h3>Request Routing, Load Balancing, and Failover</h3>
+    <p>CDNs use intelligent algorithms for:</p>
+    <ul>
+      <li><strong>Geo-Based Routing:</strong> Directs users to the geographically nearest PoP.</li>
+      <li><strong>Latency-Based Routing:</strong> Picks the PoP with the fastest response time.</li>
+      <li><strong>Load-Aware Routing:</strong> Avoids sending requests to overloaded PoPs.</li>
+    </ul>
+    <p><strong>Failover Handling:</strong> If a PoP fails, traffic is rerouted to the next closest or most responsive PoP, ensuring high availability.</p>
+
+    <h3>Compression, Minification, and Optimization</h3>
+    <p>CDNs further optimize content delivery by:</p>
+    <ul>
+      <li><strong>Compression:</strong>
+        <ul>
+          <li>Gzip/Brotli for text files (HTML, CSS, JS)</li>
+          <li>Image compression (WebP, AVIF)</li>
+        </ul>
+      </li>
+      <li><strong>Minification:</strong>
+        <ul>
+          <li>Remove whitespace and comments from JS/CSS.</li>
+        </ul>
+      </li>
+      <li><strong>Bundling:</strong>
+        <ul>
+          <li>Combine multiple files into one to reduce HTTP requests.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <p><strong>Example: Enable Gzip Compression in Node.js</strong></p>
+<pre><code class="language-javascript">const express = require('express');
+const compression = require('compression');
+
+const app = express();
+app.use(compression());</code></pre>
+
+    <h3>Security Features</h3>
+    <ul>
+      <li><strong>DDoS Protection:</strong> Rate limiting, traffic filtering, anomaly detection.</li>
+      <li><strong>SSL/TLS Offloading:</strong> Edge servers handle encryption, reducing load on origin.</li>
+      <li><strong>Bot Mitigation:</strong> Block malicious bots before reaching origin.</li>
+      <li><strong>Web Application Firewall (WAF):</strong> Protects against common web threats.</li>
+    </ul>
+
+    <h3>CDN Use Cases</h3>
+    <ul>
+      <li><strong>Static Content Delivery:</strong> Images, CSS, JS, videos, HTML.</li>
+      <li><strong>Dynamic Content Optimization:</strong> API responses, personalized pages (with careful caching).</li>
+      <li><strong>API Acceleration:</strong> Edge caching of API responses for speed.</li>
+      <li><strong>Edge Computing:</strong> Run lightweight computation at the edge (e.g., video transcoding, A/B testing).</li>
+    </ul>
+
+    <h3>CDN Nuances Worth Knowing</h3>
+    <ul>
+      <li><strong>Pull CDN (most common):</strong> Edge fetches from origin on first cache miss, then serves cached copy. Cloudflare, CloudFront, Fastly default to this. <strong>Easy to set up</strong> (just point DNS at the CDN).</li>
+      <li><strong>Push CDN:</strong> You manually upload assets to the CDN. Used for very large, rarely-changing files (game patches, software downloads).</li>
+      <li><strong>Origin shield:</strong> A <em>single</em> designated edge in front of your origin so all other edges fetch from it on a miss. Reduces load on your origin during a stampede.</li>
+      <li><strong>Cache key design:</strong> Two URLs that should serve the same content (e.g., with vs. without a marketing query parameter) need to share a cache key, or you'll cache them separately and waste hit-rate. Most CDNs let you strip irrelevant query params from the key.</li>
+      <li><strong>Signed URLs:</strong> For private content (paid videos, private documents), the CDN won't serve unless the URL includes a short-lived signature your origin generated. Lets you put auth at the origin while still using the CDN for delivery.</li>
+      <li><strong>Cache invalidation:</strong> Two strategies — <strong>purge</strong> (CDN evicts on demand, often costly/slow) or <strong>versioning</strong> (rename the file: <code>style.css?v=42</code>, and old versions just expire). Versioning is almost always better.</li>
+    </ul>
+
+    <h3>Sample Code: CDN Integration</h3>
+
+    <p><strong>1. Using a CDN with HTML Assets</strong></p>
+<pre><code class="language-javascript">&lt;!-- Using Cloudflare CDN for jQuery --&gt;
+&lt;script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"&gt;&lt;/script&gt;</code></pre>
+
+    <p><strong>2. Setting Cache Headers for CDN in Express.js</strong></p>
+<pre><code class="language-javascript">app.use('/static', express.static('public', {
+  maxAge: '7d', // Cache static files for 7 days
+  setHeaders: function (res, path) {
+    res.setHeader('Cache-Control', 'public, max-age=604800');
+  }
+}));</code></pre>
+
+    <p><strong>3. Configuring a CDN (Pseudocode Example)</strong></p>
+<pre><code class="language-text">cdn:
+  origin: https://mywebsite.com
+  edge_servers:
+    - location: us-east
+    - location: eu-west
+    - location: asia
+  cache:
+    ttl: 86400 # 24 hours
+    stale_while_revalidate: true
+  security:
+    ddos_protection: true
+    ssl: enabled</code></pre>
+
+    <h3>CDN — Tips &amp; Best Practices</h3>
+    <ul>
+      <li><strong>Set Appropriate TTLs:</strong> Static assets get longer TTLs (days/weeks); dynamic content gets shorter TTLs or no caching.</li>
+      <li><strong>Use Versioning:</strong> Change asset filenames when deploying updates to avoid stale caches.</li>
+      <li><strong>Purge Carefully:</strong> Only purge what's necessary to avoid cache stampedes.</li>
+      <li><strong>Leverage Compression &amp; Minification:</strong> Serve compressed/minified assets to reduce bandwidth and speed up delivery.</li>
+      <li><strong>Secure Your CDN:</strong> Enforce HTTPS, enable DDoS protection, and configure WAF rules.</li>
+      <li><strong>Monitor Edge Cache Hit Ratio:</strong> Optimize your caching strategy for the highest possible hit ratio.</li>
+      <li><strong>Edge Computing:</strong> Use edge functions for lightweight logic (A/B testing, geofencing, etc.).</li>
+      <li><strong>API Caching:</strong> Use with care — define cache keys and invalidation logic for APIs to avoid stale data.</li>
+      <li><strong>Set appropriate cache headers</strong> (<code>Cache-Control</code>, <code>ETag</code>, <code>Expires</code>) in your API/gateway responses to control CDN caching.</li>
+      <li><strong>Use edge caching</strong> for high-traffic API endpoints that serve the same data to many users.</li>
+      <li><strong>Purge CDN cache</strong> immediately on deployment of new content or API changes to avoid serving stale data.</li>
+      <li><strong>Enable SSL/TLS termination</strong> at the CDN for better security and performance.</li>
+      <li><strong>Monitor CDN analytics</strong> for usage patterns and anomalies.</li>
+    </ul>
+
+    <h3>CDN — Interview Questions</h3>
+
+    <p><strong>Basics:</strong></p>
+    <ul>
+      <li>What is a CDN, and how does it work?</li>
+      <li>Why do we need CDNs in modern system design?</li>
+      <li>What are the key benefits of using a CDN?</li>
+    </ul>
+
+    <p><strong>Architecture:</strong></p>
+    <ul>
+      <li>Explain the difference between an origin server and an edge server in a CDN.</li>
+      <li>What is a PoP in a CDN?</li>
+      <li>How does request routing work in a CDN?</li>
+    </ul>
+
+    <p><strong>Caching:</strong></p>
+    <ul>
+      <li>What is the difference between a cache hit and a cache miss?</li>
+      <li>How does cache expiration (TTL) work in a CDN?</li>
+      <li>Describe cache invalidation strategies in a CDN.</li>
+    </ul>
+
+    <p><strong>Load Balancing &amp; Failover:</strong></p>
+    <ul>
+      <li>How do CDNs use load balancing?</li>
+      <li>What happens if a CDN PoP fails?</li>
+    </ul>
+
+    <p><strong>Optimization:</strong></p>
+    <ul>
+      <li>What compression and minification techniques do CDNs use?</li>
+      <li>How does API acceleration work in a CDN?</li>
+    </ul>
+
+    <p><strong>Security:</strong></p>
+    <ul>
+      <li>How does a CDN protect against DDoS attacks?</li>
+      <li>What is SSL/TLS offloading, and why is it useful?</li>
+    </ul>
+
+    <p><strong>Advanced:</strong></p>
+    <ul>
+      <li>What is edge computing in the context of CDNs?</li>
+      <li>How would you design a CDN for a large-scale video streaming platform?</li>
+      <li>How do CDNs help in real-time applications like online gaming or stock trading?</li>
+    </ul>
+
+    <h3>CDN — Further Reading</h3>
+    <ul>
+      <li><a href="https://developers.cloudflare.com/cdn/" target="_blank">Cloudflare CDN Docs</a></li>
+      <li><a href="https://aws.amazon.com/cloudfront/" target="_blank">AWS CloudFront</a></li>
+      <li><a href="https://cloud.google.com/cdn/" target="_blank">Google Cloud CDN</a></li>
+      <li><a href="https://www.akamai.com/" target="_blank">Akamai CDN</a></li>
+    </ul>
+
+    <h2 id="api-gw-vs-cdn">API Gateway vs. CDN</h2>
+    <p>In large systems you typically use both. They overlap in some functionality but serve different primary purposes.</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Functionality</th><th>API Gateway</th><th>CDN</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Main Use Case</td><td>API traffic management/routing/security</td><td>Fast, reliable content delivery</td></tr>
+          <tr><td>Caching</td><td>API responses (short-lived or dynamic)</td><td>Static (and some dynamic) content</td></tr>
+          <tr><td>Security</td><td>API auth, rate limiting, DDoS, bot protection</td><td>DDoS, SSL/TLS, WAF</td></tr>
+          <tr><td>Placement</td><td>Entry point for API requests</td><td>Sits between clients and origin servers</td></tr>
+          <tr><td>Aggregation</td><td>Yes (API composition)</td><td>No (serves files as-is)</td></tr>
+          <tr><td>Example Tools</td><td>Kong, NGINX, AWS API Gateway, Traefik, Apigee</td><td>Cloudflare, Akamai, AWS CloudFront</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <ul>
+      <li>The <strong>API Gateway</strong> manages and secures your APIs.</li>
+      <li>The <strong>CDN</strong> accelerates delivery of static assets and sometimes API responses.</li>
+    </ul>
+
+    <h2 id="combining">Combining an API Gateway with a CDN</h2>
+    <p>A common design is to put the CDN in front of the API Gateway for caching API responses and absorbing DDoS attacks, then let the API Gateway handle authentication, routing, and business logic.</p>
+
+    <div class="archd" aria-label="CDN in front of API Gateway">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🛰️</span><span>CDN Edge</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Service 1</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Service 2</span></div>
+      </div>
+    </div>
+
+    <p>This layered approach gives you the best of both worlds: low-latency static delivery and DDoS absorption at the CDN, with rich API management capabilities at the gateway.</p>
+
+    <h2 id="canonical-trace">The Canonical Trace: What Happens When You Type <code>google.com</code></h2>
+    <p>This is the most asked networking interview question — and the best way to confirm you've absorbed everything in this chapter. Here's the journey, with approximate latencies from Chapter 1's reference table.</p>
+
+    <div class="trace-timeline">
+      <div class="trace-step">
+        <span class="tnum">1</span>
+        <div class="tbody">
+          <div class="ttitle">Browser checks its own cache for google.com</div>
+          <div class="tdesc">Browser cache → OS cache → <code>/etc/hosts</code> → resolver.</div>
+        </div>
+        <span class="tcost">~0 ms</span>
+      </div>
+      <div class="trace-step">
+        <span class="tnum">2</span>
+        <div class="tbody">
+          <div class="ttitle">DNS lookup (recursive resolver → root → TLD → auth)</div>
+          <div class="tdesc">Cached at every layer; only the first user pays full cost. Returns <code>142.250.190.78</code> (an A record). With Anycast + Geo-DNS, you usually hit a regional answer.</div>
+        </div>
+        <span class="tcost">~20-120 ms</span>
+      </div>
+      <div class="trace-step">
+        <span class="tnum">3</span>
+        <div class="tbody">
+          <div class="ttitle">TCP three-way handshake to that IP on port 443</div>
+          <div class="tdesc">Client: SYN → Server: SYN-ACK → Client: ACK. Connection established.</div>
+        </div>
+        <span class="tcost">~1 RTT · 50-150 ms</span>
+      </div>
+      <div class="trace-step">
+        <span class="tnum">4</span>
+        <div class="tbody">
+          <div class="ttitle">TLS handshake (HTTPS)</div>
+          <div class="tdesc">Client Hello with supported ciphers → server presents certificate (verified via PKI) → symmetric session key negotiated. Modern TLS 1.3 + session resumption: as little as 0-RTT.</div>
+        </div>
+        <span class="tcost">~1-2 RTTs</span>
+      </div>
+      <div class="trace-step">
+        <span class="tnum">5</span>
+        <div class="tbody">
+          <div class="ttitle">HTTP request</div>
+          <div class="tdesc"><code>GET / HTTP/2</code>, <code>Host: google.com</code>, <code>Cookie: ...</code>. May actually hit a CDN / Anycast edge, not the origin.</div>
+        </div>
+        <span class="tcost">1 RTT round trip</span>
+      </div>
+      <div class="trace-step">
+        <span class="tnum">6</span>
+        <div class="tbody">
+          <div class="ttitle">Server processes the request</div>
+          <div class="tdesc">Load balancer routes to an app server → app server queries DB / cache / other services → composes response.</div>
+        </div>
+        <span class="tcost">variable</span>
+      </div>
+      <div class="trace-step">
+        <span class="tnum">7</span>
+        <div class="tbody">
+          <div class="ttitle">HTTP response streams back</div>
+          <div class="tdesc">200 OK, Content-Type: text/html. HTML body (usually compressed: gzip / brotli).</div>
+        </div>
+        <span class="tcost">bandwidth-bound</span>
+      </div>
+      <div class="trace-step">
+        <span class="tnum">8</span>
+        <div class="tbody">
+          <div class="ttitle">Browser parses HTML, discovers subresources</div>
+          <div class="tdesc">CSS, JS, images, fonts → each may trigger more DNS + TCP + TLS + HTTP. HTTP/2 multiplexes them over the same connection.</div>
+        </div>
+        <span class="tcost">~10-50 ms</span>
+      </div>
+      <div class="trace-step">
+        <span class="tnum">9</span>
+        <div class="tbody">
+          <div class="ttitle">Browser renders the page</div>
+          <div class="tdesc">Layout, paint, JS hydration.</div>
+        </div>
+        <span class="tcost">~50-500 ms</span>
+      </div>
+    </div>
+
+    <h3>Where the Latency Budget Goes</h3>
+    <p>Typical 200 ms page load:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Phase</th><th>Approx. cost</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>DNS lookup (uncached)</td><td>20-120 ms</td></tr>
+          <tr><td>TCP handshake (cross-continent)</td><td>50-150 ms</td></tr>
+          <tr><td>TLS handshake</td><td>50-200 ms</td></tr>
+          <tr><td>First-byte time (server processing)</td><td>50-300 ms</td></tr>
+          <tr><td>Content download</td><td>bandwidth-dependent</td></tr>
+          <tr><td>Render</td><td>50-500 ms</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">🎯</span>
+      <div class="callout-content">
+        <div class="callout-title">Designers' Lesson</div>
+        <p>The first 4 phases (DNS → TCP → TLS) are <em>all network round trips</em>. The only way to make them cheaper is to <strong>be closer to the user</strong> (CDN, Anycast, edge compute). This is why CDNs aren't just "a cache for images" — they cut hundreds of milliseconds off every interaction.</p>
+      </div>
+    </div>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">🚀</span>
+      <div class="callout-content">
+        <div class="callout-title">HTTP/2 and HTTP/3 Changes</div>
+        <p>HTTP/2 multiplexes many requests on one TCP connection (no more head-of-line blocking from multiple connections). HTTP/3 replaces TCP with QUIC (over UDP) to eliminate even the TCP handshake delay on reconnects. We'll cover these in Chapter 3.</p>
+      </div>
+    </div>
+
+    <h2 id="combined-tips">Combined Tips &amp; Tricks for System Design Interviews</h2>
+    <p>A consolidated master list, drawn from across all sections.</p>
+
+    <h3>General Networking Tips</h3>
+    <ul>
+      <li><strong>Always clarify requirements.</strong> Ask about traffic volume, latency tolerance, security needs, etc.</li>
+      <li><strong>Draw diagrams.</strong> Visuals help communicate architecture clearly.</li>
+      <li><strong>Discuss trade-offs.</strong> E.g., stateful vs. stateless, Layer 4 vs. Layer 7 load balancers.</li>
+      <li><strong>Plan for failure.</strong> Include redundancy, failover, and fallback mechanisms.</li>
+      <li><strong>Mention scalability strategies.</strong> Use CDNs, load balancers, and microservices.</li>
+      <li><strong>Highlight security.</strong> Propose private IPs, reverse proxies, API gateways, and SSL.</li>
+      <li><strong>Know your tools.</strong> Be familiar with NGINX, HAProxy, AWS/GCP/Azure networking options, Cloudflare, etc.</li>
+      <li><strong>Practice with real-world scenarios.</strong> E.g., <em>"How would you design a scalable chat app like WhatsApp?"</em></li>
+      <li><strong>Understand protocol choices:</strong> HTTP for RESTful APIs, WebSockets for real-time, gRPC for high-performance RPC, etc. (See Ch. 3.)</li>
+      <li><strong>Monitor and log all networking layers</strong> — from DNS queries to API gateway access — for proactive troubleshooting.</li>
+    </ul>
+
+    <h3>IP-Specific Tips</h3>
+    <ul>
+      <li>Know the standard private IP ranges (10.x.x.x, 172.16-31.x.x, 192.168.x.x).</li>
+      <li>Use private IPs internally; expose only what's necessary via public IPs.</li>
+      <li>Mention NAT for IPv4; mention IPv6 as the future direction.</li>
+    </ul>
+
+    <h3>DNS-Specific Tips</h3>
+    <ul>
+      <li>Set appropriate TTLs (short for changing, long for stable).</li>
+      <li>Use multiple DNS providers for redundancy.</li>
+      <li>Leverage Anycast for global scale.</li>
+      <li>Implement DNSSEC.</li>
+    </ul>
+
+    <h3>Client-Server Tips</h3>
+    <ul>
+      <li>Prefer stateless servers for scalability.</li>
+      <li>Use HTTPS everywhere.</li>
+      <li>Choose the right protocol for the use case.</li>
+      <li>Plan for graceful degradation.</li>
+    </ul>
+
+    <h3>Proxy Tips</h3>
+    <ul>
+      <li>Use reverse proxies for SSL termination, load balancing, and security.</li>
+      <li>Don't expose backend servers directly.</li>
+      <li>Remember: forward proxy = client-side; reverse proxy = server-side.</li>
+    </ul>
+
+    <h3>Load Balancer Tips</h3>
+    <ul>
+      <li>Always enable health checks.</li>
+      <li>Use sticky sessions only if session state requires it.</li>
+      <li>Terminate SSL at the load balancer.</li>
+      <li>Integrate auto-scaling.</li>
+      <li>Add rate limiting at the LB or API Gateway.</li>
+    </ul>
+
+    <h3>API Gateway Tips</h3>
+    <ul>
+      <li>Use JWT/OAuth2 for auth.</li>
+      <li>Implement rate limiting.</li>
+      <li>Aggregate requests (API composition) to reduce roundtrips.</li>
+      <li>Monitor logs for anomalies.</li>
+    </ul>
+
+    <h3>CDN Tips</h3>
+    <ul>
+      <li>Set appropriate cache headers.</li>
+      <li>Use versioned asset filenames to avoid stale caches.</li>
+      <li>Purge carefully.</li>
+      <li>Enable compression and minification.</li>
+      <li>Monitor edge cache hit ratio.</li>
+    </ul>
+
+    <h2 id="interview-questions">Sample Interview Questions</h2>
+    <p>A consolidated list from all sections.</p>
+
+    <h3>Foundations</h3>
+    <ul>
+      <li>Walk through what happens when you type <code>google.com</code> in your browser. (Tests: DNS, client-server, proxies, load balancer.)</li>
+      <li>What's the difference between public and private IPs? Why do we need both?</li>
+      <li>How does NAT work and what problem does it solve?</li>
+    </ul>
+
+    <h3>DNS</h3>
+    <ul>
+      <li>Explain the DNS resolution process step by step.</li>
+      <li>Authoritative vs. recursive DNS servers — what's the difference?</li>
+      <li>How does DNS caching improve performance, and where does it happen?</li>
+      <li>What is TTL, and what are the trade-offs of short vs. long TTLs?</li>
+      <li>How does DNS-based load balancing work?</li>
+      <li>What is DNS cache poisoning, and how is it mitigated?</li>
+    </ul>
+
+    <h3>Client-Server</h3>
+    <ul>
+      <li>What is the client-server model?</li>
+      <li>Stateless vs. stateful servers — when to use each?</li>
+      <li>How does a browser load a webpage end-to-end?</li>
+      <li>How does WebSocket communication differ from REST?</li>
+    </ul>
+
+    <h3>Proxies</h3>
+    <ul>
+      <li>Forward vs. reverse proxy — what's the difference?</li>
+      <li>When would you choose a reverse proxy?</li>
+      <li>How does SSL termination work at a reverse proxy?</li>
+    </ul>
+
+    <h3>Load Balancing</h3>
+    <ul>
+      <li>What is load balancing and why does it matter?</li>
+      <li>L4 vs. L7 — which would you choose for content-aware routing?</li>
+      <li>Compare round-robin, least-connections, and IP hashing.</li>
+      <li>How would you handle session persistence behind a load balancer?</li>
+    </ul>
+
+    <h3>API Gateway</h3>
+    <ul>
+      <li>What is an API gateway and how does it differ from a plain load balancer?</li>
+      <li>How would you implement rate limiting and authentication in an API gateway?</li>
+      <li>When does API aggregation help?</li>
+    </ul>
+
+    <h3>CDN</h3>
+    <ul>
+      <li>What is a CDN and how does it improve performance?</li>
+      <li>Cache hit vs. cache miss — explain in the context of a CDN.</li>
+      <li>How does a CDN provide DDoS protection?</li>
+      <li>How would you design a CDN strategy for a video streaming platform?</li>
+    </ul>
+
+    <h2 id="summary">Summary</h2>
+    <ul>
+      <li>Networking is foundational to system design — it enables communication, scalability, and security.</li>
+      <li><strong>IP addresses</strong> identify devices; IPv4 is widely deployed but limited, IPv6 is the future.</li>
+      <li><strong>DNS</strong> translates domain names to IP addresses and underpins load balancing, failover, and CDNs.</li>
+      <li><strong>The client-server model</strong> is the basis of nearly all distributed systems.</li>
+      <li><strong>Proxies</strong> (forward and reverse) sit between clients and servers for security, caching, and routing.</li>
+      <li><strong>Load balancers</strong> distribute traffic across servers for high availability and scalability.</li>
+      <li><strong>API gateways</strong> are centralized entry points for microservice APIs, handling auth, routing, rate limiting, and more.</li>
+      <li><strong>CDNs</strong> deliver content from edge locations close to users for fast, reliable, secure access.</li>
+    </ul>
+    <p>These concepts not only help build robust real-world systems — they are also some of the most common topics in system design interviews. Mastering them gives you the vocabulary and mental models needed to attack everything in the rest of this course.</p>
+
+    <h2 id="further-reading">Further Reading</h2>
+
+    <p><strong>IP Addresses:</strong></p>
+    <ul>
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc1918" target="_blank">IETF RFC 1918: Address Allocation for Private Internets</a></li>
+      <li><a href="https://www.cloudflare.com/learning/network-layer/what-is-ipv6/" target="_blank">What is IPv6? (Cloudflare)</a></li>
+      <li><a href="https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Subnets.html" target="_blank">AWS VPC Documentation</a></li>
+    </ul>
+
+    <p><strong>DNS:</strong></p>
+    <ul>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc1035" target="_blank">RFC 1035: Domain Names Implementation and Specification</a></li>
+      <li><a href="https://developers.google.com/speed/public-dns/docs/using" target="_blank">Google Public DNS Documentation</a></li>
+      <li><a href="https://www.icann.org/resources/pages/dnssec-what-is-it-why-important-2019-03-05-en" target="_blank">DNSSEC</a></li>
+    </ul>
+
+    <p><strong>Client-Server:</strong></p>
+    <ul>
+      <li><a href="https://docs.python.org/3/library/http.server.html" target="_blank">Python http.server Documentation</a></li>
+      <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview" target="_blank">MDN Web Docs: HTTP Overview</a></li>
+    </ul>
+
+    <p><strong>Proxies:</strong></p>
+    <ul>
+      <li><a href="https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/" target="_blank">NGINX Reverse Proxy Documentation</a></li>
+      <li><a href="http://www.squid-cache.org/" target="_blank">Squid Forward Proxy</a></li>
+      <li><a href="https://www.cloudflare.com/learning/cdn/glossary/reverse-proxy/" target="_blank">Cloudflare: What is a Reverse Proxy?</a></li>
+    </ul>
+
+    <p><strong>Load Balancing:</strong></p>
+    <ul>
+      <li><a href="https://docs.nginx.com/nginx/admin-guide/load-balancer/http-load-balancer/" target="_blank">NGINX as a Load Balancer</a></li>
+      <li><a href="https://aws.amazon.com/elasticloadbalancing/" target="_blank">AWS Elastic Load Balancing</a></li>
+      <li><a href="https://www.haproxy.org/" target="_blank">HAProxy Documentation</a></li>
+      <li><a href="https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/" target="_blank">Kubernetes Ingress Controllers</a></li>
+    </ul>
+
+    <p><strong>CDNs:</strong></p>
+    <ul>
+      <li><a href="https://developers.cloudflare.com/cdn/" target="_blank">Cloudflare CDN Docs</a></li>
+      <li><a href="https://aws.amazon.com/cloudfront/" target="_blank">AWS CloudFront</a></li>
+      <li><a href="https://cloud.google.com/cdn/" target="_blank">Google Cloud CDN</a></li>
+      <li><a href="https://www.akamai.com/" target="_blank">Akamai CDN</a></li>
+    </ul>
+
+    <nav class="chapter-nav">
+      <a class="chapter-nav-card" href="1 - Introduction.html">
+        <div class="chapter-nav-label">← Previous</div>
+        <div class="chapter-nav-title">Chapter 1 — Introduction</div>
+      </a>
+      <a class="chapter-nav-card next" href="3 - Protocols (System Design Fundamentals).html">
+        <div class="chapter-nav-label">Next chapter →</div>
+        <div class="chapter-nav-title">Chapter 3 — Protocols</div>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../assets/system-design.js"></script>
+
+</body>
+</html>

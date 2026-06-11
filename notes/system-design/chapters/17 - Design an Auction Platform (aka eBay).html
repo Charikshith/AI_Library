@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chapter 17 — Auction Platform (eBay)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<link rel="stylesheet" href="../assets/system-design.css">
+</head>
+<body><a href="../../../notes.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;z-index:99999;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600;background:#0f172a;color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.28)">&#8592; AI Library</a>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">
+    <span class="brand-icon">SD</span>
+    <span>Mastering System Design</span>
+  </a>
+  <div class="topbar-actions">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Chapter 17 — On This Page</h3>
+    <ul class="toc-list" id="tocList">
+      <li><a href="#learning-outcomes">Learning Outcomes</a></li>
+      <li><a href="#what-is-an-auction-platform">What is an Auction Platform?</a></li>
+      <li><a href="#functional-non-functional-requirements">Functional &amp; Non-Functional Requirements</a></li>
+      <li><a href="#core-actors-use-cases">Core Actors &amp; Use Cases</a></li>
+      <li><a href="#scale-estimation-traffic-patterns">Scale Estimation &amp; Traffic Patterns</a></li>
+      <li><a href="#identifying-bottlenecks">Identifying Bottlenecks</a></li>
+      <li><a href="#high-level-architecture">High-Level Architecture</a></li>
+      <li><a href="#api-design">API Design</a></li>
+      <li><a href="#service-communication-patterns">Service Communication Patterns</a></li>
+      <li><a href="#real-time-bid-delivery">Real-Time Bid Delivery</a></li>
+      <li><a href="#data-model">Data Model</a></li>
+      <li><a href="#handling-auction-timers-closures">Auction Timers &amp; Closures</a></li>
+      <li><a href="#concurrency-safe-bid-placement">Concurrency-Safe Bid Placement</a></li>
+      <li><a href="#technology-infrastructure-choices">Technology &amp; Infrastructure</a></li>
+      <li><a href="#scaling-performance">Scaling &amp; Performance</a></li>
+      <li><a href="#security-cost">Security &amp; Cost</a></li>
+      <li><a href="#beyond-mvp">Beyond MVP — Senior Designer Adds</a></li>
+      <li><a href="#tips-tricks">Tips &amp; Tricks</a></li>
+      <li><a href="#example-sequence-diagram">Example Sequence Diagram</a></li>
+      <li><a href="#conclusion">Conclusion</a></li>
+      <li><a href="#further-reading">Further Reading</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <span class="chapter-label">Chapter 17 · Case Study</span>
+      <h1>Designing a Modern Real-Time Auction Platform (eBay)</h1>
+      <p class="hero-subtitle">
+        A fascinating challenge that touches latency, concurrency, real-time fan-out, and user trust — we'll architect a scalable, fair, and real-time auction platform that handles last-second bid storms, anti-sniping extensions, payments, and search.
+      </p>
+      <div class="hero-author">By Charikshith</div>
+    </section>
+
+    <p>Building a scalable, fair, and real-time auction platform is a fascinating challenge that touches on many core system design principles — <strong>latency, concurrency, real-time updates, and user trust.</strong></p>
+
+    <p>In this case study, we'll walk through the architectural blueprint for an auction platform like eBay. We'll cover requirements, bottlenecks, architecture, data model, real-time bid delivery, scheduler design, and practical implementation snippets — with diagrams and a curated tips section.</p>
+
+    <h2 id="learning-outcomes">🎯 Learning Outcomes</h2>
+    <p>After working through this case study, you'll be able to:</p>
+    <ol class="outcomes-list">
+      <li><span class="outcome-num">1</span><span>Design <strong>concurrency-safe bid placement</strong> so two users bidding at the same millisecond can't both win.</span></li>
+      <li><span class="outcome-num">2</span><span>Handle the <strong>last-second sniping</strong> problem with anti-sniping extensions.</span></li>
+      <li><span class="outcome-num">3</span><span>Scale <strong>WebSocket fan-out</strong> for 10K+ users watching a single hot auction.</span></li>
+      <li><span class="outcome-num">4</span><span>Reliably trigger auction closure even if a server dies in the middle.</span></li>
+      <li><span class="outcome-num">5</span><span>Integrate payment with <strong>idempotent retries</strong> so a single payment never charges twice.</span></li>
+    </ol>
+
+    <h2 id="what-is-an-auction-platform">What is an Auction Platform?</h2>
+    <p>At its core, an auction platform is a digital marketplace where <strong>sellers list items</strong> and <strong>buyers place bids</strong> within a defined auction window. The system manages:</p>
+    <ul>
+      <li>Real-time bid tracking and updates.</li>
+      <li>Strict timing and auction state transitions.</li>
+      <li>Fair winner determination and payment processing.</li>
+      <li>Notifications for all critical auction events.</li>
+    </ul>
+    <p><strong>Key goals:</strong> Security, fairness, scalability, and low-latency real-time experience.</p>
+    <p>The highest bid at closing wins. The platform must efficiently handle item listings, bid tracking, real-time updates, auction lifecycle management, and payment processing.</p>
+
+    <h2 id="functional-non-functional-requirements">Functional &amp; Non-Functional Requirements</h2>
+
+    <h3>Functional Requirements</h3>
+    <ul>
+      <li><strong>User registration &amp; authentication:</strong> Secure sign-up/login for buyers and sellers.</li>
+      <li><strong>Item listing:</strong> Sellers can create listings with auction parameters (start/end time, reserve price, buy-it-now).</li>
+      <li><strong>Real-time bidding:</strong> Instant bid placement, validation, and feedback.</li>
+      <li><strong>Auction lifecycle:</strong> Automated transitions (scheduled → active → ended), winner determination.</li>
+      <li><strong>Payment processing:</strong> Integration with payment providers (Stripe, PayPal).</li>
+      <li><strong>Notifications:</strong> Outbid alerts, auction won, payment pending/complete.</li>
+    </ul>
+
+    <h3>Non-Functional Requirements</h3>
+    <ul>
+      <li><strong>Performance:</strong> Sub-second latency for bid placement &amp; updates.</li>
+      <li><strong>Scalability:</strong> Support 1M+ concurrent auctions, 10K+ users in a single auction.</li>
+      <li><strong>Security:</strong> Strong authentication, encrypted payments, anti-bot.</li>
+      <li><strong>High availability:</strong> Especially during auction closings.</li>
+      <li><strong>Observability:</strong> Real-time monitoring, event logging, anomaly detection.</li>
+    </ul>
+
+    <h2 id="core-actors-use-cases">Core Actors &amp; Use Cases</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Actor</th><th>Role / Actions</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Seller</td><td>Lists items, sets auction parameters.</td></tr>
+          <tr><td>Bidder</td><td>Places bids, receives instant updates.</td></tr>
+          <tr><td>System</td><td>Manages auction rules, timing, and payments.</td></tr>
+          <tr><td>Admin</td><td>Monitors platform, handles fraud/disputes.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><strong>Example Use Case:</strong> A seller lists a gaming console for a 3-day auction. Bidders compete in real-time. On closure, the system determines the winner and triggers payment.</p>
+
+    <h2 id="scale-estimation-traffic-patterns">Scale Estimation &amp; Traffic Patterns</h2>
+    <p>Quantify what the system must handle:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Registered Users</td><td>5 million</td></tr>
+          <tr><td>Daily Active Users</td><td>500,000</td></tr>
+          <tr><td>Concurrent Auctions (Active)</td><td>1 million</td></tr>
+          <tr><td>Avg. Bids per Auction</td><td>10</td></tr>
+          <tr><td>Total Bids per Day</td><td>10 million</td></tr>
+          <tr><td>Completed Auctions (per day)</td><td>100,000</td></tr>
+          <tr><td>Peak Concurrent Users (hot auction)</td><td>10,000</td></tr>
+          <tr><td>Payment Transactions (per day)</td><td>100,000</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Traffic Patterns:</strong></p>
+    <ul>
+      <li><strong>Read-heavy:</strong> Viewing auctions, item details, bid history.</li>
+      <li><strong>Write-sensitive:</strong> Bid placements, auction creation, auction close.</li>
+      <li><strong>Real-time pressure:</strong> Last-minute bidding, fan-out updates, precise scheduling, payment triggers.</li>
+    </ul>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Takeaway</div>
+        <p>The system must scale for massive reads, but remain fast and strongly consistent for critical writes — especially during last-second bidding frenzies.</p>
+      </div>
+    </div>
+
+    <h2 id="identifying-bottlenecks">Identifying Bottlenecks</h2>
+    <p>Key bottlenecks and mitigation strategies:</p>
+    <ul>
+      <li><strong>Heavy service loads:</strong> Predict &amp; isolate high-load services (Bid Service, Payment Service).</li>
+      <li><strong>Hot auctions:</strong> Handle sudden, skewed loads from popular items.</li>
+      <li><strong>Real-time updates:</strong> Use WebSockets and pub/sub for fan-out to watchers.</li>
+      <li><strong>Consistency vs. latency:</strong> Use async processing (e.g., for notifications) where possible; ensure strong consistency for bids/payments.</li>
+      <li><strong>Horizontal scaling:</strong> Partition high-volume data (bids, listings) across servers/shards.</li>
+      <li><strong>Sub-second bid updates</strong> (especially last-second "sniping").</li>
+      <li><strong>Concurrency conflicts</strong> on simultaneous writes.</li>
+      <li><strong>Massive read-fanout</strong> for hot auctions.</li>
+      <li><strong>Precise auction closure</strong> and payment triggers.</li>
+      <li><strong>Fairness and anti-bot.</strong></li>
+    </ul>
+
+    <h2 id="high-level-architecture">High-Level Architecture</h2>
+    <p>A simplified overview of services and their primary interactions:</p>
+
+    <div class="archd" aria-label="High-level auction platform architecture">
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">👥</span><span>User Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🏷️</span><span>Listing Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔨</span><span>Auction Service</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">💰</span><span>Bid Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">⏱️</span><span>Scheduler Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔔</span><span>Notification Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">💳</span><span>Payment Service</span></div>
+      </div>
+    </div>
+
+    <p>A more detailed view including data stores, real-time channels, and the external payment gateway:</p>
+
+    <div class="archd" aria-label="Detailed auction platform architecture">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User (Web / Mobile App)</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">HTTP / WebSocket</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">REST / gRPC</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">👥</span><span>User Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🏷️</span><span>Listing Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔨</span><span>Auction Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">💰</span><span>Bid Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">💳</span><span>Payment Service</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🔌</span><span>WebSocket Server</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">⏱️</span><span>Scheduler Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔔</span><span>Notification Service</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Message Queue</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>PostgreSQL</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">⚡</span><span>Redis Cache + PubSub</span></div>
+        <div class="archd-node is-external"><span class="archd-icon">🌐</span><span>Payment Gateway (Stripe / PayPal)</span></div>
+      </div>
+    </div>
+
+    <p>ASCII view:</p>
+<pre><code class="language-bash">+-------------------+
+|    API Gateway    |
++--------+----------+
+         |
+         v
++---------------+      +-------------+      +-----------------+
+| User Service  |-----&gt;| Listing Svc |-----&gt;| Auction Service |
++---------------+      +-------------+      +-----------------+
+                                  |                  |
+                                  v                  v
+                        +----------------+   +-------------+
+                        |   Bid Service  |&lt;-&gt;| Scheduler   |
+                        +----------------+   +-------------+
+                                  |                  |
+                                  v                  v
+                        +----------------+   +--------------+
+                        | Payment Svc    |   | Notification |
+                        +----------------+   +--------------+</code></pre>
+
+    <h3>Key Components</h3>
+    <ul>
+      <li><strong>API Gateway:</strong> Entry point, routing, rate limiting, authentication.</li>
+      <li><strong>User Service:</strong> Auth, profiles, roles (buyer/seller).</li>
+      <li><strong>Listing Service:</strong> Item metadata, categories, media, search/filter.</li>
+      <li><strong>Auction Service:</strong> Lifecycle, rules, winner logic.</li>
+      <li><strong>Bid Service:</strong> Real-time bid handling, concurrency control.</li>
+      <li><strong>Scheduler Service:</strong> Timed auction start/end, closure orchestration.</li>
+      <li><strong>Payment Service:</strong> Integrates with Stripe/PayPal, payment flows.</li>
+      <li><strong>Notification Service:</strong> Outbid, win/loss, payment alerts.</li>
+    </ul>
+
+    <h2 id="api-design">API Design</h2>
+<pre><code class="language-bash"># User APIs
+POST   /signup
+POST   /login
+GET    /user/profile
+
+# Auction APIs
+POST   /auctions                  # create new auction
+GET    /auctions/{id}             # view auction details
+POST   /auctions/{id}/bids        # place a bid
+GET    /auctions/{id}/bids        # view bid history
+GET    /auctions/active           # list active auctions
+
+# Payment APIs
+POST   /payments/initiate
+GET    /payments/{id}/status</code></pre>
+
+    <h3>Sample: Place a Bid</h3>
+<pre><code class="language-bash">POST /auctions/12345/bids
+Authorization: Bearer &lt;token&gt;
+Content-Type: application/json
+
+{
+  "amount": 205.00
+}</code></pre>
+
+    <p><strong>Response (Success):</strong></p>
+<pre><code class="language-json">{
+  "status": "ok",
+  "currentHighestBid": 205.00,
+  "message": "Bid accepted!"
+}</code></pre>
+
+    <h3>Notification Triggers (Internal)</h3>
+    <ul>
+      <li>On auction ending → notify winner.</li>
+      <li>On new highest bid → notify previous top bidder.</li>
+    </ul>
+
+    <h2 id="service-communication-patterns">Service Communication Patterns</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Pattern</th><th>Use Case</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Sync (REST / gRPC)</td><td>User authentication, listing fetch, Auction → Bid → Payment trigger.</td></tr>
+          <tr><td>Async (Pub/Sub)</td><td>New bid placed → broadcast to watchers; auction ended → notify, trigger payment; payment failed → retry, alert.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Event Topics</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Topic</th><th>Payload</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>bid.placed</code></td><td><code>{auction_id, bid_id, amount, user_id}</code></td></tr>
+          <tr><td><code>auction.ended</code></td><td><code>{auction_id, winner_id}</code></td></tr>
+          <tr><td><code>payment.failed</code></td><td><code>{payment_id, reason}</code></td></tr>
+          <tr><td><code>user.registered</code></td><td><code>{user_id, email}</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><strong>Benefits:</strong> Decoupling, better retries, graceful failure handling.</p>
+
+    <h2 id="real-time-bid-delivery">Real-Time Bid Delivery (WebSockets)</h2>
+    <p><strong>Why WebSockets?</strong> Traditional HTTP polling can't meet the low-latency demands of real-time bidding. WebSockets establish a persistent, full-duplex connection ideal for pushing bid updates and auction status changes instantly.</p>
+
+    <h3>How It Works</h3>
+    <ol>
+      <li>User connects to <code>wss://auction-platform.com/ws</code>.</li>
+      <li>Subscribes to channel, e.g., <code>auction:123456</code>.</li>
+      <li><strong>Bid Service</strong> validates &amp; accepts bid → publishes event.</li>
+      <li><strong>WebSocket Server</strong> fans out updates to all connected clients.</li>
+    </ol>
+
+    <p><strong>Scaling challenge:</strong> Must support horizontal scaling for high concurrency (10K+ watchers on a hot auction).</p>
+
+    <h3>Sample WebSocket Event</h3>
+<pre><code class="language-json">{
+  "event": "bid.placed",
+  "auctionId": 12345,
+  "newHighestBid": 205.00,
+  "bidder": "alice"
+}</code></pre>
+
+    <h3>Code: Node.js WebSocket Handler</h3>
+<pre><code class="language-javascript">const WebSocket = require('ws');
+const wss = new WebSocket.Server({ port: 8080 });
+
+const auctionChannels = {}; // { auctionId: Set of WebSocket clients }
+
+wss.on('connection', (ws) =&gt; {
+  ws.on('message', (msg) =&gt; {
+    const { action, auctionId, bid } = JSON.parse(msg);
+    if (action === 'subscribe') {
+      if (!auctionChannels[auctionId]) auctionChannels[auctionId] = new Set();
+      auctionChannels[auctionId].add(ws);
+    } else if (action === 'place_bid') {
+      // Bid validation logic...
+      // On success:
+      auctionChannels[auctionId].forEach(client =&gt; {
+        client.send(JSON.stringify({ event: 'new_bid', bid }));
+      });
+    }
+  });
+});</code></pre>
+
+    <h3>Code: Socket.IO Variant</h3>
+<pre><code class="language-javascript">io.on('connection', (socket) =&gt; {
+  socket.on('join-auction', (auctionId) =&gt; {
+    socket.join(`auction:${auctionId}`);
+  });
+  socket.on('place-bid', async (data) =&gt; {
+    // Validate and process bid...
+    io.to(`auction:${data.auctionId}`).emit('bid-update', { /* new bid info */ });
+  });
+});</code></pre>
+
+    <h3>Fan-out via Redis Pub/Sub</h3>
+<pre><code class="language-javascript">// On valid bid, publish to Redis Pub/Sub
+redis.publish(`auction:${auctionId}`, JSON.stringify({ bid: /* ... */ }));
+
+// WebSocket server subscribes, fans out to all connected clients
+redis.on('message', (channel, message) =&gt; {
+  const clients = websocketClientsForChannel(channel);
+  clients.forEach(ws =&gt; ws.send(message));
+});</code></pre>
+
+<pre><code class="language-bash">Client --WebSocket--&gt; Bid Service --Pub/Sub--&gt; WebSocket Server --Fan Out--&gt; Watchers</code></pre>
+
+    <h2 id="data-model">Data Model</h2>
+    <p>Entity relationships (one user creates many auctions and places many bids; each auction belongs to a listing and has many bids and may trigger a payment):</p>
+
+    <div class="archd" aria-label="Data model entity relationships">
+      <div class="archd-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>USER</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🏷️</span><span>LISTING</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">creates / for</span></div>
+      <div class="archd-node is-data"><span class="archd-icon">🔨</span><span>AUCTION</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">has / triggers</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">💰</span><span>BID</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">💳</span><span>PAYMENT</span></div>
+      </div>
+    </div>
+
+    <h3>Tables</h3>
+<pre><code class="language-sql">-- User Table
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) UNIQUE,
+  password_hash TEXT,
+  role VARCHAR CHECK (role IN ('buyer','seller','admin')),
+  created_at TIMESTAMP
+);
+
+-- Listing Table
+CREATE TABLE listings (
+  id SERIAL PRIMARY KEY,
+  seller_id INTEGER REFERENCES users(id),
+  title VARCHAR(255),
+  description TEXT,
+  image_url TEXT,
+  category VARCHAR(100),
+  media_url TEXT[],
+  created_at TIMESTAMP
+);
+
+-- Auction Table
+CREATE TABLE auctions (
+  id SERIAL PRIMARY KEY,
+  listing_id INTEGER REFERENCES listings(id),
+  start_time TIMESTAMP,
+  end_time TIMESTAMP,
+  reserve_price NUMERIC,
+  status VARCHAR CHECK (status IN ('scheduled','active','ended')),
+  winner_id INTEGER REFERENCES users(id),
+  created_at TIMESTAMP
+);
+
+-- Bid Table
+CREATE TABLE bids (
+  id SERIAL PRIMARY KEY,
+  auction_id INTEGER REFERENCES auctions(id),
+  bidder_id INTEGER REFERENCES users(id),
+  amount NUMERIC,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Payment Table
+CREATE TABLE payments (
+  id SERIAL PRIMARY KEY,
+  auction_id INTEGER REFERENCES auctions(id),
+  user_id INTEGER REFERENCES users(id),
+  status VARCHAR CHECK (status IN ('pending','completed','failed')),
+  payment_provider VARCHAR(50),
+  transaction_id VARCHAR(100),
+  created_at TIMESTAMP
+);</code></pre>
+
+    <h2 id="handling-auction-timers-closures">Handling Auction Timers &amp; Closures</h2>
+    <p><strong>Scheduler Service</strong> ensures auctions start/end precisely.</p>
+
+    <h3>Design Options</h3>
+    <ul>
+      <li><strong>Dedicated Scheduler Service:</strong> Maintains all timers, triggers start/end (cron or job queues).</li>
+      <li><strong>Delayed jobs in message queues:</strong> Push closure jobs to queue with delay (SQS Delay, BullMQ, Kafka).</li>
+      <li><strong>Redis with TTL/polling/Keyspace notifications:</strong> Store auction end as TTL key, trigger on expiry.</li>
+    </ul>
+
+    <h3>Reliability Measures</h3>
+    <ul>
+      <li><strong>Idempotency:</strong> Ensure end-of-auction logic can be safely retried (no double winners).</li>
+      <li><strong>Retries:</strong> On failure, closure jobs are retried.</li>
+      <li><strong>Logging/alerts:</strong> All timer events logged; alert on missed or failed closures.</li>
+    </ul>
+
+    <h3>Sample: Auction Closure (Python)</h3>
+<pre><code class="language-python">def close_auction(auction_id):
+    auction = db.get_auction(auction_id)
+    if auction.status != 'ended':
+        highest_bid = db.get_highest_bid(auction_id)
+        auction.status = 'ended'
+        auction.winner_id = highest_bid.bidder_id
+        db.save(auction)
+        notify_winner(highest_bid.bidder_id, auction_id)
+        trigger_payment(highest_bid.bidder_id, auction_id)</code></pre>
+
+    <h3>Sample: Auction Closure (Node.js)</h3>
+<pre><code class="language-javascript">async function closeAuction(auctionId) {
+  // 1. Mark auction as ended (idempotent)
+  // 2. Determine highest valid bid
+  // 3. Trigger payment for winner
+  // 4. Notify winner and seller
+}</code></pre>
+
+    <h2 id="concurrency-safe-bid-placement">Concurrency-Safe Bid Placement</h2>
+
+    <p>The classic bid flow uses a database row lock or a Redis Lua script so that two simultaneous bidders cannot both "win" the same auction. Below is the sequence — each step is atomic:</p>
+
+    <div class="archd-seq" aria-label="Concurrency-safe bid placement sequence">
+      <div class="archd-seq-step"><span class="num">1</span>Bidder submits a bid via the API Gateway</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Bidder</span></div>
+        <div class="archd-seq-arrow right"><span class="label">POST /auctions/{id}/bids</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+        <div class="archd-seq-arrow right"><span class="label">forward</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">💰</span><span>Bid Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Bid Service acquires lock &amp; validates against highest bid</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">💰</span><span>Bid Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">SELECT … FOR UPDATE</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>PostgreSQL</span></div>
+        <div class="archd-seq-arrow left"><span class="label">current highest</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">💰</span><span>Bid Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>If valid, insert bid &amp; publish event to Redis Pub/Sub</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">💰</span><span>Bid Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">INSERT bid + PUBLISH</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">⚡</span><span>Redis Pub/Sub</span></div>
+        <div class="archd-seq-arrow right"><span class="label">fan-out</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🔌</span><span>WebSocket Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>WebSocket Server pushes the new bid to all watchers in real time</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🔌</span><span>WebSocket Server</span></div>
+        <div class="archd-seq-arrow right"><span class="label">push bid.placed</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👥</span><span>Watchers (10K+)</span></div>
+      </div>
+    </div>
+
+    <h3>End-to-End Bid Placement (Python / Flask)</h3>
+<pre><code class="language-python">@app.route('/auctions/&lt;auction_id&gt;/bids', methods=['POST'])
+def place_bid(auction_id):
+    user = authenticate(request)
+    bid_amount = request.json['amount']
+    # Transactional check: is auction active? Is bid higher than current?
+    with db.transaction():
+        auction = db.query('SELECT * FROM auctions WHERE id = %s FOR UPDATE', auction_id)
+        if auction.status != 'active' or now() &gt; auction.end_time:
+            return error('Auction not active')
+        current_highest = db.query('SELECT MAX(amount) FROM bids WHERE auction_id = %s', auction_id)
+        if bid_amount &lt;= current_highest:
+            return error('Bid too low')
+        db.insert('bids', { 'auction_id': auction_id, 'bidder_id': user.id, 'amount': bid_amount })
+    # Publish event for real-time update
+    pubsub.publish(f"auction.{auction_id}.bid_placed", { 'user': user.id, 'amount': bid_amount })
+    return success('Bid placed')</code></pre>
+
+    <h3>Place Bid Endpoint (Node.js / Express)</h3>
+<pre><code class="language-javascript">app.post('/auctions/:id/bids', authenticateUser, async (req, res) =&gt; {
+  const auctionId = req.params.id;
+  const { amount } = req.body;
+  try {
+    // 1. Validate auction is active
+    // 2. Check bid &gt; current highest
+    // 3. Write bid atomically (use DB or Redis transaction)
+    // 4. Publish event to WebSocket channel
+    await placeBid(auctionId, req.user.id, amount);
+
+    // Notify via WebSocket (pseudo)
+    websocketServer.publish(`auction:${auctionId}`, { newBid: amount });
+    res.status(200).json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});</code></pre>
+
+    <h3>Atomic Bid Placement with Redis Lua Script</h3>
+<pre><code class="language-bash">-- Lua script for atomic bid placement (simplified)
+local auctionKey = "auction:" .. KEYS[1]
+local currentBid = tonumber(redis.call("GET", auctionKey))
+
+if tonumber(ARGV[1]) &gt; currentBid then
+    redis.call("SET", auctionKey, ARGV[1])
+    return "ACCEPTED"
+else
+    return "REJECTED"
+end</code></pre>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Usage</div>
+        <p>Ensures only higher bids are accepted, preventing race conditions.</p>
+      </div>
+    </div>
+
+    <h2 id="technology-infrastructure-choices">Technology &amp; Infrastructure Choices</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Layer</th><th>Technology Choices</th><th>Reasoning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Frontend</strong></td><td>React, Vue</td><td>Fast, interactive, real-time UI</td></tr>
+          <tr><td><strong>Backend</strong></td><td>Node.js, Spring Boot (Java), ASP.NET</td><td>Scalable, async request handling</td></tr>
+          <tr><td><strong>Database</strong></td><td>PostgreSQL</td><td>Strong consistency, relational data</td></tr>
+          <tr><td><strong>Cache</strong></td><td>Redis</td><td>Ultra-fast caching, real-time bid state, pub/sub</td></tr>
+          <tr><td><strong>Real-time</strong></td><td>WebSockets (Socket.IO, ws), Redis PubSub</td><td>Low-latency, bi-directional bid updates</td></tr>
+          <tr><td><strong>Scheduler</strong></td><td>Dedicated service, BullMQ, SQS, Kafka</td><td>Accurate, scalable job handling</td></tr>
+          <tr><td><strong>Payments</strong></td><td>Stripe, PayPal API</td><td>Secure, reliable transactions</td></tr>
+          <tr><td><strong>Auth</strong></td><td>OAuth2</td><td>Secure, modern authentication</td></tr>
+          <tr><td><strong>Encryption</strong></td><td>SSL/TLS</td><td>Data-in-transit protection</td></tr>
+          <tr><td><strong>Cloud</strong></td><td>AWS / GCP / Azure</td><td>Managed, pay-as-you-go, elastic scaling</td></tr>
+          <tr><td><strong>Scaling</strong></td><td>Load Balancers, Autoscaling</td><td>High availability, fault tolerance</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="scaling-performance">Scaling &amp; Performance</h2>
+    <ul>
+      <li><strong>Horizontal partitioning:</strong> Shard bids and auctions by auction ID.</li>
+      <li><strong>Redis caching:</strong> Store hot auction data for fast access.</li>
+      <li><strong>Load balancers &amp; autoscaling:</strong> Handle traffic spikes, especially end-of-auction surges.</li>
+      <li><strong>Cache hot data:</strong> Active auctions, top bids, sessions in Redis.</li>
+      <li><strong>Partitioning:</strong> Shard bid and auction tables for massive scale.</li>
+      <li><strong>Async processing:</strong> Use message queues for notifications, payments, analytics.</li>
+      <li><strong>Plan for "hot auctions":</strong> WebSocket clusters, partitioned queues, localized caching.</li>
+      <li><strong>Observability:</strong> Centralized logging, real-time dashboards (Grafana + Prometheus).</li>
+    </ul>
+
+    <h2 id="security-cost">Security &amp; Cost</h2>
+
+    <h3>Security</h3>
+    <ul>
+      <li><strong>OAuth 2.0:</strong> All endpoints protected via secure tokens.</li>
+      <li><strong>SSL/TLS:</strong> All data in transit encrypted.</li>
+      <li><strong>Rate limiting:</strong> Prevent brute-force and abuse.</li>
+      <li><strong>Anti-bot:</strong> CAPTCHAs, suspicious activity monitoring.</li>
+    </ul>
+
+    <h3>Cost Optimization</h3>
+    <ul>
+      <li><strong>Cloud pay-as-you-go</strong> models (AWS, GCP, Azure).</li>
+      <li><strong>Autoscaling:</strong> Dynamically match resources to demand.</li>
+      <li><strong>Cache hot auctions</strong> in Redis to minimize DB reads.</li>
+    </ul>
+
+    <h2 id="beyond-mvp">Beyond MVP — What a Senior Designer Adds</h2>
+
+    <h3>The Anti-Sniping Extension</h3>
+    <p>The "snipe" — bidding in the final 5 seconds when no one can respond — is a real eBay problem. <strong>Solution: if a bid comes in within the last N seconds, extend the auction by N seconds.</strong> This converts "first-mover-wins-the-snipe" back into "highest-willing-bid-wins."</p>
+
+    <p>Implementation: on each bid, check <code>now() &gt; end_time - 60s</code>. If true, atomically set <code>end_time = now() + 60s</code>. Broadcast the new end time to all watchers.</p>
+
+    <h3>Search and Discovery</h3>
+    <p>Largely missing from this case study but critical to a real marketplace. <strong>Add:</strong></p>
+    <ul>
+      <li>Full-text product search via Elasticsearch — re-indexed asynchronously from the Listing service.</li>
+      <li>Faceted filtering (category, price range, condition, seller rating).</li>
+      <li>Auto-complete on the search bar — pre-computed top queries in Redis.</li>
+      <li>"Auctions ending soon" feed — materialized view, refreshed every few seconds.</li>
+    </ul>
+
+    <h3>Recommendation Engine</h3>
+    <p>"Buyers who bid on this also bid on..." — collaborative filtering against historical bid data. Compute embeddings offline; serve via vector DB.</p>
+
+    <h3>Multi-Warehouse Inventory (For Buy-Now Items)</h3>
+    <p>eBay isn't just auctions — many items are buy-it-now with multiple sellers shipping from different locations. Inventory is <strong>per-(item, location, seller)</strong>. Choosing which seller to fulfill from is a small optimization problem (cost + speed).</p>
+
+    <h3>Reviews and Ratings</h3>
+    <p>After purchase: buyer rates seller, seller rates buyer. Ratings drive search ranking, dispute decisions, and fraud detection.</p>
+
+    <div class="callout callout-warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-content">
+        <div class="callout-title">Pitfall</div>
+        <p>Ratings are write-heavy <em>and</em> heavily skewed (most are 5-star). Use percentile-based ranking, not just average, to differentiate sellers.</p>
+      </div>
+    </div>
+
+    <h3>Dispute Resolution Workflow</h3>
+    <p>What happens when item doesn't arrive, or arrives damaged?</p>
+    <ul>
+      <li>Buyer opens dispute → frozen funds.</li>
+      <li>Seller has N days to respond.</li>
+      <li>If escalated, human review.</li>
+      <li>Resolution: refund (full or partial), or seller wins.</li>
+    </ul>
+    <p>This is a workflow service (Saga pattern from Chapter 4). Most marketplaces underinvest here until it bites them.</p>
+
+    <h3>Surge Pricing for Featured Slots (Auctions for Visibility)</h3>
+    <p>In addition to item auctions, sellers can pay to feature their listings — which is itself an auction (for ad slots). Real-time bidding system within a bidding system.</p>
+
+    <h2 id="tips-tricks">💡 Tips &amp; Tricks</h2>
+
+    <h3>Concurrency &amp; Consistency</h3>
+    <ul>
+      <li><strong>Prevent race conditions:</strong> Use atomic DB operations or distributed locks on bid placement.</li>
+      <li><strong>Strong consistency for bids:</strong> Use optimistic concurrency control or atomic DB operations.</li>
+      <li><strong>Idempotency:</strong> All payment, closure, and notification triggers should be idempotent.</li>
+    </ul>
+
+    <h3>Hotspots &amp; Scaling</h3>
+    <ul>
+      <li><strong>Mitigate "hot auction" skew:</strong> Special-case handling for auctions with thousands of watchers/bidders (dedicated nodes, in-memory pub/sub).</li>
+      <li><strong>WebSockets at scale:</strong> Use sticky sessions, distributed pub/sub (Redis Streams, Kafka).</li>
+      <li><strong>Partition bids:</strong> Hot auctions create write hotspots. Shard bids by auction ID.</li>
+    </ul>
+
+    <h3>Security</h3>
+    <ul>
+      <li><strong>Bot &amp; sniping protection:</strong> CAPTCHA for bid burst, randomize auction end time slightly, anti-sniping extensions.</li>
+      <li><strong>Strong auth:</strong> OAuth2, encrypt all traffic (TLS), DDoS/bot protection.</li>
+    </ul>
+
+    <h3>Reliability</h3>
+    <ul>
+      <li><strong>Graceful degradation:</strong> If real-time fails, fallback to polling for updates.</li>
+      <li><strong>Retry &amp; fallback:</strong> For all external calls (payments, notifications), use robust retry with exponential backoff.</li>
+      <li><strong>Payment handling:</strong> Treat payment as an eventual process — support retries, status polling, manual dispute workflows.</li>
+      <li><strong>Failover:</strong> Replicate databases, use cloud managed services for auto-healing, design for geo-redundancy.</li>
+    </ul>
+
+    <h3>Operational Excellence</h3>
+    <ul>
+      <li><strong>Logging &amp; alerts:</strong> Proactive monitoring for stuck auctions, payment failures, high-latency bids.</li>
+      <li><strong>Observability:</strong> Log all auction state changes, bid events, payment outcomes. Monitor for scheduler lags and missed events.</li>
+      <li><strong>Consistent time source:</strong> Always use a single time reference (e.g., UTC from your DB or a time service) for auction state to avoid drift.</li>
+      <li><strong>Testing:</strong> Simulate last-second bid storms and payment failures.</li>
+    </ul>
+
+    <h2 id="example-sequence-diagram">Example Sequence Diagram</h2>
+    <p>End-to-end flow from bidder to notification, including concurrency check and outbid push:</p>
+
+    <div class="archd-seq" aria-label="Full bid placement sequence">
+      <div class="archd-seq-step"><span class="num">1</span>Bidder submits a bid; gateway validates auction status</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Bidder</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Place Bid</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Validate Auction</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔨</span><span>Auction Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Auction Service returns "OK" — auction is still active</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔨</span><span>Auction Service</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Auction OK</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Gateway forwards bid; Bid Service runs concurrency check</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Place Bid</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔨</span><span>Auction Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Concurrency Check</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">💰</span><span>Bid Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Bid accepted &amp; broadcast; Notification Service pushes outbid to previous leader</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">💰</span><span>Bid Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Broadcast</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔔</span><span>Notification Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Push Outbid</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Previous Bidder</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">5</span>Bidder receives "Bid Accepted" confirmation</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Bid Accepted</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Bidder</span></div>
+      </div>
+    </div>
+
+    <p>ASCII version for quick reference:</p>
+<pre><code class="language-bash">Bidder                API Gateway           Auction Service           Bid Service         Notification
+  |                        |                      |                        |                   |
+  |-- Place Bid ----------&gt;|                      |                        |                   |
+  |                        |-- Validate Auction -&gt;|                        |                   |
+  |                        |&lt;-- Auction OK ------ |                        |                   |
+  |                        |--- Place Bid -------&gt;|--- Concurrency Check -&gt;|                   |
+  |                        |&lt;-- Bid Accepted ---- |                        |                   |
+  |                        |--- Broadcast --------|-----------------------&gt;|--- Push Outbid --&gt;|
+  |&lt;-- Bid Accepted -------|                      |                        |                   |</code></pre>
+
+    <h2 id="conclusion">Conclusion</h2>
+    <p>Designing a real-time auction platform is a multi-disciplinary effort that demands not just feature-rich development, but also careful handling of timing, concurrency, and fairness. The best platforms combine robust backend services, real-time communication channels, and a developer mindset that's always preparing for race conditions, sudden load spikes, and the creative mischief of determined users.</p>
+
+    <p><strong>A real-time auction platform is a showcase for modern distributed system design:</strong></p>
+    <ul>
+      <li><strong>Microservices</strong> for modular growth and scalability.</li>
+      <li><strong>WebSockets</strong> and <strong>event-driven messaging</strong> for instant feedback.</li>
+      <li><strong>Atomic concurrency controls</strong> for bid integrity.</li>
+      <li><strong>Async workflows</strong> for notifications and payment integration.</li>
+      <li><strong>Caching</strong> and <strong>partitioning</strong> for performance under load.</li>
+    </ul>
+
+    <h2 id="further-reading">📚 Further Reading</h2>
+    <ul>
+      <li><a href="https://www.ebayinc.com/tech/" target="_blank">eBay Architecture Principles</a></li>
+      <li><a href="https://ably.com/concepts/websockets" target="_blank">WebSockets at Scale</a></li>
+      <li><a href="https://martinfowler.com/articles/patterns-of-distributed-systems/scheduled-job.html" target="_blank">Distributed Scheduling Patterns</a></li>
+    </ul>
+
+    <p><strong>Next Up:</strong> <em>(Chapter 18 reserved.)</em> Chapter 19 — Design a Cloud Storage Solution (Google Drive, Dropbox) →</p>
+
+    <nav class="chapter-nav">
+      <a class="chapter-nav-card" href="12 - Design a URL Shortener (TinyURL).html">
+        <div class="chapter-nav-label">← Previous</div>
+        <div class="chapter-nav-title">Chapter 12 — URL Shortener</div>
+      </a>
+      <a class="chapter-nav-card next" href="19 - Design a Cloud Storage Solution (aka Google Drive, Dropbox).html">
+        <div class="chapter-nav-label">Next chapter →</div>
+        <div class="chapter-nav-title">Chapter 19 — Cloud Storage (Drive)</div>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../assets/system-design.js"></script>
+
+</body>
+</html>
