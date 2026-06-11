@@ -1,0 +1,8 @@
+{
+  "title": "TONY — Build Your Own Claude",
+  "description": "A from-scratch, tool-using coding agent for the terminal — a tiny cousin of Claude Code. Six tools (read/glob/grep/write/bash), a real agent loop, a streaming REPL with memory, and confirm-before-write/run safety. Built in eight small stages, with a full build journal.",
+  "tags": ["agents", "python", "llm", "tool-use", "cli"],
+  "added": "2026-06-11",
+  "repo": "https://github.com/Charikshith/AI_Projects/tree/main/11-Tony",
+  "writeup": "notes.html"
+}
