@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chapter 5 — Web Concepts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<link rel="stylesheet" href="../assets/system-design.css">
+</head>
+<body><a href="../../../notes.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;z-index:99999;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600;background:#0f172a;color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.28)">&#8592; AI Library</a>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">
+    <span class="brand-icon">SD</span>
+    <span>Mastering System Design</span>
+  </a>
+  <div class="topbar-actions">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Chapter 5 — On This Page</h3>
+    <ul class="toc-list" id="tocList">
+      <li><a href="#learning-outcomes">Learning Outcomes</a></li>
+      <li><a href="#how-web-applications-work">How Web Applications Work</a></li>
+      <li><a href="#web-sessions">Web Sessions — Managing State</a></li>
+      <li><a href="#serialization">Serialization — Data Exchange Formats</a></li>
+      <li><a href="#cors">CORS — Cross-Origin Resource Sharing</a></li>
+      <li><a href="#browser-security">Browser Security Model & Headers</a></li>
+      <li><a href="#best-practices">Best Practices for Scalable & Secure Web</a></li>
+      <li><a href="#combined-tips">Combined Tips & Tricks</a></li>
+      <li><a href="#interview-questions">Sample Interview Questions</a></li>
+      <li><a href="#summary">Summary & Key Takeaways</a></li>
+      <li><a href="#further-reading">Further Reading</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <span class="chapter-label">Chapter 5</span>
+      <h1>Web Concepts in System Design</h1>
+      <p class="hero-subtitle">
+        From sessions, cookies, and JWT to CORS, security headers, OAuth, and the modern BFF authentication pattern — master the web fundamentals that power scalable, efficient, and secure applications.
+      </p>
+      <div class="hero-author">By Charikshith</div>
+    </section>
+
+    <p>Welcome to <strong>Web Concepts in System Design</strong>. In this chapter, we'll break down the key principles that power scalable, efficient, and secure web applications — essentials not only for real-world projects but also for system design interviews.</p>
+
+    <p>The web forms the backbone of modern applications — social media, e-commerce, cloud platforms, and more. Most large-scale systems are built on web-based architectures, so understanding these fundamentals is critical for:</p>
+
+    <ul>
+      <li><strong>Scalability:</strong> Efficiently handling millions of users.</li>
+      <li><strong>Security:</strong> Preventing unauthorized access and vulnerabilities.</li>
+      <li><strong>Performance:</strong> Ensuring seamless and fast user experiences.</li>
+    </ul>
+
+    <p><strong>Bonus:</strong> Mastery of these concepts gives you an edge in system design interviews, where questions often revolve around state management, data exchange, cross-origin requests, and optimizing web security.</p>
+
+    <h2 id="learning-outcomes">🎯 Learning Outcomes</h2>
+    <p>After reading this chapter, you'll be able to:</p>
+    <ol class="outcomes-list">
+      <li><span class="outcome-num">1</span><span>Choose <strong>session-based vs token-based</strong> auth and explain the tradeoffs.</span></li>
+      <li><span class="outcome-num">2</span><span>Set cookie attributes (<code>HttpOnly</code>, <code>Secure</code>, <code>SameSite</code>) correctly to defend against XSS and CSRF.</span></li>
+      <li><span class="outcome-num">3</span><span>Pick the right <strong>serialization format</strong> (JSON, Protobuf, Avro) for a given use case.</span></li>
+      <li><span class="outcome-num">4</span><span>Diagnose and fix a <strong>CORS error</strong>.</span></li>
+      <li><span class="outcome-num">5</span><span>Name the most common browser <strong>security headers</strong> (CSP, HSTS, X-Content-Type-Options) and what each does.</span></li>
+    </ol>
+
+    <h2 id="how-web-applications-work">How Web Applications Work</h2>
+    <p>Before diving into advanced topics, let's recap the basics.</p>
+
+    <p><strong>Client-Server Model:</strong></p>
+
+<pre><code class="language-http">+------------+         HTTP Request         +------------+
+|  Browser   |  -------------------------&gt;  |   Server   |
+| (Frontend) |  &lt;-------------------------  | (Backend)  |
++------------+         HTTP Response        +------------+</code></pre>
+
+    <div class="archd-seq" aria-label="Client-Server HTTP exchange">
+      <div class="archd-seq-step"><span class="num">1</span>HTTP request / response cycle</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Client (Browser)</span></div>
+        <div class="archd-seq-arrow right"><span class="label">HTTP Request</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Client (Browser)</span></div>
+        <div class="archd-seq-arrow left"><span class="label">HTTP Response</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+    </div>
+
+    <ul>
+      <li><strong>Stateless Protocol:</strong> HTTP doesn't remember previous requests; every interaction is independent.</li>
+      <li><strong>Stateful Needs:</strong> Web apps often need to track information (like login state or a shopping cart) across multiple requests.</li>
+      <li><strong>Stateless vs. Stateful Interactions:</strong>
+        <ul>
+          <li><strong>Stateless:</strong> Each request is independent (e.g., plain HTTP).</li>
+          <li><strong>Stateful:</strong> Server retains user state between requests.</li>
+        </ul>
+      </li>
+      <li><strong>Security, Scalability, Performance:</strong> These are core considerations for any design.</li>
+    </ul>
+
+    <h2 id="web-sessions">Web Sessions — Managing State in Stateless HTTP</h2>
+
+    <h3>The Challenge: Stateless HTTP</h3>
+    <p>HTTP is <strong>stateless</strong> — each request is independent and carries no memory of previous interactions, which makes it tricky to implement features like user logins, shopping carts, or preferences.</p>
+
+    <p><strong>Why is this a challenge?</strong></p>
+    <ul>
+      <li>Users would have to log in on every page load.</li>
+      <li>Shopping carts and personalized experiences wouldn't persist.</li>
+      <li>Applications would be frustrating and less functional.</li>
+    </ul>
+
+    <p><strong>Stateless HTTP visualized:</strong></p>
+
+<pre><code class="language-http">[Browser] --(Request 1)--&gt; [Server]
+[Browser] --(Request 2)--&gt; [Server]
+(No memory of Request 1 when processing Request 2)</code></pre>
+
+    <div class="archd-seq" aria-label="Stateless HTTP with no memory">
+      <div class="archd-seq-step"><span class="num">1</span>Stateless server forgets previous login</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow right"><span class="label">GET /profile (no auth)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow left"><span class="label">401 Unauthorized</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+    </div>
+
+    <p><strong>Solution:</strong> We need mechanisms to track user sessions and maintain state across requests.</p>
+
+    <h3>Techniques for Maintaining State</h3>
+
+    <h4>A. Cookies</h4>
+    <ul>
+      <li><strong>Definition:</strong> Small data pieces stored on the client's browser.</li>
+      <li><strong>Use Case:</strong> Session identifiers, preferences, authentication tokens.</li>
+    </ul>
+
+    <p><strong>Example: Setting a Cookie</strong></p>
+<pre><code class="language-http">Set-Cookie: sessionId=abc123; HttpOnly; Secure; SameSite=Strict</code></pre>
+
+    <h4>B. Session-Based Authentication (Server-Side Sessions + Cookies)</h4>
+    <ul>
+      <li>The server creates a session and stores session data (like user ID) in memory or a database.</li>
+      <li>A session ID is sent to the client (usually via a cookie).</li>
+      <li>The client includes the session ID in subsequent requests; the server uses this to retrieve session info.</li>
+    </ul>
+
+    <p><strong>Sequence diagram (ASCII):</strong></p>
+<pre><code class="language-http">[Client] --(POST /login)--&gt; [Server]
+                |
+       [Server creates session]
+                |
+[Server] --(Set-Cookie: session_id)--&gt; [Client]
+
+[Client] --(GET /dashboard, Cookie: session_id)--&gt; [Server]
+[Server] --(Retrieve user from session_id)--&gt; [Process]</code></pre>
+
+    <div class="archd-seq" aria-label="Session-based authentication sequence">
+      <div class="archd-seq-step"><span class="num">1</span>POST /login with credentials</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow right"><span class="label">POST /login</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Server sets a session cookie</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Set-Cookie: sessionId=abc123</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Subsequent request carries the cookie</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow right"><span class="label">GET /dashboard + Cookie</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Server resolves user from session ID</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Dashboard HTML</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+    </div>
+
+    <p>A more detailed view including the session store:</p>
+
+    <div class="archd-seq" aria-label="Session-based authentication with session store">
+      <div class="archd-seq-step"><span class="num">1</span>User logs in via the browser</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Login</span></div>
+        <div class="archd-node"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow right"><span class="label">POST /login</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Server validates credentials & issues session</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Validate credentials</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔐</span><span>Auth Logic</span></div>
+      </div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Set-Cookie: session_id=abc123</span></div>
+        <div class="archd-node"><span class="archd-icon">🌐</span><span>Browser</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Subsequent requests resolve session</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Requests w/ session_id cookie</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Retrieve session data</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Session Store</span></div>
+      </div>
+    </div>
+
+    <p>Session workflow with separate session store:</p>
+
+    <div class="archd" aria-label="Browser, Server and Session Store layout">
+      <div class="archd-row">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">sessionId in cookie</span></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Session Store</span></div>
+    </div>
+
+    <p><strong>Example: Express.js session setup</strong></p>
+<pre><code class="language-javascript">const session = require('express-session');
+app.use(session({
+  secret: 'your-secret',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: true, httpOnly: true, sameSite: 'Strict' }
+}));</code></pre>
+
+    <p>A login endpoint storing user info in the session:</p>
+<pre><code class="language-javascript">const express = require('express');
+const session = require('express-session');
+
+const app = express();
+
+app.use(session({
+  secret: 'yourSecret',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: true, httpOnly: true, sameSite: 'Strict' }
+}));
+
+app.post('/login', (req, res) => {
+  // Authenticate user...
+  req.session.userId = user.id; // Store in session
+  res.send('Logged in!');
+});</code></pre>
+
+    <h4>C. Token-Based Authentication (JWT, OAuth)</h4>
+    <ul>
+      <li>All session data is <strong>encoded in a token</strong> (e.g., JWT) that the client sends with each request.</li>
+      <li>The server is stateless — just verifies the token.</li>
+      <li>No server-side session storage needed.</li>
+    </ul>
+
+    <p><strong>Sequence:</strong></p>
+
+    <div class="archd-seq" aria-label="JWT token-based authentication flow">
+      <div class="archd-seq-step"><span class="num">1</span>User initiates login</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Login</span></div>
+        <div class="archd-node"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow right"><span class="label">POST /login</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Server validates and issues JWT</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Validate credentials</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔐</span><span>Auth Logic</span></div>
+      </div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Respond with JWT token</span></div>
+        <div class="archd-node"><span class="archd-icon">🌐</span><span>Browser</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Subsequent requests include Bearer token</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Authorization: Bearer &lt;JWT&gt;</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Server decodes & verifies JWT</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Decode & verify JWT</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">✅</span><span>Extract user info</span></div>
+      </div>
+    </div>
+
+    <p><strong>Sample JWT payload (decoded):</strong></p>
+<pre><code class="language-json">{
+  "sub": "user123",
+  "name": "Alice",
+  "roles": ["user"],
+  "exp": 1712345678
+}</code></pre>
+
+    <p>Or:</p>
+<pre><code class="language-json">{
+  "sub": "user123",
+  "role": "admin",
+  "iat": 1712345678,
+  "exp": 1712349278
+}</code></pre>
+
+    <p><strong>Sending JWT in header:</strong></p>
+<pre><code class="language-http">Authorization: Bearer eyJhbGciOiJIUzI1...</code></pre>
+
+    <p><strong>JWT example (Node.js with <code>jsonwebtoken</code>):</strong></p>
+<pre><code class="language-javascript">const jwt = require('jsonwebtoken');
+const token = jwt.sign({ userId: user.id }, 'jwt-secret', { expiresIn: '1h' });
+// Send token to client; client sends it in Authorization header</code></pre>
+
+    <p>A complete login + verification flow:</p>
+<pre><code class="language-javascript">const jwt = require('jsonwebtoken');
+const secret = 'your_jwt_secret';
+
+app.post('/login', (req, res) => {
+  // Authenticate user
+  const token = jwt.sign({ userId: user.id }, secret, { expiresIn: '1h' });
+  res.json({ token });
+});
+
+app.get('/profile', (req, res) => {
+  const token = req.headers.authorization.split(' ')[1];
+  const payload = jwt.verify(token, secret);
+  // payload.userId will be available
+  res.json({ userId: payload.userId });
+});</code></pre>
+
+    <p>An alternative form using the request header more defensively:</p>
+<pre><code class="language-javascript">const jwt = require('jsonwebtoken');
+
+const token = jwt.sign({ userId: user.id }, 'shhSecret', { expiresIn: '1h' });
+
+// On client: store token in localStorage or an HttpOnly cookie
+// On each request:
+app.get('/protected', (req, res) => {
+  const token = req.headers['authorization'].split(' ')[1];
+  const payload = jwt.verify(token, 'shhSecret');
+  // Use payload.userId ...
+});</code></pre>
+
+    <p>Or with explicit verify callback:</p>
+<pre><code class="language-javascript">// Creating a JWT token
+const jwt = require('jsonwebtoken');
+const token = jwt.sign({ userId: 123 }, 'your-secret-key', { expiresIn: '1h' });
+
+// Verifying a JWT token
+jwt.verify(token, 'your-secret-key', (err, decoded) => {
+  if (err) return res.sendStatus(403);
+  // decoded.userId available
+});</code></pre>
+
+    <p><strong>Advantages:</strong> Scalable (stateless), easy for microservices.</p>
+
+    <h3>Session-Based vs. Token-Based Comparison</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>Session-based</th><th>Token-based (JWT/OAuth)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Storage</td><td>Server-side</td><td>Client-side (self-contained)</td></tr>
+          <tr><td>Scalability</td><td>Harder (needs shared session store)</td><td>Easier (stateless)</td></tr>
+          <tr><td>Security</td><td>Session ID must be protected; short expiry</td><td>Token can leak info if not encrypted; short expiry &amp; validation needed</td></tr>
+          <tr><td>Use Cases</td><td>Classic web apps</td><td>APIs, microservices, mobile</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>And from a state-storage perspective:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Method</th><th>Where State is Stored</th><th>Pros</th><th>Cons</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Cookies</td><td>Client</td><td>Simple, widely supported</td><td>Size limits, security risks</td></tr>
+          <tr><td>Server-side Sessions</td><td>Server (e.g., DB, cache)</td><td>More secure</td><td>Scalability, memory usage</td></tr>
+          <tr><td>JWT</td><td>Client (token)</td><td>Scalable, stateless</td><td>Token invalidation is tricky</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Diagram: Session-Based vs. Token-Based Flow</h3>
+
+    <div class="archd" aria-label="Session-based vs Token-based comparison">
+      <div class="archd-row">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser (Session)</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser (Token)</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Login</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server creates session</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server issues JWT</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Subsequent requests</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Lookup Session Store</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🔑</span><span>Verify JWT (no store)</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-user"><span class="archd-icon">📤</span><span>Serve response</span></div>
+    </div>
+
+    <h3>Security Concerns & Mitigations</h3>
+    <ul>
+      <li><strong>Session Hijacking:</strong> Stolen session IDs grant attackers access.
+        <ul>
+          <li><strong>Mitigation:</strong> Use HTTPS, regenerate session IDs after login/logout, short expiry.</li>
+        </ul>
+      </li>
+      <li><strong>CSRF (Cross-Site Request Forgery):</strong> Tricking a user's browser to perform unwanted actions.
+        <ul>
+          <li><strong>Mitigation:</strong> CSRF tokens, <code>SameSite</code> cookies, require user confirmation for sensitive actions, multi-factor authentication.</li>
+        </ul>
+      </li>
+      <li><strong>Cookie Theft (e.g., via XSS):</strong> Insecure transmission or script-accessible cookies.
+        <ul>
+          <li><strong>Mitigation:</strong> Set cookies with <code>Secure</code>, <code>HttpOnly</code>, and <code>SameSite</code> flags.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <p><strong>Secure cookie example:</strong></p>
+<pre><code class="language-javascript">// Secure cookie example in Express
+res.cookie('sessionId', 'abc123', {
+  secure: true,       // Only over HTTPS
+  httpOnly: true,     // Not accessible via JS
+  sameSite: 'Strict'  // No cross-site sending
+});</code></pre>
+
+<pre><code class="language-javascript">// Example: Setting secure cookies
+res.cookie('sessionId', value, { secure: true, httpOnly: true, sameSite: 'Strict' });</code></pre>
+
+    <h3>Scaling Session Management</h3>
+    <ul>
+      <li><strong>Sticky Sessions:</strong> Pin users to the same server (simple, not ideal for scaling).</li>
+      <li><strong>Distributed Sessions:</strong> Use shared storage like Redis or Memcached.</li>
+      <li><strong>Stateless Auth (JWT):</strong> No server storage required; ideal for microservices.</li>
+    </ul>
+
+    <p><strong>Distributed Session Example (Express + Redis):</strong></p>
+<pre><code class="language-javascript">const RedisStore = require('connect-redis')(session);
+app.use(session({
+  store: new RedisStore({ client: redisClient }),
+  secret: 'secret',
+  resave: false,
+  saveUninitialized: false
+}));</code></pre>
+
+    <p>A simpler form:</p>
+<pre><code class="language-javascript">const RedisStore = require('connect-redis')(session);
+app.use(session({
+  store: new RedisStore({ client: redisClient }),
+  // ... other options
+}));</code></pre>
+
+    <p><strong>Distributed session storage diagram:</strong></p>
+
+    <div class="archd" aria-label="Distributed session storage with Redis">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">⚖️</span><span>Load Balancer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Web Server 1</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Web Server 2</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Session lookup</span></div>
+      <div class="archd-node is-data"><span class="archd-icon">⚡</span><span>Redis / Memcached</span></div>
+    </div>
+
+    <h2 id="serialization">Serialization — Data Exchange & Storage Formats</h2>
+
+    <h3>What is Serialization?</h3>
+    <p>Serialization is the process of converting complex data structures (like objects) into a format suitable for transmission or storage (e.g., JSON, XML, Protobuf). <strong>Deserialization</strong> is the reverse.</p>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Why does it matter?</div>
+        <ul>
+          <li>Enables data exchange between different systems or programming languages.</li>
+          <li>Crucial for APIs, databases, and caching systems.</li>
+          <li>Directly impacts system scalability and performance.</li>
+        </ul>
+      </div>
+    </div>
+
+    <p><strong>Why serialization matters in system design:</strong></p>
+    <ul>
+      <li><strong>Data Exchange:</strong> Enables structured data to move between systems (often written in different languages).</li>
+      <li><strong>Storage:</strong> Efficiently saves objects in databases or cache.</li>
+      <li><strong>Performance:</strong> Impacts bandwidth, memory, and CPU usage.</li>
+      <li><strong>Interoperability:</strong> Makes communication possible in microservices and distributed architectures.</li>
+    </ul>
+
+    <h3>Common Serialization Formats</h3>
+
+    <h4>1. JSON (JavaScript Object Notation)</h4>
+    <ul>
+      <li><strong>Human-readable</strong> and text-based.</li>
+      <li><strong>Simple key-value structure</strong>, ideal for REST APIs and front-end applications.</li>
+      <li><strong>Widely supported</strong> across programming languages.</li>
+      <li><strong>Drawback:</strong> Larger payloads compared to binary formats, leading to higher bandwidth usage.</li>
+    </ul>
+
+    <p><strong>Example (Python):</strong></p>
+<pre><code class="language-python">import json
+
+data = {
+    'id': 123,
+    'name': 'Alice',
+    'roles': ['admin', 'user']
+}
+
+# Serialization
+json_str = json.dumps(data)
+print(json_str)  # {"id": 123, "name": "Alice", "roles": ["admin", "user"]}
+
+# Deserialization
+parsed_data = json.loads(json_str)
+print(parsed_data['name'])  # Alice</code></pre>
+
+    <p>A simpler Python example:</p>
+<pre><code class="language-python">import json
+
+data = {'user': 'alice', 'id': 123}
+json_string = json.dumps(data)  # '{"user": "alice", "id": 123}'</code></pre>
+
+<pre><code class="language-python">import json
+
+# Serialize
+user = {
+    "name": "Alice",
+    "age": 30,
+    "skills": ["Go", "Python", "System Design"]
+}
+json_str = json.dumps(user)
+
+# Deserialize
+user_obj = json.loads(json_str)
+print(user_obj)</code></pre>
+
+    <p><strong>Example (JavaScript):</strong></p>
+<pre><code class="language-javascript">const user = { id: 1, name: 'Alice' };
+const jsonString = JSON.stringify(user);
+// '{"id":1,"name":"Alice"}'</code></pre>
+
+    <p>A simple JSON object:</p>
+<pre><code class="language-json">{
+  "userId": 123,
+  "username": "alice"
+}</code></pre>
+
+<pre><code class="language-json">{
+  "name": "Alice",
+  "age": 30,
+  "skills": ["Go", "Python", "System Design"]
+}</code></pre>
+
+    <h4>2. XML (Extensible Markup Language)</h4>
+    <ul>
+      <li><strong>Tag-based and hierarchical</strong> (supports complex structures).</li>
+      <li><strong>Supports complex schemas</strong> and strict schema validation (great for strict industries like banking).</li>
+      <li>Used in <strong>legacy enterprise systems</strong>, configuration files, and certain industries (e.g., finance).</li>
+      <li><strong>Drawback:</strong> Extremely verbose — larger than JSON, less efficient for data transmission.</li>
+    </ul>
+
+    <p><strong>Example (Python with <code>xml.etree</code>):</strong></p>
+<pre><code class="language-python">import xml.etree.ElementTree as ET
+
+data = ET.Element('user')
+ET.SubElement(data, 'id').text = '123'
+ET.SubElement(data, 'name').text = 'Alice'
+
+xml_str = ET.tostring(data)
+print(xml_str.decode())  # &lt;user&gt;&lt;id&gt;123&lt;/id&gt;&lt;name&gt;Alice&lt;/name&gt;&lt;/user&gt;</code></pre>
+
+    <p>XML user example:</p>
+<pre><code class="language-http">&lt;User&gt;
+  &lt;Name&gt;Alice&lt;/Name&gt;
+  &lt;Age&gt;30&lt;/Age&gt;
+  &lt;Skills&gt;
+    &lt;Skill&gt;Go&lt;/Skill&gt;
+    &lt;Skill&gt;Python&lt;/Skill&gt;
+    &lt;Skill&gt;System Design&lt;/Skill&gt;
+  &lt;/Skills&gt;
+&lt;/User&gt;</code></pre>
+
+    <h4>3. Protocol Buffers (Protobuf)</h4>
+    <ul>
+      <li>Developed by Google.</li>
+      <li><strong>Binary format</strong> — compact and fast.</li>
+      <li><strong>Requires a predefined schema</strong> (a <code>.proto</code> file / IDL).</li>
+      <li>Used in <strong>gRPC APIs</strong>, microservices, and high-performance systems.</li>
+      <li>Not human-readable, but <strong>supports versioning</strong> for evolving data structures.</li>
+      <li><strong>Drawback:</strong> Not human-readable; adds schema management complexity.</li>
+    </ul>
+
+    <p><strong>Example <code>.proto</code> schema:</strong></p>
+<pre><code class="language-http">syntax = "proto3";
+
+message User {
+  int32 id = 1;
+  string name = 2;
+  repeated string roles = 3;
+}</code></pre>
+
+    <p>A schema with <code>age</code> and <code>skills</code>:</p>
+<pre><code class="language-http">syntax = "proto3";
+
+message User {
+  string name = 1;
+  int32 age = 2;
+  repeated string skills = 3;
+}</code></pre>
+
+    <p>A simpler version:</p>
+<pre><code class="language-http">message User {
+  int32 id = 1;
+  string name = 2;
+}</code></pre>
+
+    <p>Or with <code>userId</code>:</p>
+<pre><code class="language-http">message User {
+  int32 userId = 1;
+  string username = 2;
+}</code></pre>
+
+    <p><strong>Python usage:</strong></p>
+<pre><code class="language-python"># Requires: pip install protobuf
+from user_pb2 import User
+
+user = User(id=123, name='Alice', roles=['admin', 'user'])
+serialized = user.SerializeToString()
+print(serialized)  # Binary data
+
+# Deserialization
+new_user = User()
+new_user.ParseFromString(serialized)
+print(new_user.name)  # Alice</code></pre>
+
+    <p>Another Python form:</p>
+<pre><code class="language-python">import user_pb2
+
+user = user_pb2.User()
+user.name = "Alice"
+user.age = 30
+user.skills.extend(["Go", "Python", "System Design"])
+
+# Serialize to bytes
+serialized = user.SerializeToString()
+
+# Deserialize
+user2 = user_pb2.User()
+user2.ParseFromString(serialized)
+print(user2)</code></pre>
+
+    <p><strong>Node.js usage (<code>protobufjs</code>):</strong></p>
+<pre><code class="language-javascript">// Usage with protobufjs in Node.js
+const User = root.lookupType('User');
+const buffer = User.encode({ id: 1, name: 'Alice' }).finish();</code></pre>
+
+    <h4>4. BSON, Avro, and Others</h4>
+    <ul>
+      <li><strong>BSON:</strong> Binary JSON (used by MongoDB).</li>
+      <li><strong>Avro:</strong> Common in big data pipelines (supports schema evolution).</li>
+    </ul>
+
+    <h3>Trade-Offs: Readability, Efficiency, Compatibility</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Format</th><th>Readability</th><th>Efficiency</th><th>Compatibility</th><th>Use Cases</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>JSON</strong></td><td>Human-readable</td><td>Medium</td><td>Good, limited schema</td><td>REST APIs, web apps</td></tr>
+          <tr><td><strong>XML</strong></td><td>Verbose</td><td>Low</td><td>Strong schema, metadata</td><td>Legacy systems, configs</td></tr>
+          <tr><td><strong>Protobuf</strong></td><td>Not readable</td><td>High</td><td>Requires schema, supports versioning</td><td>gRPC, high-perf APIs</td></tr>
+          <tr><td><strong>Avro</strong></td><td>Not readable</td><td>High</td><td>Schema evolution</td><td>Big Data</td></tr>
+          <tr><td><strong>BSON</strong></td><td>Medium</td><td>Medium</td><td>Used in NoSQL (MongoDB)</td><td>MongoDB</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Another summary table:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Format</th><th>Human-Readable</th><th>Efficient</th><th>Widely Supported</th><th>Binary / Text</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>JSON</td><td>Yes</td><td>Good</td><td>Yes</td><td>Text</td></tr>
+          <tr><td>XML</td><td>Yes</td><td>Ok</td><td>Yes</td><td>Text</td></tr>
+          <tr><td>Protocol Buffers</td><td>No</td><td>Excellent</td><td>Good</td><td>Binary</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>A schema-focused comparison:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Format</th><th>Readability</th><th>Efficiency</th><th>Schema Support</th><th>Use Cases</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>JSON</td><td>High</td><td>Medium</td><td>Low</td><td>Web APIs, front-end</td></tr>
+          <tr><td>XML</td><td>High</td><td>Low</td><td>High</td><td>Legacy, config, enterprise</td></tr>
+          <tr><td>Protobuf</td><td>Low</td><td>High</td><td>High</td><td>gRPC, microservices, big data</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>A use-case-focused table:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Format</th><th>Readable</th><th>Efficient</th><th>Used In</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>JSON</td><td>Yes</td><td>No</td><td>REST APIs, Web Apps</td><td>Human-friendly, large size</td></tr>
+          <tr><td>XML</td><td>Yes</td><td>No</td><td>Legacy, Config Files</td><td>Verbose, schema support</td></tr>
+          <tr><td>Protobuf</td><td>No</td><td>Yes</td><td>gRPC, Big Data</td><td>Binary, needs schema</td></tr>
+          <tr><td>Avro</td><td>No</td><td>Yes</td><td>Big Data</td><td>Supports schema evolution</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Key trade-offs summarized:</strong></p>
+    <ul>
+      <li><strong>Readability:</strong> JSON, XML are human-friendly.</li>
+      <li><strong>Efficiency:</strong> Protobuf and Avro are compact — reduce bandwidth and parsing time.</li>
+      <li><strong>Compatibility:</strong> XML supports schema evolution; JSON less so; Protobuf/Avro require schema management.</li>
+    </ul>
+
+    <h3>Serialization in Action</h3>
+
+    <h4>Where is Serialization Used?</h4>
+    <ul>
+      <li><strong>APIs:</strong>
+        <ul>
+          <li>REST APIs → JSON</li>
+          <li>gRPC APIs → Protobuf</li>
+          <li>SOAP (legacy) → XML</li>
+        </ul>
+      </li>
+      <li><strong>Caching:</strong>
+        <ul>
+          <li>Redis / Memcached store JSON or Protobuf for fast retrieval.</li>
+        </ul>
+      </li>
+      <li><strong>Databases:</strong>
+        <ul>
+          <li>MongoDB uses BSON.</li>
+          <li>Big data stores (Hadoop, Kafka) use Avro/Protobuf.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h4>Data Flow Diagram</h4>
+
+<pre><code class="language-http">+-----------------+         (serialize)         +----------------+
+|    Web Server   |  -----------------------&gt;   |    Database    |
+|   (Python obj)  |                             | (JSON/BSON)    |
++-----------------+                             +----------------+
+         ^                                             |
+         |          (deserialize)                      |
+         +-----------------------&lt;---------------------+</code></pre>
+
+    <div class="archd-seq" aria-label="Serialization data flow">
+      <div class="archd-seq-step"><span class="num">1</span>In-memory object → serialized data</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🧠</span><span>Object in Memory</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Serialize</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">⚙️</span><span>Serialization</span></div>
+        <div class="archd-seq-arrow right"><span class="label">JSON / XML / Protobuf</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">📦</span><span>Serialized Data</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Transit → deserialization at destination</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-data"><span class="archd-icon">📦</span><span>Serialized Data</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Storage / Network / Cache</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🌐</span><span>Transport</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Deserialize</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🧠</span><span>Object in Another System</span></div>
+      </div>
+    </div>
+
+    <h3>Performance Considerations</h3>
+    <ul>
+      <li><strong>JSON/XML:</strong> Text-based, larger payload, slow parsing.</li>
+      <li><strong>Protobuf/Avro:</strong> Binary, compact, fast parsing (but needs schema).</li>
+      <li><strong>Bandwidth & CPU:</strong> Choosing the right format affects network traffic and system resources.</li>
+    </ul>
+
+    <h4>Example: Comparing Payload Sizes</h4>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Format</th><th>Sample Data Size</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>JSON</td><td>150 bytes</td></tr>
+          <tr><td>XML</td><td>220 bytes</td></tr>
+          <tr><td>Protobuf</td><td>50 bytes</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>When to Use Each Format</h3>
+    <ul>
+      <li><strong>JSON:</strong> Default for web APIs (REST), easy debugging, wide adoption.</li>
+      <li><strong>XML:</strong> Needed for strong schema enforcement, legacy systems.</li>
+      <li><strong>Protobuf:</strong> For microservices, gRPC, or performance-critical systems.</li>
+    </ul>
+
+    <h3>Serialization — Tips & Best Practices</h3>
+    <ul>
+      <li><strong>Choose the right format for the use case:</strong>
+        <ul>
+          <li>APIs → JSON for REST; Protobuf for gRPC.</li>
+          <li>Performance-critical → Protobuf or Avro.</li>
+          <li>Human inspection/debugging → JSON.</li>
+        </ul>
+      </li>
+      <li><strong>Schema management:</strong> For Protobuf/Avro, maintain versioned schemas for compatibility.</li>
+      <li><strong>Security:</strong> Never deserialize untrusted data without validation (risk of code execution / exploits). Sanitize and validate data post-deserialization.</li>
+      <li><strong>Compression:</strong> For large JSON/XML payloads, use gzip or similar compression in transit.</li>
+      <li><strong>Testing:</strong> Always test serialization/deserialization logic for edge cases and compatibility across language boundaries.</li>
+      <li><strong>Monitoring:</strong> Track payload sizes and serialization/deserialization times for performance bottlenecks.</li>
+      <li><strong>Profile performance:</strong> For high-traffic APIs, benchmark serialization/deserialization speeds and payload sizes.</li>
+      <li><strong>Use binary formats carefully:</strong> Binary is efficient but not debuggable — use in internal service-to-service communication rather than client-facing APIs.</li>
+      <li><strong>Validate data:</strong> XML offers robust schema validation; Protobuf can enforce types; JSON is more permissive but use libraries to validate.</li>
+    </ul>
+
+    <h3>Serialization — Interview Questions</h3>
+    <ul>
+      <li>What is serialization and where is it used?</li>
+      <li>Compare JSON, XML, Protobuf, and Avro.</li>
+      <li>Why use Protobuf in gRPC?</li>
+      <li>How does serialization affect API performance?</li>
+      <li>What are the security risks with serialization?</li>
+      <li>Why does MongoDB use BSON?</li>
+      <li>How does Avro help in big data systems?</li>
+      <li>What are the trade-offs between readability and efficiency in serialization?</li>
+    </ul>
+
+    <h3>Serialization — References</h3>
+    <ul>
+      <li><a href="https://developers.google.com/protocol-buffers" target="_blank">Protobuf Documentation</a></li>
+      <li><a href="https://www.json.org/" target="_blank">JSON Official Website</a></li>
+      <li><a href="https://www.w3.org/XML/" target="_blank">XML Specification</a></li>
+      <li><a href="https://docs.python.org/3/library/json.html" target="_blank">Python json module</a></li>
+    </ul>
+
+    <h2 id="cors">CORS — Cross-Origin Resource Sharing & Web Security</h2>
+
+    <p>Modern web applications are no longer siloed on a single domain — they often depend on APIs and services spread across different domains. But this flexibility introduces critical security challenges. Browsers enforce the <strong>Same-Origin Policy (SOP)</strong> to prevent malicious cross-origin requests, but legitimate use cases require controlled exceptions. That's where <strong>CORS</strong> comes in.</p>
+
+    <h3>The Problem: Same-Origin Policy (SOP)</h3>
+    <p><strong>Same-Origin Policy</strong> is a browser security feature that restricts web pages from making requests to a different domain (origin) than the one that served the web page. This prevents unauthorized web pages from reading sensitive data from another origin.</p>
+
+    <p><strong>Example scenario:</strong></p>
+    <ul>
+      <li>Frontend is hosted at <code>https://app.com</code></li>
+      <li>Backend API is at <code>https://api.com</code></li>
+      <li>By default, the browser <strong>blocks</strong> requests from <code>app.com</code> to <code>api.com</code></li>
+    </ul>
+
+<pre><code class="language-http">[myapp.com] --X--&gt; [api.other.com]
+(Cross-origin request blocked unless CORS is enabled)</code></pre>
+
+<pre><code class="language-http">+----------+      GET /api/data      +------------------+
+| app.com  |  --------------------&gt;  | api.other.com    |
++----------+   (Blocked by SOP)      +------------------+</code></pre>
+
+    <h3>The Solution: What is CORS?</h3>
+    <p><strong>CORS</strong> is a server-side mechanism that allows controlled cross-origin requests. It does so using specific HTTP headers in responses.</p>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Key Point</div>
+        <p>CORS is always enforced by browsers and is entirely controlled by server-side configuration. If the server doesn't allow it, the browser will block the request.</p>
+      </div>
+    </div>
+
+    <h3>How CORS Works</h3>
+    <p>When a browser detects a cross-origin request, it does one of two things depending on the request's complexity:</p>
+
+    <h4>1. Simple Requests</h4>
+    <ul>
+      <li>Use methods like <code>GET</code>, <code>POST</code> (no custom headers or content types).</li>
+      <li>The browser adds an <code>Origin</code> header automatically.</li>
+      <li>Server must respond with:</li>
+    </ul>
+<pre><code class="language-http">Access-Control-Allow-Origin: https://app.com</code></pre>
+    <ul>
+      <li>If the header is absent or incorrect, the browser blocks the response.</li>
+    </ul>
+
+    <h4>2. Preflight Requests</h4>
+    <ul>
+      <li>Triggered by methods like <code>PUT</code>, <code>DELETE</code>, or requests with custom headers (e.g., <code>Authorization</code>).</li>
+      <li><strong>Before</strong> the actual request, the browser sends an <code>OPTIONS</code> request to the server.</li>
+      <li>The server responds with headers indicating what's allowed.</li>
+      <li>If approved, the browser sends the actual request.</li>
+    </ul>
+
+    <p><strong>Preflight request example:</strong></p>
+<pre><code class="language-http">OPTIONS /user HTTP/1.1
+Origin: https://app.com
+Access-Control-Request-Method: PUT
+Access-Control-Request-Headers: Authorization</code></pre>
+
+    <p><strong>Server response:</strong></p>
+<pre><code class="language-http">Access-Control-Allow-Origin: https://app.com
+Access-Control-Allow-Methods: GET, POST, PUT
+Access-Control-Allow-Headers: Authorization</code></pre>
+
+    <h3>CORS Flow Diagrams</h3>
+
+    <p>A simple GET flow:</p>
+    <div class="archd-seq" aria-label="Simple CORS GET flow">
+      <div class="archd-seq-step"><span class="num">1</span>Browser sends GET with Origin header</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow right"><span class="label">GET /user (Origin: app.com)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>API Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Server replies with Allow-Origin</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Access-Control-Allow-Origin: app.com</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>API Server</span></div>
+      </div>
+    </div>
+
+    <p>A preflight flow with explicit headers:</p>
+    <div class="archd-seq" aria-label="Preflight CORS flow">
+      <div class="archd-seq-step"><span class="num">1</span>OPTIONS preflight from app.com</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser (app.com)</span></div>
+        <div class="archd-seq-arrow right"><span class="label">OPTIONS /resource</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server (api.com)</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Server returns CORS headers</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow left"><span class="label">200 OK + Access-Control headers</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Actual request follows</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow right"><span class="label">PUT /resource</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Response with data</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Response (data)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+    </div>
+
+    <p>With <code>alt</code> branches for allowed/disallowed:</p>
+    <div class="archd-seq" aria-label="CORS preflight with allowed and disallowed branches">
+      <div class="archd-seq-step"><span class="num">1</span>OPTIONS request with CORS request headers</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow right"><span class="label">OPTIONS /data (Origin, Method)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>200 OK with Allow-Origin/Methods/Headers</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow left"><span class="label">200 OK + Allow headers</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3a</span>Allowed — actual request proceeds</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow right"><span class="label">PUT /data</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Response + CORS headers</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3b</span>Not allowed — browser blocks</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow right"><span class="label">❌ Blocked by browser</span></div>
+        <div class="archd-node is-external"><span class="archd-icon">🚫</span><span>(No request sent)</span></div>
+      </div>
+    </div>
+
+    <p>ASCII CORS workflow:</p>
+<pre><code class="language-http">+-----------+   Request   +-----------+
+|  Site A   | ----------&gt; |   API B   |
++-----------+             +-----------+
+      |                       |
+      |   Preflight OPTIONS   |
+      | &lt;-------------------  |
+      |                       |
+      |   CORS Headers        |
+      | &lt;-------------------  |</code></pre>
+
+<pre><code class="language-http">Client (Origin A)
+    |
+    |---(HTTP Request with Origin header)---&gt;
+    |
+Server (Origin B)
+    |
+    |---(CORS Headers in Response)---------&gt;
+    |
+Client checks CORS headers before allowing response</code></pre>
+
+    <h3>Key CORS Headers</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Header</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>Access-Control-Allow-Origin</code></td><td>Specifies the permitted origin(s) (e.g., <code>https://app.com</code>, or <code>*</code> for any)</td></tr>
+          <tr><td><code>Access-Control-Allow-Methods</code></td><td>Allowed HTTP methods (e.g., <code>GET, POST, PUT</code>)</td></tr>
+          <tr><td><code>Access-Control-Allow-Headers</code></td><td>Allowed custom headers (e.g., <code>Authorization, Content-Type</code>)</td></tr>
+          <tr><td><code>Access-Control-Allow-Credentials</code></td><td>Indicates if cookies/credentials can be sent (must <strong>not</strong> be used with <code>*</code> origin)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Example response headers:</strong></p>
+<pre><code class="language-http">Access-Control-Allow-Origin: https://trusted.com
+Access-Control-Allow-Methods: GET, POST
+Access-Control-Allow-Headers: Content-Type, Authorization</code></pre>
+
+    <p>Or, with credentials:</p>
+<pre><code class="language-http">HTTP/1.1 200 OK
+Access-Control-Allow-Origin: https://app.com
+Access-Control-Allow-Methods: GET, POST, PUT
+Access-Control-Allow-Headers: Content-Type, Authorization
+Access-Control-Allow-Credentials: true</code></pre>
+
+    <p>A minimal version:</p>
+<pre><code class="language-http">Access-Control-Allow-Origin: https://trustedsite.com</code></pre>
+
+    <p>And another:</p>
+<pre><code class="language-http">Access-Control-Allow-Origin: https://example.com
+Access-Control-Allow-Methods: GET, POST
+Access-Control-Allow-Credentials: true</code></pre>
+
+    <h3>Implementing CORS: Code Examples</h3>
+
+    <h4>Express.js (basic)</h4>
+<pre><code class="language-javascript">const cors = require('cors');
+app.use(cors({
+  origin: ['https://trusted.com'], // Whitelisted origins
+  methods: ['GET', 'POST'],
+  credentials: true
+}));</code></pre>
+
+    <p>A version with a more specific list:</p>
+<pre><code class="language-javascript">const cors = require('cors');
+
+app.use(cors({
+  origin: 'https://app.com',
+  credentials: true,
+  allowedHeaders: ['Authorization', 'Content-Type'],
+  methods: ['GET', 'POST', 'PUT']
+}));</code></pre>
+
+    <p>A simpler version:</p>
+<pre><code class="language-javascript">const cors = require('cors');
+app.use(cors({
+  origin: 'https://your-frontend.com',
+  methods: ['GET', 'POST'],
+  credentials: true
+}));</code></pre>
+
+    <h4>Express.js (with origin whitelist function)</h4>
+<pre><code class="language-javascript">const express = require('express');
+const cors = require('cors');
+
+const app = express();
+
+// Allow only specific origins
+const allowedOrigins = ['https://app.com', 'https://admin.app.com'];
+
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true // Allow cookies if needed
+}));
+
+app.get('/api/data', (req, res) => {
+  res.json({ message: "CORS-secured data" });
+});
+
+app.listen(3000);</code></pre>
+
+    <p>A whitelist version with multiple origins:</p>
+<pre><code class="language-javascript">const express = require('express');
+const cors = require('cors');
+const app = express();
+
+app.use(cors({
+  origin: ['https://app.com'], // whitelist your frontend domain(s)
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true // if you need cookies/auth
+}));
+
+// Your API routes here</code></pre>
+
+    <h4>Spring Boot</h4>
+<pre><code class="language-http">// Controller-level CORS config
+@CrossOrigin(origins = "https://app.com", allowedHeaders = "*", allowCredentials = "true")
+@RestController
+public class ApiController {
+    @GetMapping("/api/data")
+    public ResponseEntity&lt;String&gt; getData() {
+        return ResponseEntity.ok("CORS-secured data");
+    }
+}</code></pre>
+
+    <h4>GraphQL (Apollo Server)</h4>
+<pre><code class="language-javascript">const { ApolloServer } = require('apollo-server-express');
+
+const server = new ApolloServer({ /* ... */ });
+
+server.applyMiddleware({
+  app,
+  cors: {
+    origin: ['https://app.com'],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ['GET', 'POST']
+  }
+});</code></pre>
+
+    <h4>NGINX Reverse Proxy with CORS Headers</h4>
+<pre><code class="language-bash">location /api/ {
+    proxy_pass http://backend;
+    add_header Access-Control-Allow-Origin https://trusted.com;
+    add_header Access-Control-Allow-Methods 'GET, POST, OPTIONS';
+}</code></pre>
+
+    <h3>Security Risks & Misconfigurations</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Risk</th><th>Description</th><th>Example</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Overly Permissive Origins</td><td>Allowing <code>Access-Control-Allow-Origin: *</code> exposes your API to any website.</td><td>Any website can read sensitive API data.</td></tr>
+          <tr><td>Credentials with Wildcard Origin</td><td><code>Access-Control-Allow-Credentials: true</code> + <code>*</code> is blocked by browsers but can still be misconfigured.</td><td>May inadvertently leak cookies or tokens.</td></tr>
+          <tr><td>Exposing Sensitive APIs</td><td>Internal APIs exposed to the public due to lax CORS.</td><td>Data leakage or unauthorized actions.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Mitigation strategies:</strong></p>
+    <ul>
+      <li>Use a <strong>whitelist</strong> of trusted origins.</li>
+      <li>Set <strong>specific CORS policies per API endpoint</strong> (not a global wildcard).</li>
+      <li>Separate public and private APIs and enforce correct CORS headers.</li>
+      <li>Use a <strong>reverse proxy or API gateway</strong> to centralize and standardize CORS handling.</li>
+    </ul>
+
+    <h3>Handling CORS in REST & GraphQL APIs</h3>
+    <ul>
+      <li><strong>REST APIs:</strong> Use built-in CORS tools in frameworks (Express.js, Spring Boot, Django).</li>
+      <li><strong>GraphQL APIs:</strong> Also require CORS, especially since mutations often use <code>POST</code> and custom headers.</li>
+      <li><strong>Preflight requests</strong> are common for both, especially with complex or authenticated requests.</li>
+    </ul>
+
+    <h3>Alternatives to CORS</h3>
+
+    <h4>Reverse Proxy</h4>
+    <p>Use NGINX, Apache, or similar as a reverse proxy. Client requests hit the frontend server, which proxies them to the backend, <strong>appearing as same-origin</strong>. CORS is bypassed because the browser sees the request as same-origin.</p>
+
+<pre><code class="language-bash">server {
+    listen 80;
+    server_name app.com;
+
+    location /api/ {
+        proxy_pass http://api.com/api/;
+        proxy_set_header Host $host;
+        # Add any needed headers here
+    }
+}</code></pre>
+
+    <p>A simpler version:</p>
+<pre><code class="language-bash">server {
+  listen 80;
+  server_name app.com;
+
+  location /api/ {
+    proxy_pass http://api.com/;
+    proxy_set_header Host api.com;
+  }
+}</code></pre>
+
+    <h4>API Gateway</h4>
+    <p>AWS API Gateway, Azure API Management, etc. Centralized CORS policy for all microservices. Simplifies security and reduces misconfiguration risk.</p>
+
+    <h3>CORS — Tips and Tricks</h3>
+    <ul>
+      <li><strong>Never use wildcard (<code>*</code>) origin for sensitive APIs.</strong> Always specify allowed origins.</li>
+      <li><strong>Set <code>Access-Control-Allow-Credentials: true</code> only when absolutely necessary</strong> (e.g., cookies for authentication), and <strong>never with a wildcard origin</strong>.</li>
+      <li><strong>Test CORS settings in both development and production.</strong> Misconfigurations often go unnoticed until deployment.</li>
+      <li><strong>Centralize CORS management</strong> with a proxy or API gateway in microservice architectures.</li>
+      <li><strong>Use browser developer tools</strong> (Network tab) to debug CORS errors — check the <strong>preflight</strong> and actual requests.</li>
+      <li><strong>Automate CORS header configuration</strong> where possible to avoid manual errors.</li>
+      <li><strong>Educate your team</strong> about the security implications of CORS. A common cause of breaches is lack of awareness.</li>
+      <li><strong>For local development</strong>, use a proxy or set up CORS to allow <code>localhost</code> only.</li>
+      <li><strong>Test your CORS configuration</strong> using tools like <code>curl</code> or browser dev tools.</li>
+      <li><strong>Monitor logs</strong> for failed preflight requests — these can signal misconfigurations.</li>
+      <li><strong>Use API Gateways/Reverse Proxies</strong> to centralize and standardize CORS handling.</li>
+    </ul>
+
+    <h3>CORS — Interview Questions</h3>
+    <ol>
+      <li>What is the Same-Origin Policy, and why does it exist?</li>
+      <li>How does CORS enable cross-origin requests?</li>
+      <li>What is a preflight request, and when is it required?</li>
+      <li>How do you configure CORS headers on a server?</li>
+      <li>What are common security risks associated with CORS?</li>
+      <li>What are alternatives to CORS for handling cross-origin requests?</li>
+      <li>How do API Gateways and Reverse Proxies help with CORS?</li>
+    </ol>
+
+    <h3>CORS — References</h3>
+    <ul>
+      <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS" target="_blank">MDN Web Docs — CORS</a></li>
+      <li><a href="https://owasp.org/www-community/attacks/CORS_OriginHeaderScrutiny" target="_blank">OWASP — CORS Security</a></li>
+      <li><a href="https://expressjs.com/en/resources/middleware/cors.html" target="_blank">Express.js CORS Middleware</a></li>
+      <li><a href="https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-cors.html" target="_blank">AWS API Gateway CORS</a></li>
+    </ul>
+
+    <h2 id="browser-security">Browser Security Model and Common Headers</h2>
+    <p>Beyond CORS, the browser enforces several protections via HTTP response headers. Configure these on your server (or at the CDN/reverse proxy) to harden your app.</p>
+
+    <h3>XSS vs CSRF — Know the Difference</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Attack</th><th>What it does</th><th>Mitigation</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>XSS</strong> (Cross-Site Scripting)</td><td>Attacker injects JS into your page; runs in your origin</td><td>Escape user input, use CSP, <code>HttpOnly</code> cookies (JS can't read them)</td></tr>
+          <tr><td><strong>CSRF</strong> (Cross-Site Request Forgery)</td><td>Attacker tricks user's browser into sending an authenticated request from another site</td><td><code>SameSite=Lax</code> or <code>Strict</code> cookies, CSRF tokens, origin/referer check</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Essential Security Headers</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Header</th><th>What it does</th><th>Example</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong><code>Strict-Transport-Security</code> (HSTS)</strong></td><td>Tells the browser to always use HTTPS for this domain</td><td><code>max-age=31536000; includeSubDomains</code></td></tr>
+          <tr><td><strong><code>Content-Security-Policy</code> (CSP)</strong></td><td>Whitelists which scripts/styles/etc. the page can load — strongest XSS defense</td><td><code>default-src 'self'; script-src 'self' https://cdn.example.com</code></td></tr>
+          <tr><td><strong><code>X-Content-Type-Options</code></strong></td><td>Stops the browser from guessing MIME type</td><td><code>nosniff</code></td></tr>
+          <tr><td><strong><code>X-Frame-Options</code></strong></td><td>Prevents your page from being framed (clickjacking defense; CSP <code>frame-ancestors</code> is newer)</td><td><code>DENY</code></td></tr>
+          <tr><td><strong><code>Referrer-Policy</code></strong></td><td>Controls how much of your URL is sent as <code>Referer</code> to other sites</td><td><code>strict-origin-when-cross-origin</code></td></tr>
+          <tr><td><strong><code>Permissions-Policy</code></strong></td><td>Disables features like camera/geolocation when not needed</td><td><code>camera=(), microphone=()</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Cookie Attributes — All Three Always</h3>
+    <p>A cookie set without all three of these is a vulnerability waiting to happen:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Attribute</th><th>What it does</th><th>When to omit</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>Secure</code></td><td>Cookie only sent over HTTPS</td><td>Never omit in production</td></tr>
+          <tr><td><code>HttpOnly</code></td><td>JavaScript can't read the cookie (defeats XSS-based token theft)</td><td>Only for cookies the client must read (rare)</td></tr>
+          <tr><td><code>SameSite</code></td><td>Cookie not sent on cross-site requests (defeats CSRF)</td><td><code>Lax</code> is the default; use <code>Strict</code> if you don't need cross-site embeds</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-content">
+        <div class="callout-title">Beginner Pitfall</div>
+        <p>Storing JWT in <code>localStorage</code> so JS can read it is <strong>convenient but unsafe.</strong> XSS instantly steals it. Storing it in an <code>HttpOnly</code> cookie is safer — JS can't read it, so XSS can't exfiltrate it. The downside: CSRF risk (mitigated by <code>SameSite</code>).</p>
+      </div>
+    </div>
+
+    <h3>Modern Auth Pattern: BFF + HttpOnly Session Cookie</h3>
+    <p>The current best-practice pattern for SPAs:</p>
+    <ol>
+      <li>SPA calls your <strong>BFF</strong> (Backend for Frontend) over same-origin HTTPS.</li>
+      <li>BFF handles OAuth/OIDC with the identity provider on the server side.</li>
+      <li>BFF issues an <strong><code>HttpOnly</code>, <code>Secure</code>, <code>SameSite=Lax</code> session cookie</strong> to the browser.</li>
+      <li>JS in the SPA never touches the token. XSS can't steal it. CSRF mitigated by <code>SameSite</code>.</li>
+    </ol>
+
+    <div class="archd-seq" aria-label="BFF + HttpOnly session cookie auth pattern">
+      <div class="archd-seq-step"><span class="num">1</span>SPA calls BFF over same-origin HTTPS</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>SPA (Browser)</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Same-origin HTTPS</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🛡️</span><span>BFF</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>BFF handles OAuth / OIDC on the server side</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-service"><span class="archd-icon">🛡️</span><span>BFF</span></div>
+        <div class="archd-seq-arrow right"><span class="label">OAuth / OIDC flow</span></div>
+        <div class="archd-node is-external"><span class="archd-icon">🔐</span><span>Identity Provider</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>BFF issues HttpOnly, Secure, SameSite=Lax cookie</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-service"><span class="archd-icon">🛡️</span><span>BFF</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Set-Cookie (HttpOnly/Secure/SameSite)</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>SPA (Browser)</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>JS never touches the token — XSS/CSRF mitigated</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>SPA (Browser)</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Subsequent requests w/ cookie</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🛡️</span><span>BFF</span></div>
+      </div>
+    </div>
+
+    <p>This is the recommended pattern by the OAuth working group as of 2023+, replacing the older "store JWT in localStorage" approach.</p>
+
+    <h2 id="best-practices">Best Practices for Scalable & Secure Web Systems</h2>
+    <ul>
+      <li><strong>Stateless Servers:</strong> Prefer storing minimal state on the server; use tokens.</li>
+      <li><strong>Centralized Session Store:</strong> For sessions, use distributed stores like Redis.</li>
+      <li><strong>Secure Cookies:</strong> Always use <code>HttpOnly</code>, <code>Secure</code>, and <code>SameSite</code> flags.</li>
+      <li><strong>Minimal CORS:</strong> Only allow origins you trust. Never use <code>*</code> for sensitive endpoints.</li>
+      <li><strong>Efficient Serialization:</strong> Use Protocol Buffers or similar for internal APIs.</li>
+    </ul>
+
+    <h2 id="combined-tips">Combined Tips & Tricks</h2>
+    <p>A consolidated master list drawn from all sections.</p>
+
+    <h3>Session Security</h3>
+    <ul>
+      <li>Always use <strong>HTTPS</strong> to protect session IDs and tokens.</li>
+      <li>Set <code>HttpOnly</code>, <code>Secure</code>, and <code>SameSite</code> on cookies.</li>
+      <li>Regenerate session IDs after login and logout to prevent fixation attacks.</li>
+      <li>Use short expiry times and idle timeouts to reduce window for hijacking.</li>
+      <li>Rotate and expire session tokens regularly.</li>
+      <li>Monitor and log session activity to detect suspicious usage or brute force attacks.</li>
+    </ul>
+
+    <h3>Scaling Sessions</h3>
+    <ul>
+      <li>Use sticky sessions only when unavoidable; prefer distributed session storage.</li>
+      <li>For distributed systems, externalize session storage (e.g., Redis, Memcached).</li>
+      <li>Prefer stateless JWTs for microservices and APIs, but invalidate tokens on password changes.</li>
+      <li>Centralize session storage (e.g., Redis) when scaling web servers to avoid sticky sessions and data loss.</li>
+    </ul>
+
+    <h3>JWT Caution</h3>
+    <ul>
+      <li><strong>Never store sensitive data in JWT payload;</strong> always validate on the server.</li>
+      <li>Implement token revocation strategies (e.g., blacklists) for sensitive systems.</li>
+      <li>Handle token expiry and renewal explicitly.</li>
+    </ul>
+
+    <h3>Choosing Serialization</h3>
+    <ul>
+      <li>Use <strong>JSON</strong> for REST APIs (unless bandwidth is a concern).</li>
+      <li>For high-performance or binary protocols, use <strong>Protobuf</strong> or <strong>Avro</strong>.</li>
+      <li>Match serialization format to your database/cache for efficiency.</li>
+      <li>For human inspection/debugging, choose JSON.</li>
+      <li>Serialize only necessary data; avoid large, nested JSON objects.</li>
+    </ul>
+
+    <h3>CORS Configuration</h3>
+    <ul>
+      <li><strong>Never use <code>Access-Control-Allow-Origin: *</code> with credentials.</strong></li>
+      <li>Maintain a whitelist of trusted domains.</li>
+      <li>Consider using an API Gateway or Reverse Proxy for complex setups.</li>
+      <li>Monitor CORS headers in production using browser dev tools or <code>curl</code>.</li>
+    </ul>
+
+    <h3>General Security</h3>
+    <ul>
+      <li>Always validate and sanitize all inputs, even if requests come from "trusted" origins.</li>
+      <li>Use CSRF tokens on state-changing requests.</li>
+    </ul>
+
+    <h3>Interview Prep</h3>
+    <ul>
+      <li>Be ready to discuss trade-offs between session management strategies.</li>
+      <li>Explain how you'd handle sessions, serialization, or CORS in cloud or microservice environments.</li>
+      <li>Know how to explain CORS, SOP, and common security pitfalls.</li>
+      <li>Understand how serialization impacts system performance and scalability.</li>
+    </ul>
+
+    <h2 id="interview-questions">Sample Interview Questions</h2>
+
+    <h3>Sessions & State</h3>
+    <ul>
+      <li>Why is HTTP stateless, and how do we work around it?</li>
+      <li>Compare session-based and token-based authentication.</li>
+      <li>How do you scale session management across multiple servers?</li>
+      <li>What are the security risks of cookies, and how do you mitigate them?</li>
+      <li>What is CSRF, and how do you protect against it?</li>
+      <li>How would you handle token revocation in a stateless JWT system?</li>
+    </ul>
+
+    <h3>Serialization</h3>
+    <ul>
+      <li>What is serialization, and why is it important?</li>
+      <li>Compare JSON, XML, Protobuf, and Avro.</li>
+      <li>How does serialization affect bandwidth and performance?</li>
+      <li>Why does MongoDB use BSON?</li>
+      <li>What security risks come with deserialization, and how do you mitigate them?</li>
+    </ul>
+
+    <h3>CORS</h3>
+    <ul>
+      <li>What is the Same-Origin Policy and why does it exist?</li>
+      <li>Explain CORS and how it works.</li>
+      <li>What is a preflight request? When is it required?</li>
+      <li>What are common CORS misconfigurations, and how do you avoid them?</li>
+      <li>What are the alternatives to CORS?</li>
+    </ul>
+
+    <h2 id="summary">Summary & Key Takeaways</h2>
+    <ul>
+      <li><strong>HTTP is stateless:</strong> Use sessions or tokens to track user state.</li>
+      <li><strong>Web sessions:</strong> Maintain state via cookies, server-side sessions, or token-based authentication (JWT).</li>
+      <li><strong>Serialization:</strong> Crucial for data exchange — choose the right format for your performance, readability, and compatibility needs.</li>
+      <li><strong>CORS:</strong> Enforces browser security but must be configured properly to enable legitimate cross-origin communication without exposing vulnerabilities.</li>
+      <li><strong>Scalability & Security:</strong> Design your web systems with distributed session storage, stateless authentication, and robust CORS policies.</li>
+    </ul>
+
+    <h2 id="further-reading">📚 Further Reading</h2>
+
+    <p><strong>Sessions / Authentication:</strong></p>
+    <ul>
+      <li><a href="https://jwt.io/" target="_blank">JWT.io</a> — JWT debugger and library list</li>
+      <li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html" target="_blank">OWASP Session Management Cheat Sheet</a></li>
+    </ul>
+
+    <p><strong>Serialization:</strong></p>
+    <ul>
+      <li><a href="https://developers.google.com/protocol-buffers" target="_blank">Protobuf Documentation</a></li>
+      <li><a href="https://www.json.org/" target="_blank">JSON Official Website</a></li>
+      <li><a href="https://www.w3.org/XML/" target="_blank">XML Specification</a></li>
+      <li><a href="https://docs.python.org/3/library/json.html" target="_blank">Python json module</a></li>
+      <li><a href="https://avro.apache.org/" target="_blank">Apache Avro</a></li>
+    </ul>
+
+    <p><strong>CORS:</strong></p>
+    <ul>
+      <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS" target="_blank">MDN — CORS</a></li>
+      <li><a href="https://owasp.org/www-community/attacks/CORS_OriginHeaderScrutiny" target="_blank">OWASP — CORS Security</a></li>
+      <li><a href="https://expressjs.com/en/resources/middleware/cors.html" target="_blank">Express.js CORS Middleware</a></li>
+      <li><a href="https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-cors.html" target="_blank">AWS API Gateway CORS</a></li>
+    </ul>
+
+    <p><strong>Next Up:</strong> <a href="6 - Scalability in System Design.html">Chapter 6 — Scalability in System Design →</a> — what it is, why it matters, and strategies like load balancing, horizontal/vertical scaling, and auto-scaling in the cloud.</p>
+
+    <nav class="chapter-nav">
+      <a class="chapter-nav-card" href="4 - Architectural Patterns (System Design Fundamentals).html">
+        <div class="chapter-nav-label">← Previous</div>
+        <div class="chapter-nav-title">Chapter 4 — Architectural Patterns</div>
+      </a>
+      <a class="chapter-nav-card next" href="6 - Scalability in System Design.html">
+        <div class="chapter-nav-label">Next chapter →</div>
+        <div class="chapter-nav-title">Chapter 6 — Scalability</div>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../assets/system-design.js"></script>
+
+</body>
+</html>

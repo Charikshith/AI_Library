@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chapter 23 — Taxi Hailing App (Uber)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<link rel="stylesheet" href="../assets/system-design.css">
+</head>
+<body><a href="../../../notes.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;z-index:99999;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600;background:#0f172a;color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.28)">&#8592; AI Library</a>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">
+    <span class="brand-icon">SD</span>
+    <span>Mastering System Design</span>
+  </a>
+  <div class="topbar-actions">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Chapter 23 — On This Page</h3>
+    <ul class="toc-list" id="tocList">
+      <li><a href="#learning-outcomes">Learning Outcomes</a></li>
+      <li><a href="#understanding-the-problem">Understanding the Problem</a></li>
+      <li><a href="#functional-non-functional-requirements">Functional &amp; Non-Functional Requirements</a></li>
+      <li><a href="#assumptions-constraints">Assumptions &amp; Constraints</a></li>
+      <li><a href="#real-time-mapping-system-challenges">Real-Time, Mapping &amp; System Challenges</a></li>
+      <li><a href="#estimating-scale-usage">Estimating Scale &amp; Usage</a></li>
+      <li><a href="#core-microservices-architecture">Core Microservices Architecture</a></li>
+      <li><a href="#api-gateway-communication-patterns">API Gateway &amp; Communication Patterns</a></li>
+      <li><a href="#end-to-end-ride-booking-flow">End-to-End Ride Booking Flow</a></li>
+      <li><a href="#real-time-communication-design">Real-Time Communication Design</a></li>
+      <li><a href="#data-storage-geospatial-indexing">Data Storage &amp; Geospatial Indexing</a></li>
+      <li><a href="#strategic-tech-infra-decisions">Strategic Tech &amp; Infra Decisions</a></li>
+      <li><a href="#key-bottlenecks-scaling-challenges">Key Bottlenecks &amp; Scaling Challenges</a></li>
+      <li><a href="#sample-code">Sample Code</a></li>
+      <li><a href="#beyond-mvp">Beyond MVP — Senior Designer Additions</a></li>
+      <li><a href="#tips-tricks">Tips &amp; Tricks</a></li>
+      <li><a href="#conclusion">Conclusion</a></li>
+      <li><a href="#further-reading">Further Reading</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <span class="chapter-label">Chapter 23 · Case Study</span>
+      <h1>Designing a Scalable Taxi Hailing App (Uber)</h1>
+      <p class="hero-subtitle">
+        Geospatial matching with H3/geohash, surge pricing as a near-real-time supply/demand signal, ETA prediction beyond Haversine, live location streaming, and fraud detection — the full stack of a real-time, two-sided marketplace at planet scale.
+      </p>
+      <div class="hero-author">By Charikshith</div>
+    </section>
+
+    <p>Welcome to this comprehensive walkthrough on how to design a taxi-hailing platform, inspired by industry leaders like Uber and Lyft. We'll cover everything from requirements to architecture, real-time communication, geospatial indexing, and scaling challenges.</p>
+
+    <p>Building a taxi-hailing platform like Uber isn't just about connecting drivers and riders. It's about managing <strong>real-time communication</strong>, <strong>geolocation</strong>, <strong>payments</strong>, and <strong>scaling to millions of users</strong> — all with stringent requirements for latency, reliability, and security.</p>
+
+    <h2 id="learning-outcomes">🎯 Learning Outcomes</h2>
+    <p>After working through this case study, you'll be able to:</p>
+    <ol class="outcomes-list">
+      <li><span class="outcome-num">1</span><span>Use <strong>geohash, S2, or H3</strong> for fast spatial proximity queries.</span></li>
+      <li><span class="outcome-num">2</span><span>Design <strong>driver-rider matching</strong> that handles 1M concurrent drivers without N² scans.</span></li>
+      <li><span class="outcome-num">3</span><span>Implement <strong>surge pricing</strong> as a supply/demand signal in near-real-time.</span></li>
+      <li><span class="outcome-num">4</span><span>Build <strong>ETA prediction</strong> that's better than naive Haversine + average speed.</span></li>
+      <li><span class="outcome-num">5</span><span>Handle the <strong>driver-disconnected, mid-trip</strong> edge case gracefully.</span></li>
+    </ol>
+
+    <h2 id="understanding-the-problem">Understanding the Problem</h2>
+    <p><strong>Goal:</strong> Build a scalable, reliable, and low-latency taxi-hailing platform to match millions of riders and drivers in real-time, process payments, and handle geo-location tracking.</p>
+
+    <p><strong>Core Focus Areas:</strong></p>
+    <ul>
+      <li><strong>Real-time matching</strong> of riders and drivers.</li>
+      <li><strong>Geo-location tracking.</strong></li>
+      <li><strong>Payment processing.</strong></li>
+      <li><strong>High concurrency and low latency support.</strong></li>
+    </ul>
+
+    <div class="callout callout-warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-content">
+        <div class="callout-title">Why is this hard?</div>
+        <ul>
+          <li>Needs real-time, low-latency, and highly available systems.</li>
+          <li>Involves seamless integration between mobile apps, backend services, and third-party APIs.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2 id="functional-non-functional-requirements">Functional &amp; Non-Functional Requirements</h2>
+
+    <h3>Functional Requirements (MVP)</h3>
+
+    <h4>Rider</h4>
+    <ul>
+      <li>Sign up / login.</li>
+      <li>Request a ride (source → destination).</li>
+      <li>Track driver in real time.</li>
+      <li>View ETA &amp; trip progress.</li>
+      <li>Pay via app.</li>
+    </ul>
+
+    <h4>Driver</h4>
+    <ul>
+      <li>Sign up / login.</li>
+      <li>Go online/offline.</li>
+      <li>Accept/reject ride requests.</li>
+      <li>Navigate to pickup &amp; drop-off.</li>
+    </ul>
+
+    <h4>System</h4>
+    <ul>
+      <li>Match riders with nearby available drivers.</li>
+      <li>Handle real-time location updates.</li>
+      <li>Update ride status (assigned, en route, completed).</li>
+      <li>Calculate fares and process payments.</li>
+    </ul>
+
+    <h3>Non-Functional Requirements</h3>
+    <ul>
+      <li><strong>Scalability:</strong> Handle millions of users and concurrent ride sessions.</li>
+      <li><strong>Availability:</strong> 99.99% uptime, especially during peak.</li>
+      <li><strong>Low latency:</strong> &lt;2 seconds to match a ride, instant location updates.</li>
+      <li><strong>Data consistency:</strong> Eventual consistency for location data; strong for payments/trips.</li>
+      <li><strong>Security:</strong> Secure authentication, payment, data privacy.</li>
+    </ul>
+
+    <h2 id="assumptions-constraints">Assumptions &amp; Constraints</h2>
+
+    <h3>Assumptions</h3>
+    <ul>
+      <li>All users/drivers have GPS-enabled smartphones.</li>
+      <li>Third-party APIs (Google Maps, Stripe) are reliable.</li>
+      <li>MVP launches in a single city/region.</li>
+      <li>Only in-app digital payments at launch.</li>
+      <li>WebSockets (or MQTT) used for real-time comms.</li>
+    </ul>
+
+    <h3>Constraints</h3>
+    <ul>
+      <li>Third-party APIs have rate limits/latency.</li>
+      <li>Connectivity may be unreliable (tunnels, rural zones).</li>
+      <li>Drivers may go offline suddenly.</li>
+      <li>Limited compute/storage on mobile devices.</li>
+      <li>Strict expectations for low-latency, high availability.</li>
+    </ul>
+
+    <h2 id="real-time-mapping-system-challenges">Real-Time, Mapping &amp; System Challenges</h2>
+    <ul>
+      <li><strong>Real-time system complexity:</strong> Match riders and drivers within &lt;2 seconds. Millions of concurrent connections. Location updates every 2-3 seconds.</li>
+      <li><strong>Map &amp; geolocation:</strong> Live user/driver positions, route recalculation. GPS inaccuracies, map API rate limits. Geocoding and spatial indexing.</li>
+      <li><strong>System-level edge cases:</strong> Prevent race conditions in ride assignment. Handle stale/missing location data. Fallbacks for map/payment API failures.</li>
+    </ul>
+
+    <h2 id="estimating-scale-usage">Estimating Scale &amp; Usage</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>Estimate</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Registered users</td><td>10 million</td></tr>
+          <tr><td>Daily active users (DAU)</td><td>1 million</td></tr>
+          <tr><td>Daily active drivers</td><td>200,000</td></tr>
+          <tr><td>Peak concurrent sessions</td><td>150,000 (riders + drivers)</td></tr>
+          <tr><td>Ride requests/day</td><td>500,000 (~6/sec)</td></tr>
+          <tr><td>Location updates/sec</td><td>18/sec</td></tr>
+          <tr><td>Map tile views/hour</td><td>1 million (~280/sec)</td></tr>
+          <tr><td>Payment transactions/day</td><td>100,000 (~1.2/sec)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="core-microservices-architecture">Core Microservices Architecture</h2>
+
+    <p>A high-level view of the platform — mobile clients reach an API Gateway, which fans out to a fleet of microservices, all of which can talk to third-party APIs for maps, payments, and notifications:</p>
+
+    <div class="archd" aria-label="Uber core microservices architecture">
+      <div class="archd-node is-user"><span class="archd-icon">📱</span><span>Mobile Clients (Rider + Driver Apps)</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">REST / WebSocket</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">👤</span><span>User Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🚖</span><span>Driver Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📍</span><span>Location Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🎯</span><span>Ride Matching</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🧭</span><span>Trip Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">💳</span><span>Payment Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔔</span><span>Notification Service</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🔌</span><span>WebSocket Server</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>User DB</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Driver DB</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗺️</span><span>Location DB</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🧾</span><span>Trip / Payment DB</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Redis (Location/Driver/Trip Cache)</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Kafka (Events &amp; Queues)</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-external"><span class="archd-icon">🌐</span><span>Third-Party APIs (Maps, Stripe, Push/SMS)</span></div>
+    </div>
+
+    <h3>ASCII Reference Diagram</h3>
+<pre><code class="language-bash">                +-----------------------+
+                |   Mobile Clients      |
+                +-----------------------+
+                         |
+                         v
+                +-----------------------+
+                |      API Gateway      |&lt;----------------------+
+                +-----------------------+                       |
+         /         |           |           \                    |
+        v          v           v            v                   |
++-----------+ +-----------+ +-----------+ +-----------+         |
+| User Svc  | | DriverSvc | | Location  | | Ride Match|         |
++-----------+ +-----------+ |  Service  | |  Service  |         |
+                            +-----------+ +-----------+         |
+                                             |                  |
+                                         +--------+             |
+                                         |Payment |             |
+                                         |Service |             |
+                                         +--------+             |
+                                             |                  |
+                                      +------------------+      |
+                                      | Notification Svc |      |
+                                      +------------------+      |
+                                                               v
+                                               +-----------------------+
+                                               |   Third-Party APIs    |
+                                               | (Maps, Payments, etc) |
+                                               +-----------------------+</code></pre>
+
+    <h3>Service Responsibilities</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Service</th><th>Responsibilities</th><th>Storage</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>API Gateway</strong></td><td>Auth, rate limiting, routing, aggregation</td><td>—</td></tr>
+          <tr><td><strong>User Service</strong></td><td>Onboarding, authentication, profile management</td><td>User DB, Cache</td></tr>
+          <tr><td><strong>Driver Svc</strong></td><td>Onboarding, vehicle info, availability status</td><td>Driver DB, Cache</td></tr>
+          <tr><td><strong>Location Svc</strong></td><td>Real-time location ingestion, geo-indexing</td><td>Location DB, Cache</td></tr>
+          <tr><td><strong>Ride Match</strong></td><td>Proximity-based rider-driver matching</td><td>Matching DB/Cache</td></tr>
+          <tr><td><strong>Trip Mgmt</strong></td><td>Trip lifecycle: start, update, complete</td><td>Trip DB, Cache</td></tr>
+          <tr><td><strong>Payment</strong></td><td>Fare calculation, payment processing, refunds</td><td>Payment DB</td></tr>
+          <tr><td><strong>Notification</strong></td><td>Push, SMS, in-app alerts</td><td>Notif Queue</td></tr>
+          <tr><td><strong>WebSocket</strong></td><td>Real-time comms (rider-driver, trip updates, location)</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="api-gateway-communication-patterns">API Gateway &amp; Communication Patterns</h2>
+    <ul>
+      <li><strong>External API:</strong> REST/GraphQL via API Gateway.</li>
+      <li><strong>Internal service-to-service:</strong> gRPC or async messaging (Kafka, NATS).</li>
+      <li><strong>Real-time events:</strong> WebSockets/MQTT for persistent connections.</li>
+    </ul>
+
+    <h3>API Gateway Responsibilities</h3>
+    <ul>
+      <li>Authentication &amp; rate limiting.</li>
+      <li>Routing to appropriate microservice.</li>
+      <li>Aggregating responses for frontend.</li>
+    </ul>
+
+    <h3>gRPC Example (Go)</h3>
+<pre><code class="language-javascript">driverClient := pb.NewDriverServiceClient(conn)
+resp, err := driverClient.GetAvailableDrivers(ctx, &amp;pb.DriverRequest{Location: location})</code></pre>
+
+    <h3>OpenAPI Spec (Sample)</h3>
+<pre><code class="language-bash">paths:
+  /rides/request:
+    post:
+      summary: Request a new ride
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RideRequest'
+      responses:
+        '200':
+          description: Ride matched</code></pre>
+
+    <h2 id="end-to-end-ride-booking-flow">End-to-End Ride Booking Flow</h2>
+    <ol>
+      <li><strong>Rider requests a trip:</strong> Client sends ride request via API Gateway. Gateway handles authentication, rate limiting, forwards to Ride Matching Service.</li>
+      <li><strong>Matching engine:</strong> Location Service uses spatial queries (geohashing/H3) to fetch nearby drivers. Driver Service checks status (with Driver Cache for low latency). Matching Service selects the best driver.</li>
+      <li><strong>Real-time communication:</strong> Matching Service notifies driver (via WebSocket). Driver accepts/rejects; confirmation triggers Trip Service to create trip record. Both rider and driver receive push/in-app notifications.</li>
+      <li><strong>Live location tracking:</strong> Location Service ingests frequent GPS updates (every 2–3 sec). Updates ride participants via WebSocket Pub/Sub for low-latency map updates.</li>
+      <li><strong>Payment processing:</strong> Trip completion triggers Payment Service (often via async queue). Payment Service updates Payment DB, talks to external gateway (Stripe).</li>
+      <li><strong>Notifications:</strong> All status changes pushed via Notification Service (in-app, push, SMS).</li>
+    </ol>
+
+    <h3>Ride Lifecycle — Sequence View</h3>
+    <div class="archd-seq" aria-label="Ride lifecycle sequence diagram">
+      <div class="archd-seq-step"><span class="num">1</span>Rider requests a ride</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Rider App</span></div>
+        <div class="archd-seq-arrow right"><span class="label">POST /ride-request</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+        <div class="archd-seq-arrow right"><span class="label">forward</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🎯</span><span>Ride Matching</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Find nearby drivers</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🎯</span><span>Ride Matching</span></div>
+        <div class="archd-seq-arrow right"><span class="label">GET nearby drivers (geohash/H3)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📍</span><span>Location Service</span></div>
+        <div class="archd-seq-arrow left"><span class="label">driver list</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">⚡</span><span>Redis GEO</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Notify driver via WebSocket</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🎯</span><span>Ride Matching</span></div>
+        <div class="archd-seq-arrow right"><span class="label">ride offer (WS)</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">🚖</span><span>Driver App</span></div>
+        <div class="archd-seq-arrow left"><span class="label">accept</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🧭</span><span>Trip Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Live tracking on rider's map</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">🚖</span><span>Driver App</span></div>
+        <div class="archd-seq-arrow right"><span class="label">GPS update every 2-3s</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📍</span><span>Location Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">pub/sub fan-out (WS)</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Rider App</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">5</span>Trip complete → payment + notifications</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🧭</span><span>Trip Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">enqueue fare</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">💳</span><span>Payment Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">trip updates</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔔</span><span>Notification Service</span></div>
+      </div>
+    </div>
+
+    <h3>Sequence Diagram (Mermaid Source)</h3>
+<pre><code class="language-bash">sequenceDiagram
+    participant Rider as Rider App
+    participant API as API Gateway
+    participant Match as Ride Matching Service
+    participant Driver as Driver App
+    participant Location as Location Service
+    participant Trip as Trip Service
+    participant Payment as Payment Service
+    participant Notification as Notification Service
+
+    Rider-&gt;&gt;API: POST /ride-request
+    API-&gt;&gt;Match: Find nearby driver
+    Match-&gt;&gt;Driver: Send ride request
+    Driver-&gt;&gt;Match: Accept
+    Match-&gt;&gt;Trip: Start trip
+    Trip-&gt;&gt;Location: Track rider/driver locations
+    Trip-&gt;&gt;Payment: Process payment (on completion)
+    Trip-&gt;&gt;Notification: Send trip updates
+    Notification-&gt;&gt;Rider: Push notification</code></pre>
+
+    <h3>More Detailed Sequence</h3>
+<pre><code class="language-bash">sequenceDiagram
+    participant RiderApp
+    participant APIGateway
+    participant RideMatching
+    participant DriverApp
+    participant LocationService
+    participant TripService
+    participant PaymentService
+    participant NotificationService
+
+    RiderApp-&gt;&gt;APIGateway: Request Ride (REST)
+    APIGateway-&gt;&gt;RideMatching: Forward request
+    RideMatching-&gt;&gt;LocationService: Get nearby drivers
+    RideMatching-&gt;&gt;DriverApp: Notify available driver (WebSocket)
+    DriverApp-&gt;&gt;RideMatching: Accept/Reject
+    RideMatching-&gt;&gt;TripService: Start Trip
+    LocationService--&gt;&gt;RiderApp: Live driver location (WebSocket)
+    TripService-&gt;&gt;PaymentService: Complete, calculate fare
+    PaymentService-&gt;&gt;NotificationService: Payment success
+    NotificationService-&gt;&gt;RiderApp: Trip/Payment update
+    NotificationService-&gt;&gt;DriverApp: Trip/Payment update</code></pre>
+
+    <h2 id="real-time-communication-design">Real-Time Communication Design</h2>
+    <ul>
+      <li><strong>Tech stack:</strong> WebSockets or MQTT for persistent comms; Pub/Sub (Redis/Kafka) for event propagation.</li>
+      <li><strong>Fallback:</strong> Mobile polling if connection unreliable.</li>
+    </ul>
+
+    <p><strong>Scenarios handled:</strong></p>
+    <ul>
+      <li>Live driver movement on rider map.</li>
+      <li>Pickup status, in-progress updates, trip completion.</li>
+      <li>ETA changes, trip cancellation, surge updates.</li>
+    </ul>
+
+    <h3>Location Update Pipeline</h3>
+    <div class="archd-seq" aria-label="Location update pipeline">
+      <div class="archd-seq-step"><span class="num">1</span>Driver phone publishes GPS</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">🚖</span><span>Driver App</span></div>
+        <div class="archd-seq-arrow right"><span class="label">WS / MQTT (every 2-3s)</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🔌</span><span>WebSocket Server</span></div>
+        <div class="archd-seq-arrow right"><span class="label">publish</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Kafka topic</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Location Service consumes &amp; indexes</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Kafka</span></div>
+        <div class="archd-seq-arrow right"><span class="label">consume</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📍</span><span>Location Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">GEOADD</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">⚡</span><span>Redis GEO</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Fan-out to rider's app</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">📍</span><span>Location Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">pub/sub</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🔌</span><span>WebSocket Server</span></div>
+        <div class="archd-seq-arrow right"><span class="label">push update</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Rider App</span></div>
+      </div>
+    </div>
+
+    <h3>Code: WebSocket Server (Python FastAPI)</h3>
+<pre><code class="language-python">from fastapi import FastAPI, WebSocket
+import asyncio
+
+app = FastAPI()
+
+@app.websocket("/ws/location/{user_id}")
+async def location_ws(websocket: WebSocket, user_id: str):
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_json()
+            process_location_update(user_id, data)
+    except Exception as e:
+        print(f"Connection closed for {user_id}: {e}")</code></pre>
+
+    <h3>Code: WebSocket Server (Node.js <code>ws</code>)</h3>
+<pre><code class="language-javascript">const WebSocket = require('ws');
+const wss = new WebSocket.Server({ port: 8080 });
+
+wss.on('connection', function connection(ws) {
+  ws.on('message', function incoming(message) {
+    console.log('received: %s', message);
+    // Handle rider/driver messages here
+  });
+  ws.send('Connection established!');
+});</code></pre>
+
+    <h3>Code: Python Starlette WebSocket Endpoint</h3>
+<pre><code class="language-python">from starlette.endpoints import WebSocketEndpoint
+
+class LocationUpdateEndpoint(WebSocketEndpoint):
+    encoding = "json"
+
+    async def on_receive(self, websocket, data):
+        driver_id = data["driver_id"]
+        location = data["location"]
+        await publish_location_update(driver_id, location)
+        await websocket.send_json({"status": "ok"})</code></pre>
+
+    <h3>Code: Kafka Location Publish</h3>
+<pre><code class="language-python">from kafka import KafkaProducer
+import json
+
+producer = KafkaProducer(bootstrap_servers='kafka:9092')
+location_update = {'driver_id': 123, 'lat': 37.77, 'lng': -122.41}
+producer.send('driver-location-updates', json.dumps(location_update).encode())</code></pre>
+
+    <h3>Code: WebSocket Client (JavaScript)</h3>
+<pre><code class="language-javascript">ws.onmessage = (event) =&gt; {
+    const data = JSON.parse(event.data);
+    if (data.type === 'locationUpdate') {
+        updateDriverMarker(data.lat, data.lng);
+    }
+};</code></pre>
+
+    <h2 id="data-storage-geospatial-indexing">Data Storage &amp; Geospatial Indexing</h2>
+    <ul>
+      <li><strong>User/Trip data:</strong> SQL (PostgreSQL, MySQL) for strong consistency.</li>
+      <li><strong>Location &amp; ride logs:</strong> NoSQL (MongoDB, Cassandra) for high write throughput.</li>
+      <li><strong>Caching:</strong> Redis for hot driver/location data, sessions.</li>
+      <li><strong>Geospatial indexing:</strong> Geohashing or H3 for efficient proximity queries.</li>
+    </ul>
+
+    <h3>Driver Location Schema</h3>
+<pre><code class="language-sql">CREATE TABLE driver_locations (
+    driver_id BIGINT PRIMARY KEY,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    geohash VARCHAR(12),
+    last_updated TIMESTAMP
+);
+
+-- To find nearby drivers
+SELECT driver_id FROM driver_locations
+WHERE geohash LIKE '9q8y%' AND last_updated &gt; NOW() - INTERVAL '1 minute';</code></pre>
+
+    <h3>PostGIS Proximity Query</h3>
+<pre><code class="language-sql">SELECT driver_id FROM drivers
+WHERE ST_DWithin(location, ST_MakePoint($1, $2)::geography, 1000);</code></pre>
+
+    <h3>Redis Geo Commands</h3>
+<pre><code class="language-python">import redis
+r = redis.Redis()
+# Add driver location (longitude, latitude)
+r.geoadd("drivers", (77.5946, 12.9716, "driver_123"))
+# Find nearby drivers within 3km
+r.georadius("drivers", 77.5946, 12.9716, 3, unit='km')</code></pre>
+
+    <h3>Sample Event Message</h3>
+<pre><code class="language-javascript">{
+    "event": "location_update",
+    "driver_id": 123456,
+    "latitude": 37.7749,
+    "longitude": -122.4194,
+    "timestamp": "2024-06-25T18:21:00Z"
+}</code></pre>
+
+    <h2 id="strategic-tech-infra-decisions">Strategic Tech &amp; Infra Decisions</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Area</th><th>Choices</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Real-Time Comms</strong></td><td>WebSockets vs MQTT</td></tr>
+          <tr><td><strong>Service-to-Svc</strong></td><td>gRPC (low-latency) vs REST</td></tr>
+          <tr><td><strong>Data Storage</strong></td><td>SQL (user/trip), NoSQL (logs), Redis/Kafka</td></tr>
+          <tr><td><strong>Geospatial</strong></td><td>Geohashing vs H3 for spatial indexing</td></tr>
+          <tr><td><strong>Scalability</strong></td><td>Horizontal scaling, auto-scaling, Kubernetes</td></tr>
+          <tr><td><strong>Fault Tolerance</strong></td><td>Multi-region replication, HA, event streaming</td></tr>
+          <tr><td><strong>Consistency</strong></td><td>Strong for ride assignment; eventual for location</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Tech Stack Summary</h3>
+    <ul>
+      <li><strong>Communication:</strong> REST/gRPC (internal), WebSockets/MQTT (real-time), Kafka/Redis PubSub (event streaming).</li>
+      <li><strong>Storage:</strong> PostgreSQL/MySQL for users/trips/payments; MongoDB/Cassandra for logs; Redis for caching.</li>
+      <li><strong>Geospatial indexing:</strong> <a href="https://h3geo.org/" target="_blank">H3</a> or Geohash for driver-location queries.</li>
+      <li><strong>Infra:</strong> Kubernetes for orchestration, auto-scaling/load balancing, multi-region replication.</li>
+    </ul>
+
+    <h3>Kubernetes Deployment Example</h3>
+<pre><code class="language-bash">apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ride-matching
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: ride-matching
+  template:
+    metadata:
+      labels:
+        app: ride-matching
+    spec:
+      containers:
+      - name: ride-matching
+        image: taxi-hailing/ride-matching:latest
+        ports:
+        - containerPort: 8080</code></pre>
+
+    <h2 id="key-bottlenecks-scaling-challenges">Key Bottlenecks &amp; Scaling Challenges</h2>
+
+    <h3>Real-Time Location &amp; Matching</h3>
+    <ul>
+      <li>Frequent driver updates: write-heavy, low-latency.</li>
+      <li>Scaling matching engine: needs to match in &lt;2s.</li>
+      <li>Pushing location to all parties instantly.</li>
+    </ul>
+
+    <h3>Third-Party Dependencies</h3>
+    <ul>
+      <li>Maps: rate limits, costs, external latency.</li>
+      <li>Payments: timeouts, retries, fraud checks.</li>
+    </ul>
+
+    <h3>Platform-Wide Scaling</h3>
+    <ul>
+      <li>Push notifications at massive scale.</li>
+      <li>Synchronizing state (eventual consistency).</li>
+      <li>Balancing cost vs. performance (compute, APIs, storage).</li>
+    </ul>
+
+    <h2 id="sample-code">Sample Code</h2>
+
+    <h3>Request Ride (Pseudocode)</h3>
+<pre><code class="language-python">def request_ride(user_id, src, dst):
+    # Auth via API Gateway
+    # Call Ride Matching Service
+    ride_id = ride_matching_service.match(user_id, src, dst)
+    return ride_id</code></pre>
+
+    <h3>Matching Logic</h3>
+<pre><code class="language-python">def match(user_id, src, dst):
+    drivers = location_service.find_nearby_drivers(src)
+    available_driver = driver_service.pick_available(drivers)
+    if available_driver:
+        notify_driver_ws(available_driver, ride_details)
+    return ride_id</code></pre>
+
+    <h3>Trip Completion + Payment</h3>
+<pre><code class="language-python">def complete_trip(trip_id, user_id, driver_id, fare):
+    payment_queue.enqueue(trip_id, user_id, fare)
+    # Payment Service processes queue</code></pre>
+
+    <h2 id="beyond-mvp">Beyond MVP — What a Senior Designer Adds</h2>
+
+    <h3>Geohash vs. S2 vs. H3 — Spatial Indexing in Practice</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>System</th><th>Origin</th><th>Shape</th><th>Strengths</th><th>Weaknesses</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Geohash</strong></td><td>Open</td><td>Rectangles</td><td>Simple, works in any DB with string indexes</td><td>Distortion at high latitudes; bad neighbors at edges</td></tr>
+          <tr><td><strong>S2</strong></td><td>Google</td><td>Spherical cells</td><td>Good for spherical-Earth math; used by Google Maps</td><td>Steeper learning curve</td></tr>
+          <tr><td><strong>H3</strong></td><td>Uber</td><td>Hexagons</td><td>Each cell has 6 neighbors (vs 8 for squares) of <em>equal distance</em></td><td>Newer, fewer libraries</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Why Uber Chose H3</div>
+        <p><strong>Uber uses H3</strong> because hexagons match real driver movement better than square cells. For interview purposes, geohash is fine to discuss.</p>
+      </div>
+    </div>
+
+    <h3>Surge Pricing</h3>
+    <p>Price multiplier based on local supply (drivers) and demand (ride requests). Computed continuously per geohash/H3 cell:</p>
+
+<pre><code class="language-python">surge = max(1.0, demand_in_cell / available_drivers_in_cell)</code></pre>
+
+    <p>In practice: smoothed with rolling averages to avoid wild flapping; capped to avoid PR disasters; communicated transparently to users.</p>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Why It Matters in Design</div>
+        <p>Surge is a <em>signal</em> that flows from the location service → matching service → pricing service → user UI in near-real-time. <strong>Latency budget: &lt;1 second.</strong></p>
+      </div>
+    </div>
+
+    <h3>ETA Prediction — Smarter than Haversine</h3>
+    <p><strong>Naive:</strong> straight-line distance ÷ avg speed. Wrong by ~2× in cities.</p>
+
+    <p><strong>Better:</strong></p>
+    <ol>
+      <li>Compute route distance via routing engine (Google Maps Directions API, OSRM, Valhalla).</li>
+      <li>Apply current traffic conditions for that route.</li>
+      <li>Multiply by an ML model that learns from millions of historical trips (time of day, weather, day of week, driver behavior).</li>
+    </ol>
+
+    <p>Uber's actual ETA model is a gradient-boosted tree trained on petabytes of past trips.</p>
+
+    <h3>Driver Disconnection Mid-Trip</h3>
+    <p>Driver's phone dies. Rider is in the back seat. What now?</p>
+    <ul>
+      <li>Trip continues in app's "ride in progress" state.</li>
+      <li>Server keeps last-known driver location.</li>
+      <li>ETA degrades but trip isn't cancelled.</li>
+      <li>When driver reconnects, location updates resume; if reconnection doesn't happen within N minutes, trip is flagged for support.</li>
+      <li>Fare calculation uses the original quote + adjustments based on actual route (best-effort with sparse data).</li>
+    </ul>
+
+    <h3>Carpooling / Pool Matching (Uber Pool)</h3>
+    <p>A <em>much</em> harder matching problem than 1:1: now you're matching multiple riders to one driver with overlapping routes, dynamically picking up and dropping off mid-trip.</p>
+    <ul>
+      <li>Pre-compute pool-eligible candidates: riders going roughly the same direction, within a time window.</li>
+      <li>Optimize route in real time as new riders join.</li>
+      <li>Constraint: total trip time can only increase by X% for each rider already on the trip.</li>
+    </ul>
+    <p>This is a hard optimization problem; Uber uses approximation algorithms with strict time budgets.</p>
+
+    <h3>Fraud Detection</h3>
+    <p>Both rider and driver fraud are real:</p>
+    <ul>
+      <li><strong>Fake accounts</strong> (account takeover, bot signups).</li>
+      <li><strong>GPS spoofing</strong> by drivers to inflate fare or game incentives.</li>
+      <li><strong>Card testing</strong> by riders (small charges to verify stolen cards work).</li>
+      <li><strong>Collusion</strong> (driver and rider fake long trips for surge bonuses).</li>
+    </ul>
+    <p><strong>Implementation:</strong> ML scoring at signup, at ride request, at payment. High-risk events block or step up verification.</p>
+
+    <h3>Multi-Modal (Uber Eats, Uber Freight)</h3>
+    <p>The "marketplace" layer (matching supply and demand in real time) generalizes beyond rides. Uber Eats matches restaurants to couriers to customers; Uber Freight matches shippers to truck drivers. Same core architecture, different domain rules.</p>
+
+    <h2 id="tips-tricks">💡 Tips &amp; Tricks</h2>
+
+    <h3>Real-time Matching</h3>
+    <ul>
+      <li><strong>Spatial indexing</strong> (Geohash, H3) in Location Service for fast nearby driver lookup.</li>
+      <li>Keep driver location in an in-memory, geo-indexed store (Redis GEO commands).</li>
+    </ul>
+
+    <h3>Communication</h3>
+    <ul>
+      <li><strong>WebSockets or MQTT</strong> for persistent connections.</li>
+      <li>For unreliable networks, gracefully fallback to HTTP polling.</li>
+      <li><strong>gRPC vs REST:</strong> Use gRPC for internal speed/type safety, REST for public APIs.</li>
+    </ul>
+
+    <h3>Performance</h3>
+    <ul>
+      <li><strong>Decouple</strong> write-heavy (location updates) and read-heavy (map/ETA queries) workloads.</li>
+      <li><strong>Async event streaming</strong> (Kafka, NATS) for decoupling microservices.</li>
+      <li><strong>Batch location updates</strong> to reduce write load.</li>
+      <li><strong>Cache aggressively:</strong> Use Redis/Memcached for driver/location/trip hot data.</li>
+    </ul>
+
+    <h3>Reliability</h3>
+    <ul>
+      <li><strong>Circuit breakers and fallbacks</strong> for third-party APIs.</li>
+      <li><strong>Idempotency tokens</strong> and <strong>transactional outbox</strong> patterns for payment and ride assignment.</li>
+      <li><strong>Graceful degradation:</strong> Fallbacks if Maps/Payments APIs fail.</li>
+      <li><strong>Event-driven architecture:</strong> Decouple services via event streams.</li>
+    </ul>
+
+    <h3>Security</h3>
+    <ul>
+      <li>Always use <strong>OAuth2/JWT</strong> for authentication.</li>
+      <li><strong>PCI-compliant</strong> payment processing — never store raw card data.</li>
+      <li>Use HTTPS everywhere, encrypt sensitive data at rest and in transit.</li>
+    </ul>
+
+    <h3>Edge Cases</h3>
+    <ul>
+      <li>Prevent <strong>race conditions</strong> with DB transactions or distributed locks.</li>
+      <li>For <strong>missing/stale location data</strong>, interpolate using last known position and timestamp.</li>
+    </ul>
+
+    <h3>Scaling</h3>
+    <ul>
+      <li><strong>Horizontally scale</strong> stateless services; use distributed caching for hot data.</li>
+      <li><strong>Autoscale</strong> based on CPU, request latency, connection count.</li>
+      <li><strong>WebSocket scaling:</strong> Use sticky sessions and sharded pub/sub (Redis Cluster or managed services).</li>
+      <li><strong>Push notification throttling:</strong> Notification queue and exponential backoff.</li>
+    </ul>
+
+    <h3>Operations</h3>
+    <ul>
+      <li><strong>Monitor third-party API quotas:</strong> Build dashboards and alerts.</li>
+      <li><strong>Optimize for mobile networks:</strong> Support both persistent (WebSocket) and polling connections.</li>
+      <li><strong>Cost management:</strong> Offload rarely accessed data to cheaper storage; cache hot data in Redis.</li>
+      <li><strong>Monitoring &amp; alerting:</strong> Tracing, metrics (latency, error rates, queue length).</li>
+    </ul>
+
+    <h2 id="conclusion">Conclusion</h2>
+    <p>Designing a taxi-hailing platform is a <strong>prime test of distributed system design</strong> — it requires balancing real-time needs, scalability, fault-tolerance, and user experience. The system delivers seamless real-time experiences for riders and drivers while handling millions of users, payments, and location updates.</p>
+
+    <p>The key is to <strong>balance trade-offs:</strong> performance vs. consistency, cost vs. reliability, and flexibility vs. complexity.</p>
+
+    <h2 id="further-reading">📚 Further Reading</h2>
+    <ul>
+      <li><a href="https://eng.uber.com/" target="_blank">Uber Engineering Blog</a></li>
+      <li><a href="https://cloud.google.com/architecture/real-time-ride-hailing" target="_blank">Google Cloud Architecture: Real-Time Ride Hailing</a></li>
+      <li><a href="https://h3geo.org/" target="_blank">H3 Geospatial Indexing</a></li>
+      <li><a href="https://github.com/donnemartin/system-design-primer" target="_blank">System Design Primer</a></li>
+      <li><a href="https://github.com/madd86/awesome-system-design" target="_blank">Awesome System Design</a></li>
+    </ul>
+
+    <nav class="chapter-nav">
+      <a class="chapter-nav-card" href="22 - Design an E-Commerce Platform(aka Amazon).html">
+        <div class="chapter-nav-label">← Previous</div>
+        <div class="chapter-nav-title">Chapter 22 — E-Commerce (Amazon)</div>
+      </a>
+      <a class="chapter-nav-card next" href="24 - Design a Collaborative Document Editor (aka Google Docs).html">
+        <div class="chapter-nav-label">Next chapter →</div>
+        <div class="chapter-nav-title">Chapter 24 — Collaborative Docs</div>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+<script src="../assets/system-design.js"></script>
+
+</body>
+</html>

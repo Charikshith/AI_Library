@@ -1,0 +1,2291 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chapter 3 — Protocols</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<link rel="stylesheet" href="../assets/system-design.css">
+</head>
+<body><a href="../../../notes.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;z-index:99999;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600;background:#0f172a;color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.28)">&#8592; AI Library</a>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">
+    <span class="brand-icon">SD</span>
+    <span>Mastering System Design</span>
+  </a>
+  <div class="topbar-actions">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Chapter 3 — On This Page</h3>
+    <ul class="toc-list" id="tocList">
+      <li><a href="#learning-outcomes">Learning Outcomes</a></li>
+      <li><a href="#the-protocol-landscape">The Protocol Landscape</a></li>
+      <li><a href="#tcp-udp">TCP &amp; UDP — Transport Layer</a></li>
+      <li><a href="#http">HTTP — Backbone of the Web</a></li>
+      <li><a href="#rest">REST &amp; RESTfulness</a></li>
+      <li><a href="#real-time">Real-Time Communication</a></li>
+      <li><a href="#modern-apis">Modern APIs — gRPC &amp; GraphQL</a></li>
+      <li><a href="#combined-tips">Combined Tips &amp; Tricks</a></li>
+      <li><a href="#interview-questions">Sample Interview Questions</a></li>
+      <li><a href="#quick-reference">Quick Reference Table</a></li>
+      <li><a href="#summary">Summary &amp; Key Takeaways</a></li>
+      <li><a href="#further-reading">Further Reading</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <span class="chapter-label">Chapter 3</span>
+      <h1>Protocols — The Backbone of Modern System Design</h1>
+      <p class="hero-subtitle">
+        From TCP's reliable handshakes to HTTP/3 over QUIC, from REST's CRUD verbs to WebSockets, SSE, gRPC streams and GraphQL queries — protocols decide how every byte travels. This chapter is the practical, interview-ready tour you'll keep coming back to.
+      </p>
+    </section>
+
+    <p>Modern system design is built on the foundation of robust communication protocols. From the reliable, ordered delivery of TCP, to the flexible data-fetching of GraphQL, understanding these protocols is crucial for architects, engineers, and developers alike.</p>
+    <p>System design isn't just about data stores and scaling; at its core, it's about <strong>communication</strong> — how data moves across networks reliably, efficiently, and in real time. In this chapter we'll cover the essential protocols driving web applications, APIs, and real-time communication — complete with practical code snippets, diagrams, and an interview-focused tips section.</p>
+
+    <h2 id="learning-outcomes">🎯 Learning Outcomes</h2>
+    <p>After reading this chapter, you'll be able to:</p>
+    <ol class="outcomes-list">
+      <li><span class="outcome-num">1</span><span>Choose between <strong>TCP and UDP</strong> for a given workload and explain why.</span></li>
+      <li><span class="outcome-num">2</span><span>Read an HTTP request/response, name the methods, and pick the right status code.</span></li>
+      <li><span class="outcome-num">3</span><span>Compare <strong>REST, gRPC, and GraphQL</strong> on serialization, transport, performance, browser support, and use case.</span></li>
+      <li><span class="outcome-num">4</span><span>Pick between <strong>WebSockets, Server-Sent Events (SSE), and long polling</strong> for a real-time feature.</span></li>
+      <li><span class="outcome-num">5</span><span>Explain <strong>HTTP/1.1 vs HTTP/2 vs HTTP/3</strong> in one sentence each.</span></li>
+    </ol>
+
+    <h2 id="the-protocol-landscape">The Protocol Landscape</h2>
+    <p>Before diving into individual protocols, it helps to understand how they layer:</p>
+
+    <div class="archd" aria-label="Protocol layering diagram">
+      <div class="archd-node"><span class="archd-icon">🧩</span><span>Application Layer — REST, GraphQL, gRPC APIs, WebSockets</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-service"><span class="archd-icon">🌐</span><span>HTTP / HTTPS Protocol</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🔌</span><span>TCP / UDP</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">📦</span><span>IP</span></div>
+    </div>
+
+<pre><code class="language-text">+------------------------------+
+|        Application Layer     |  &lt;-- REST, GraphQL, gRPC APIs, WebSockets
++------------------------------+
+|       HTTP/HTTPS Protocol    |
++------------------------------+
+|        TCP / UDP             |
++------------------------------+
+|           IP                 |
++------------------------------+</code></pre>
+
+    <ul>
+      <li><strong>TCP/UDP:</strong> Low-level, transport protocols. TCP is reliable and connection-oriented; UDP is fast but unreliable.</li>
+      <li><strong>HTTP:</strong> Application-level protocol, stateless, built on top of TCP — powers web traffic.</li>
+      <li><strong>REST:</strong> An architectural style that builds on HTTP, defining how web APIs should be structured and behave.</li>
+      <li><strong>WebSockets:</strong> A real-time, full-duplex protocol that upgrades from HTTP.</li>
+      <li><strong>Modern APIs (gRPC, GraphQL):</strong> Address REST's limitations for certain use cases — microservices or highly dynamic frontend needs.</li>
+    </ul>
+
+    <h2 id="tcp-udp">TCP &amp; UDP — Transport Layer Foundations</h2>
+    <p>Before any web page loads or an API responds, transport protocols like <strong>TCP</strong> and <strong>UDP</strong> power the underlying communication.</p>
+
+    <h3>TCP (Transmission Control Protocol)</h3>
+    <ul>
+      <li><strong>Connection-oriented:</strong> Establishes a handshake before sending data (think: phone call).</li>
+      <li><strong>Reliable and ordered:</strong> Guarantees all bytes arrive, in order, error-checked.</li>
+      <li><strong>Flow and congestion control:</strong> Built-in.</li>
+      <li><strong>Common uses:</strong> Web browsing (HTTP/HTTPS), file transfer (FTP/SFTP), email (SMTP, IMAP, POP3), databases.</li>
+    </ul>
+
+    <h4>TCP Three-Way Handshake</h4>
+    <div class="archd-seq" aria-label="TCP three-way handshake">
+      <div class="archd-seq-step"><span class="num">1</span>SYN — Client asks to start a connection</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">SYN</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>SYN-ACK — Server acknowledges and agrees</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow left"><span class="label">SYN-ACK</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>ACK — Connection established</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">ACK</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+    </div>
+
+    <h4>TCP Three-Way Handshake (ASCII versions)</h4>
+<pre><code class="language-text">Client         Server
+  |   SYN   ---&gt;   |
+  | &lt;---  SYN-ACK  |
+  |   ACK   ---&gt;   |
+(Connection established)</code></pre>
+
+    <p>A second view, with step numbers:</p>
+<pre><code class="language-text">Client                Server
+  |     SYN (1)         |
+  |--------------------&gt;|
+  |    SYN-ACK (2)      |
+  |&lt;--------------------|
+  |     ACK (3)         |
+  |--------------------&gt;|
+Data can now flow reliably!</code></pre>
+
+    <p><strong>Explanation:</strong></p>
+    <ol>
+      <li><strong>SYN:</strong> Client asks to start a connection.</li>
+      <li><strong>SYN-ACK:</strong> Server acknowledges and agrees.</li>
+      <li><strong>ACK:</strong> Client confirms, and the connection is established.</li>
+    </ol>
+
+    <h4>Code: TCP Server in Python (echo server)</h4>
+<pre><code class="language-python">import socket
+
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    s.bind(('localhost', 8080))
+    s.listen()
+    conn, addr = s.accept()
+    with conn:
+        print('Connected by', addr)
+        while True:
+            data = conn.recv(1024)
+            if not data:
+                break
+            conn.sendall(data)</code></pre>
+
+    <h4>Code: TCP Client in Python</h4>
+<pre><code class="language-python">import socket
+
+# Simple TCP client
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect(('example.com', 80))
+s.sendall(b"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n")
+response = s.recv(4096)
+print(response.decode())
+s.close()</code></pre>
+
+    <h3>UDP (User Datagram Protocol)</h3>
+    <ul>
+      <li><strong>Connectionless:</strong> No setup, just sends packets (think: postcards).</li>
+      <li><strong>Fast, minimal overhead</strong>, but <strong>unreliable</strong>: No guarantee packets arrive or are ordered.</li>
+      <li><strong>No retransmission, no error correction.</strong></li>
+      <li><strong>Common uses:</strong> Video streaming, online gaming, VoIP, DNS lookups.</li>
+    </ul>
+
+    <h4>UDP Packet Flow</h4>
+    <div class="archd-seq" aria-label="UDP packet flow">
+      <div class="archd-seq-step"><span class="num">1</span>Client fires data packet — no handshake</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Data Packet</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>(Optional) Response — no guarantee of arrival</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow left"><span class="label">(Optional) Response Packet</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+    </div>
+
+<pre><code class="language-text">Sender               Receiver
+  |  ---&gt; packet 1  ---&gt;   |
+  |  ---&gt; packet 2  ---&gt;   |
+  |  ---&gt; packet 3  ---&gt;   |
+(No handshake, no acknowledgment)</code></pre>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">📮</span>
+      <div class="callout-content">
+        <div class="callout-title">Postcard analogy</div>
+        <p>Each UDP datagram is like dropping a postcard in the mail. It might arrive, might not, and order isn't guaranteed.</p>
+      </div>
+    </div>
+
+    <h4>Code: UDP Client in Python</h4>
+<pre><code class="language-python">import socket
+
+# Simple UDP client
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock.sendto(b'Hello, World!', ('localhost', 8080))
+data, addr = sock.recvfrom(1024)
+print('Received:', data)</code></pre>
+
+    <p>A second variant:</p>
+<pre><code class="language-python">import socket
+
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.sendto(b"Hello, UDP!", ('example.com', 12345))
+data, addr = s.recvfrom(1024)
+print(f"Received from {addr}: {data.decode()}")
+s.close()</code></pre>
+
+    <h3>TCP vs UDP — Comparison</h3>
+    <p>A quick comparison:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>TCP</th><th>UDP</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Connection</td><td>Oriented</td><td>Connectionless</td></tr>
+          <tr><td>Reliability</td><td>High</td><td>Low</td></tr>
+          <tr><td>Ordering</td><td>Yes</td><td>No</td></tr>
+          <tr><td>Speed</td><td>Slower</td><td>Faster</td></tr>
+          <tr><td>Use Case</td><td>Web, Files</td><td>Video, VoIP</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>A more detailed (interview-friendly) table:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>TCP (Transmission Control Protocol)</th><th>UDP (User Datagram Protocol)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Reliability</strong></td><td>Reliable (ensures data delivery)</td><td>Unreliable (no guarantee of delivery)</td></tr>
+          <tr><td><strong>Speed</strong></td><td>Slower (due to error checking &amp; retransmission)</td><td>Faster (no retransmission overhead)</td></tr>
+          <tr><td><strong>Connection Type</strong></td><td>Connection-oriented (establishes a connection before communication)</td><td>Connectionless (sends data without setup)</td></tr>
+          <tr><td><strong>Ordering</strong></td><td>Ensures packets arrive in order</td><td>No guarantee of packet order</td></tr>
+          <tr><td><strong>Error Handling</strong></td><td>Built-in error checking &amp; retransmission</td><td>Minimal error checking, no retransmission</td></tr>
+          <tr><td><strong>Overhead</strong></td><td>High (due to handshaking, sequencing, and acknowledgments)</td><td>Low (minimal protocol overhead)</td></tr>
+          <tr><td><strong>Use Cases</strong></td><td>Web browsing (HTTP/HTTPS), file transfers (FTP, SFTP), email, database communication</td><td>Video streaming, online gaming, VoIP calls, DNS lookups</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>When to Use Which?</h3>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">🛡️</div>
+        <div class="card-title">Use TCP when</div>
+        <div class="card-body">
+          <ul style="margin:0; padding-left: 18px;">
+            <li>Web browsing (HTTP, HTTPS)</li>
+            <li>File transfers (FTP, SFTP)</li>
+            <li>Email (SMTP, IMAP, POP3)</li>
+            <li>Database communication</li>
+            <li>Any scenario where loss or corruption of data is unacceptable.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <div class="card-title">Use UDP when</div>
+        <div class="card-body">
+          <ul style="margin:0; padding-left: 18px;">
+            <li>Video streaming (YouTube, Netflix)</li>
+            <li>Online gaming (Fortnite, Call of Duty)</li>
+            <li>VoIP calls (Skype, Zoom, WhatsApp)</li>
+            <li>DNS lookups</li>
+            <li>Any scenario where speed/latency is critical and some loss is acceptable.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <h2 id="http">HTTP — The Backbone of the Web</h2>
+    <p><strong>HTTP (HyperText Transfer Protocol)</strong> is the foundation of data communication on the web. Whether you're loading a web page, making an API call, or streaming content, HTTP is working behind the scenes.</p>
+
+    <h3>What is HTTP?</h3>
+    <ul>
+      <li><strong>HyperText Transfer Protocol</strong> — foundation of web communication.</li>
+      <li><strong>Text-based, stateless</strong> — each request is independent.</li>
+      <li><strong>Runs over TCP/IP</strong> (port 80 for HTTP, port 443 for HTTPS).</li>
+      <li><strong>Human-readable</strong> — easy to debug.</li>
+      <li><strong>Methods:</strong> GET, POST, PUT, DELETE, PATCH, etc.</li>
+      <li><strong>Status codes:</strong> 200 (OK), 404 (Not Found), 500 (Server Error), etc.</li>
+    </ul>
+
+    <h3>The Client-Server Model</h3>
+    <p>HTTP follows a <strong>client-server architecture</strong>:</p>
+    <div class="archd-seq" aria-label="HTTP client-server request">
+      <div class="archd-seq-step"><span class="num">1</span>Browser sends an HTTP request</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Web Browser / App</span></div>
+        <div class="archd-seq-arrow right"><span class="label">GET /index.html</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Web Server / API</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Server returns a response</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Web Browser / App</span></div>
+        <div class="archd-seq-arrow left"><span class="label">200 OK + HTML body</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Web Server / API</span></div>
+      </div>
+    </div>
+
+    <ul>
+      <li><strong>Client:</strong> Initiates requests (e.g., browser, mobile app)</li>
+      <li><strong>Server:</strong> Processes requests, sends responses (web server, API, etc.)</li>
+    </ul>
+
+    <h3>Components of an HTTP Request</h3>
+    <ul>
+      <li><strong>Method:</strong> Defines the action (<code>GET</code>, <code>POST</code>, etc.)</li>
+      <li><strong>URL:</strong> The resource being requested</li>
+      <li><strong>Headers:</strong> Metadata (e.g., <code>User-Agent</code>, <code>Content-Type</code>, <code>Authorization</code>)</li>
+      <li><strong>Body (optional):</strong> Data sent in <code>POST</code>/<code>PUT</code>/<code>PATCH</code> requests</li>
+    </ul>
+
+    <h3>Components of an HTTP Response</h3>
+    <ul>
+      <li><strong>Status Code:</strong> Indicates success or failure (e.g., <code>200 OK</code>, <code>404 Not Found</code>)</li>
+      <li><strong>Headers:</strong> Metadata about the response</li>
+      <li><strong>Body (optional):</strong> The actual content returned</li>
+    </ul>
+
+    <h3>The HTTP Request-Response Cycle</h3>
+    <div class="archd-seq" aria-label="HTTP request-response cycle">
+      <div class="archd-seq-step"><span class="num">1</span>Browser sends an HTTP request</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow right"><span class="label">GET, POST, …</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Web Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Server fetches from the database</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Web Server</span></div>
+        <div class="archd-seq-arrow right"><span class="label">query</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Database returns data</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Web Server</span></div>
+        <div class="archd-seq-arrow left"><span class="label">rows</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Server returns the response (then browser renders)</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+        <div class="archd-seq-arrow left"><span class="label">200 OK / 404 / …</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Web Server</span></div>
+      </div>
+    </div>
+
+    <p><strong>Step-by-step:</strong></p>
+    <ol>
+      <li><strong>Request:</strong> Client (browser/app) sends an HTTP request.</li>
+      <li><strong>Processing:</strong> Server authenticates, fetches data, generates response.</li>
+      <li><strong>Response:</strong> Server returns status, headers, and body.</li>
+      <li><strong>Render:</strong> Client renders web page or processes data.</li>
+    </ol>
+
+    <p>ASCII view:</p>
+<pre><code class="language-text">+---------+         +---------+
+| Browser |         | Server  |
++---------+         +---------+
+     |                  |
+     |---(1) Request---&gt;|
+     |                  |
+     |&lt;--(2) Process----|
+     |                  |
+     |&lt;--(3) Response---|
+     |                  |
+     |---(4) Render----&gt;|</code></pre>
+
+    <h3>Anatomy of an HTTP Request</h3>
+<pre><code class="language-http">GET /api/products/123 HTTP/1.1
+Host: example.com
+User-Agent: Mozilla/5.0
+Accept: application/json
+Authorization: Bearer &lt;token&gt;</code></pre>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Component</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Method</td><td>Action to perform (GET, POST, PUT, DELETE, PATCH)</td></tr>
+          <tr><td>URL</td><td>Resource identifier (<code>/api/products/123</code>)</td></tr>
+          <tr><td>Headers</td><td>Metadata (auth, content-type, cookies, etc.)</td></tr>
+          <tr><td>Body</td><td>Data to send (only for POST/PUT/PATCH)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Anatomy of an HTTP Response</h3>
+<pre><code class="language-http">HTTP/1.1 200 OK
+Content-Type: application/json
+Set-Cookie: sessionId=abc123; HttpOnly
+
+{
+  "id": 123,
+  "name": "Wireless Mouse",
+  "price": 29.99
+}</code></pre>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Component</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Status Code</td><td>Numeric code (200, 404, 500) indicating outcome</td></tr>
+          <tr><td>Headers</td><td>Metadata (content-type, cache-control, etc.)</td></tr>
+          <tr><td>Body</td><td>The actual content (HTML, JSON, image, etc.)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>HTTP Methods</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Method</th><th>Purpose</th><th>Idempotent?</th><th>Safe?</th><th>Example Use Case</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>GET</td><td>Retrieve resource</td><td>Yes</td><td>Yes</td><td>Fetch user profile</td></tr>
+          <tr><td>POST</td><td>Create new resource</td><td>No</td><td>No</td><td>Submit a new blog post</td></tr>
+          <tr><td>PUT</td><td>Update/replace resource</td><td>Yes</td><td>No</td><td>Update user profile info</td></tr>
+          <tr><td>PATCH</td><td>Partial update</td><td>Usually</td><td>No</td><td>Update only the email address</td></tr>
+          <tr><td>DELETE</td><td>Remove resource</td><td>Yes</td><td>No</td><td>Delete a user account</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Example: Creating a user</strong></p>
+<pre><code class="language-http">POST /api/users HTTP/1.1
+Content-Type: application/json
+
+{
+  "username": "jane_doe",
+  "email": "jane@example.com"
+}</code></pre>
+
+    <p><strong>Example: Updating a user</strong></p>
+<pre><code class="language-http">PUT /api/users/123 HTTP/1.1
+Content-Type: application/json
+
+{ "email": "alice@example.com" }</code></pre>
+
+    <h3>HTTP Status Codes</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Range</th><th>Description</th><th>Examples</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1xx</td><td>Informational</td><td>100 Continue</td></tr>
+          <tr><td>2xx</td><td>Success</td><td>200 OK, 201 Created, 204 No Content</td></tr>
+          <tr><td>3xx</td><td>Redirection</td><td>301 Moved Permanently, 304 Not Modified</td></tr>
+          <tr><td>4xx</td><td>Client Error</td><td>400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found</td></tr>
+          <tr><td>5xx</td><td>Server Error</td><td>500 Internal Server Error, 503 Service Unavailable</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Most common codes you should know cold:</strong></p>
+    <ul>
+      <li><strong>200 OK:</strong> Success</li>
+      <li><strong>201 Created:</strong> Resource created</li>
+      <li><strong>204 No Content:</strong> Success with empty body (often after DELETE)</li>
+      <li><strong>400 Bad Request:</strong> Invalid input</li>
+      <li><strong>401 Unauthorized:</strong> Auth required</li>
+      <li><strong>403 Forbidden:</strong> Authenticated but no permission</li>
+      <li><strong>404 Not Found:</strong> Resource missing</li>
+      <li><strong>500 Internal Server Error:</strong> Server crashed</li>
+    </ul>
+
+    <h3>The Stateless Nature of HTTP</h3>
+    <p><strong>Stateless</strong> means each HTTP request is an independent transaction — no memory of previous requests.</p>
+
+    <p><strong>Implications:</strong></p>
+    <ul>
+      <li><strong>Pros:</strong> Simpler server design, easier to scale horizontally.</li>
+      <li><strong>Cons:</strong> Harder to maintain user sessions (e.g., login state).</li>
+    </ul>
+
+    <p><strong>Solutions for state management:</strong></p>
+    <ul>
+      <li><strong>Cookies:</strong> Small pieces of data stored in browser, sent with each request.</li>
+      <li><strong>Sessions:</strong> Server stores user data; client holds a session ID (usually in a cookie).</li>
+      <li><strong>Tokens (JWT, OAuth):</strong> Client sends a token with each request that the server validates.</li>
+    </ul>
+
+<pre><code class="language-text">Request 1: [Client] ---&gt; [Server] (No memory)
+Request 2: [Client] ---&gt; [Server] (Still no memory)</code></pre>
+
+    <p>Visual summary of stateless HTTP with cookies:</p>
+    <div class="archd-seq" aria-label="Stateless HTTP with cookies">
+      <div class="archd-seq-step"><span class="num">1</span>Client → Server (first request, no cookie)</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">HTTP Request</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Server returns a response with Set-Cookie</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-seq-arrow left"><span class="label">HTTP Response + Set-Cookie</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Subsequent requests send the cookie back</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Cookie (next request)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+    </div>
+    <p class="muted"><em>Stateless HTTP with session management using cookies.</em></p>
+
+    <h3>HTTP/1.1, HTTP/2, and HTTP/3 — One Sentence Each</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Version</th><th>Year</th><th>One-line summary</th><th>Key benefit</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>HTTP/1.1</td><td>1997</td><td>One request at a time per TCP connection (browsers open ~6 connections/host)</td><td>The web ran on this for 20 years</td></tr>
+          <tr><td>HTTP/2</td><td>2015</td><td>Multiplexes many requests over one TCP connection; binary framing</td><td>Eliminates head-of-line blocking at HTTP</td></tr>
+          <tr><td>HTTP/3</td><td>2022</td><td>Replaces TCP with <strong>QUIC</strong> (over UDP); built-in TLS 1.3</td><td>No head-of-line blocking at transport; faster reconnects</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>What "head-of-line blocking" means:</strong> in HTTP/1.1, if one request is slow, every request behind it on the same connection waits. HTTP/2 fixed this <em>at the HTTP layer</em> — but TCP itself still blocks on packet loss, so HTTP/3 jumped to QUIC (UDP-based) to fix it at the transport layer too.</p>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">🎤</span>
+      <div class="callout-content">
+        <div class="callout-title">For System Design Interviews</div>
+        <p>"We'll use HTTP/2 for the API since it lets the browser parallelize 100 requests over one connection. For mobile clients on flaky networks, HTTP/3's connection migration is a nice-to-have."</p>
+      </div>
+    </div>
+
+    <h3>HTTPS — Secure HTTP</h3>
+    <ul>
+      <li><strong>HTTPS = HTTP + SSL/TLS encryption.</strong></li>
+      <li>Uses <strong>port 443</strong> instead of port 80.</li>
+      <li>Encrypts communication; essential for sensitive data (banking, e-commerce, login, payments).</li>
+    </ul>
+
+    <p><strong>Benefits:</strong></p>
+    <ul>
+      <li><strong>Confidentiality:</strong> Encrypts data to keep it private.</li>
+      <li><strong>Integrity:</strong> Ensures data is tamper-proof during transfer.</li>
+      <li><strong>Authentication:</strong> Verifies server identity to prevent impersonation.</li>
+    </ul>
+
+<pre><code class="language-text">HTTP (port 80)         HTTPS (port 443, encrypted)
++-------------+        +-------------+
+|  Client     |        |  Client     |
+|  ---------  |        |  ---------  |
+|  Server     |        |  Server     |
++-------------+        +-------------+</code></pre>
+
+    <div class="callout callout-warning">
+      <span class="callout-icon">🔒</span>
+      <div class="callout-content">
+        <div class="callout-title">Always use HTTPS</div>
+        <p>For any sensitive data (login, payments, banking, e-commerce, APIs).</p>
+      </div>
+    </div>
+
+    <h3>Code: HTTP in Action</h3>
+
+    <p><strong>cURL example:</strong></p>
+<pre><code class="language-bash">curl -X GET "https://api.example.com/users/123" -H "Authorization: Bearer &lt;token&gt;"</code></pre>
+
+    <p><strong>Python <code>requests</code> library — GET:</strong></p>
+<pre><code class="language-python">import requests
+
+# GET request
+response = requests.get('https://api.example.com/products/123')
+print(response.status_code)              # 200
+print(response.headers['Content-Type'])  # application/json
+print(response.json())</code></pre>
+
+    <p><strong>Python <code>requests</code> library — POST:</strong></p>
+<pre><code class="language-python">import requests
+
+payload = {"name": "Alice"}
+response = requests.post("https://jsonplaceholder.typicode.com/users", json=payload)
+print(response.status_code)   # 201
+print(response.json())</code></pre>
+
+    <p><strong>JavaScript Fetch API — GET:</strong></p>
+<pre><code class="language-javascript">fetch('https://jsonplaceholder.typicode.com/users/1')
+  .then(res =&gt; res.json())
+  .then(data =&gt; console.log(data));</code></pre>
+
+    <p><strong>JavaScript Fetch API — POST:</strong></p>
+<pre><code class="language-javascript">fetch('https://jsonplaceholder.typicode.com/users', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({name: 'Alice'})
+})
+  .then(res =&gt; res.json())
+  .then(data =&gt; console.log(data));</code></pre>
+
+    <p><strong>Express.js endpoint:</strong></p>
+<pre><code class="language-javascript">const express = require('express');
+const app = express();
+
+app.get('/users/:id', (req, res) =&gt; {
+  res.json({ id: req.params.id, name: 'Alice' });
+});</code></pre>
+
+    <h3>HTTP — Interview-Ready Questions</h3>
+    <ul>
+      <li>What is HTTP and how does it work?</li>
+      <li>Why is HTTP considered stateless, and how do you manage state?</li>
+      <li>Explain the HTTP request-response cycle with an example.</li>
+      <li>When would you use PUT vs. PATCH?</li>
+      <li>List and explain key HTTP status codes.</li>
+      <li>What's the difference between HTTP and HTTPS?</li>
+      <li>How do cookies, sessions, and tokens differ?</li>
+      <li>How does caching work in HTTP?</li>
+      <li>What security issues exist in HTTP, and how are they mitigated?</li>
+    </ul>
+
+    <h2 id="rest">REST &amp; RESTfulness — API Design Principles</h2>
+    <p><strong>REST (Representational State Transfer)</strong> is the de facto standard for designing web APIs. Introduced by <strong>Roy Fielding</strong> in his 2000 doctoral dissertation, it's an architectural style — <em>not a protocol</em> — for designing networked applications.</p>
+
+    <h3>What is REST?</h3>
+    <p>REST leverages <strong>standard HTTP methods</strong> (GET, POST, PUT, DELETE) and stateless communication to enable simple, scalable data exchange.</p>
+
+    <p><strong>Key Idea:</strong></p>
+    <ul>
+      <li>Operates over HTTP (stateless, cacheable, uniform interface).</li>
+      <li>Each client request contains all necessary information.</li>
+      <li>The server does <strong>not</strong> store session data between requests.</li>
+    </ul>
+
+    <h3>Why REST Matters</h3>
+    <ul>
+      <li><strong>Simplicity &amp; Scalability:</strong> Uses standard HTTP methods; easy to understand and implement. Statelessness enables horizontal scaling.</li>
+      <li><strong>Interoperability:</strong> Platform-agnostic — works across browsers, mobile, IoT, and more.</li>
+      <li><strong>Efficiency:</strong> Enables caching, reduces server loads, and improves response times.</li>
+      <li><strong>Real-World Use:</strong> Powering APIs for Twitter, GitHub, Google, and countless more.</li>
+    </ul>
+
+    <h3>Core REST Constraints</h3>
+    <p>RESTful architecture is defined by several key constraints:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Constraint</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Client-Server</td><td>Separation of concerns between client and server</td></tr>
+          <tr><td>Stateless</td><td>Each request contains all information; server keeps no session between requests</td></tr>
+          <tr><td>Cacheable</td><td>Responses can be cached to improve performance</td></tr>
+          <tr><td>Layered System</td><td>Architecture composed of hierarchical layers (load balancers, proxies, security)</td></tr>
+          <tr><td>Uniform Interface</td><td>Standardized communication between client and server</td></tr>
+          <tr><td>Code-on-Demand (optional)</td><td>Servers can send executable code (e.g., JavaScript) to clients to extend functionality</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>REST Architecture Diagram</h3>
+    <div class="archd" aria-label="REST architecture">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">HTTP Request / Response</span></div>
+      <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Cache</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🧱</span><span>Layered Components</span></div>
+        <div class="archd-node is-external"><span class="archd-icon">📜</span><span>Code-on-Demand</span></div>
+      </div>
+    </div>
+
+    <p>Or, in simple ASCII:</p>
+<pre><code class="language-text">  +--------+        HTTP Request        +--------+
+  | Client |  ----------------------&gt;   | Server |
+  +--------+  &lt;----------------------   +--------+
+                 HTTP Response</code></pre>
+
+    <h3>RESTful API Design Principles</h3>
+
+    <h4>1. Resource-Based Approach</h4>
+    <p>Design endpoints around <em>resources</em>, not <em>actions</em>. Treat every entity (user, order, product) as a resource, accessed via unique URIs.</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Resource</th><th>Endpoint Example</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>User</td><td><code>/users/{id}</code></td></tr>
+          <tr><td>Orders</td><td><code>/orders</code></td></tr>
+          <tr><td>Products</td><td><code>/products/{id}</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><strong>Don't:</strong> <code>POST /createUser</code><br>
+       <strong>Do:</strong> <code>POST /users</code></p>
+
+    <h4>2. Proper HTTP Methods Usage</h4>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>HTTP Method</th><th>Purpose</th><th>Example</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>GET</td><td>Retrieve resource(s)</td><td><code>GET /users/123</code></td></tr>
+          <tr><td>POST</td><td>Create new resource</td><td><code>POST /orders</code></td></tr>
+          <tr><td>PUT</td><td>Update entire resource</td><td><code>PUT /users/123</code></td></tr>
+          <tr><td>PATCH</td><td>Partial update</td><td><code>PATCH /users/123</code></td></tr>
+          <tr><td>DELETE</td><td>Remove resource</td><td><code>DELETE /users/123</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4>3. Stateless Interactions</h4>
+    <p>Each request must be self-contained. For authentication, use stateless mechanisms like JWT tokens rather than server-side sessions.</p>
+<pre><code class="language-http">GET /users/42 HTTP/1.1
+Authorization: Bearer &lt;jwt-token&gt;</code></pre>
+
+    <h4>4. Consistent URL Structure</h4>
+    <ul>
+      <li>Use <strong>plural nouns</strong>: <code>/users</code>, <code>/orders</code>.</li>
+      <li><strong>Avoid verbs</strong> in URLs: <code>/users/activate</code> ❌ → Use <code>PATCH /users/{id}</code> ✅.</li>
+      <li><strong>Versioning:</strong> <code>/v1/users</code> for backward compatibility.</li>
+    </ul>
+
+    <h3>Resource Structure Diagram</h3>
+<pre><code class="language-text">/-------------------\
+|    API ROOT       |
+|    /api/v1        |
+\-------------------/
+        |
+  ---------------
+  |     |     |
+/users /orders /products
+
+Examples:
+GET    /users/1
+POST   /orders
+DELETE /products/42</code></pre>
+
+    <h3>Resource &amp; Endpoint Examples</h3>
+
+    <h4>Get a User</h4>
+<pre><code class="language-http">GET /users/123 HTTP/1.1
+Host: api.example.com
+Accept: application/json</code></pre>
+
+    <p><strong>Response:</strong></p>
+<pre><code class="language-json">{
+  "id": 123,
+  "name": "Alice",
+  "email": "alice@example.com"
+}</code></pre>
+
+    <h4>Create a New Order</h4>
+<pre><code class="language-http">POST /orders HTTP/1.1
+Host: api.example.com
+Content-Type: application/json
+
+{
+  "product_id": 456,
+  "quantity": 2
+}</code></pre>
+
+    <p><strong>Response:</strong></p>
+<pre><code class="language-http">HTTP/1.1 201 Created
+Location: /orders/789</code></pre>
+
+    <h3>JSON vs. XML in REST APIs</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>JSON</th><th>XML</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Lightweight</strong></td><td>Yes</td><td>No (more verbose)</td></tr>
+          <tr><td><strong>Readability</strong></td><td>Easy for humans/machines</td><td>Less readable</td></tr>
+          <tr><td><strong>Speed</strong></td><td>Faster parsing (native in JS)</td><td>Slower</td></tr>
+          <tr><td><strong>Use Cases</strong></td><td>Modern APIs, web/mobile apps</td><td>Legacy systems, strict schema needs</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Pro tip</div>
+        <p>Use JSON unless integrating with legacy systems or requiring strict schema validation (where XML + XSD shines).</p>
+      </div>
+    </div>
+
+    <p><strong>Content negotiation example:</strong></p>
+<pre><code class="language-http">GET /users/1
+Accept: application/json</code></pre>
+
+<pre><code class="language-http">GET /users/123
+Accept: application/xml</code></pre>
+
+    <p>Server returns the requested format if supported.</p>
+
+    <h3>Real-World REST API Examples</h3>
+
+    <h4>Twitter API</h4>
+    <ul>
+      <li><strong>Fetch tweets:</strong> <code>GET /tweets/{id}</code></li>
+      <li><strong>Post a tweet:</strong> <code>POST /tweets</code></li>
+    </ul>
+
+    <h4>GitHub API</h4>
+    <ul>
+      <li><strong>Get repo details:</strong> <code>GET /repos/{owner}/{repo}</code></li>
+      <li><strong>Create an issue:</strong> <code>POST /repos/{owner}/{repo}/issues</code></li>
+    </ul>
+
+    <h4>Sequence diagram of a Twitter API call</h4>
+    <div class="archd-seq" aria-label="Twitter REST API sequence">
+      <div class="archd-seq-step"><span class="num">1</span>Client → Twitter API</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">📱</span><span>Client (Browser/Mobile App)</span></div>
+        <div class="archd-seq-arrow right"><span class="label">GET /tweets/{id}</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🐦</span><span>Twitter REST API</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>API → Database (query)</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🐦</span><span>Twitter REST API</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Query tweet with {id}</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Database → API (data)</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🐦</span><span>Twitter REST API</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Return tweet data</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>API → Client (JSON)</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">📱</span><span>Client</span></div>
+        <div class="archd-seq-arrow left"><span class="label">JSON Response (Tweet details)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🐦</span><span>Twitter REST API</span></div>
+      </div>
+    </div>
+
+    <h3>Code: A Full RESTful API in Node.js/Express</h3>
+<pre><code class="language-javascript">const express = require('express');
+const app = express();
+app.use(express.json());
+
+let users = [{ id: 1, name: "Alice" }, { id: 2, name: "Bob" }];
+
+// GET /users
+app.get('/users', (req, res) =&gt; {
+  res.json(users);
+});
+
+// GET /users/:id
+app.get('/users/:id', (req, res) =&gt; {
+  const user = users.find(u =&gt; u.id == req.params.id);
+  if (!user) return res.status(404).json({ error: "Not Found" });
+  res.json(user);
+});
+
+// POST /users
+app.post('/users', (req, res) =&gt; {
+  const newUser = { id: Date.now(), ...req.body };
+  users.push(newUser);
+  res.status(201).json(newUser);
+});
+
+// PUT /users/:id
+app.put('/users/:id', (req, res) =&gt; {
+  const idx = users.findIndex(u =&gt; u.id == req.params.id);
+  if (idx === -1) return res.status(404).json({ error: "Not Found" });
+  users[idx] = { ...users[idx], ...req.body };
+  res.json(users[idx]);
+});
+
+// DELETE /users/:id
+app.delete('/users/:id', (req, res) =&gt; {
+  users = users.filter(u =&gt; u.id != req.params.id);
+  res.status(204).send();
+});
+
+app.listen(3000, () =&gt; console.log('REST API listening on 3000'));</code></pre>
+
+    <p>A more compact version showing the four CRUD verbs:</p>
+<pre><code class="language-javascript">const express = require('express');
+const app = express();
+
+app.get('/users/:id', (req, res) =&gt; { /* retrieve user */ });
+app.post('/orders', (req, res) =&gt; { /* create order */ });
+app.put('/users/:id', (req, res) =&gt; { /* update user */ });
+app.delete('/users/:id', (req, res) =&gt; { /* delete user */ });
+
+app.listen(3000);</code></pre>
+
+    <p>A Python Flask equivalent:</p>
+<pre><code class="language-python">from flask import Flask, jsonify, request
+app = Flask(__name__)
+
+@app.route('/users/&lt;int:user_id&gt;', methods=['GET'])
+def get_user(user_id):
+    return jsonify({'id': user_id, 'name': 'Alice'})
+
+@app.route('/orders', methods=['POST'])
+def create_order():
+    data = request.get_json()
+    # Process order...
+    return jsonify({'status': 'created'}), 201</code></pre>
+
+    <h3>Best Practices</h3>
+    <ul>
+      <li><strong>Use proper HTTP status codes:</strong> <code>200</code>, <code>201</code>, <code>204</code>, <code>400</code>, <code>401</code>, <code>403</code>, <code>404</code>, <code>500</code>.</li>
+      <li><strong>Version your API:</strong> <code>/v1/users</code> vs. <code>/v2/users</code>.</li>
+      <li><strong>Implement authentication/authorization:</strong> OAuth2, JWT tokens, always over HTTPS.</li>
+      <li><strong>Pagination for large datasets:</strong> <code>GET /users?page=2&amp;limit=50</code>.</li>
+      <li><strong>Consistent URL structure:</strong> Plural nouns for collections, no verbs in URLs.</li>
+      <li><strong>HATEOAS:</strong> (Hypermedia as the Engine of Application State) — for discoverable APIs in advanced scenarios.</li>
+    </ul>
+
+    <h3>Common Pitfalls</h3>
+    <ul>
+      <li><strong>Verbs in URLs:</strong> <code>/createUser</code> ❌ → <code>POST /users</code> ✅.</li>
+      <li><strong>Don't ignore error handling:</strong> Always return meaningful status codes/messages.</li>
+      <li><strong>Don't expose internal data structures.</strong></li>
+      <li><strong>Don't forget input validation.</strong></li>
+    </ul>
+
+    <h3>REST — Interview Questions</h3>
+    <ul>
+      <li>What are the core constraints of REST?</li>
+      <li>Explain the difference between PUT and PATCH.</li>
+      <li>How do you implement authentication and authorization in REST APIs?</li>
+      <li>How does caching work in RESTful APIs?</li>
+      <li>Compare REST, GraphQL, and gRPC.</li>
+    </ul>
+
+    <h3>REST — Further Reading</h3>
+    <ul>
+      <li><a href="https://restfulapi.net/" target="_blank">RESTful API Design — Best Practices in a Nutshell</a></li>
+      <li><a href="https://swagger.io/specification/" target="_blank">OpenAPI Specification</a></li>
+      <li><a href="https://www.postman.com/" target="_blank">Postman</a> (for testing APIs)</li>
+    </ul>
+
+    <h2 id="real-time">Real-Time Communication Protocols</h2>
+    <p>In modern system design, delivering <strong>instant updates</strong> to users — whether in chat apps, stock tickers, online games, or live notifications — is a critical requirement. Traditional HTTP request-response models often fall short due to their inherent latency and inefficiency.</p>
+
+    <h3>What is Real-Time Communication?</h3>
+    <p><strong>Real-time communication</strong> refers to the continuous exchange of data with minimal latency between clients and servers. Unlike traditional HTTP, where data is fetched only on explicit user requests, real-time systems push updates instantly, enabling interactive and responsive user experiences.</p>
+
+    <p><strong>Examples:</strong></p>
+    <ul>
+      <li>WhatsApp/Slack chat</li>
+      <li>Live stock market prices</li>
+      <li>Multiplayer gaming</li>
+      <li>Live sports score streaming</li>
+      <li>Notification systems</li>
+    </ul>
+
+    <h3>Why Not Just Use HTTP?</h3>
+    <p>HTTP follows a <strong>request-response</strong> model:</p>
+<pre><code class="language-text">Client: --------&gt; [Request] --------&gt; Server
+Client: &lt;-------- [Response] &lt;-------- Server</code></pre>
+
+    <p><strong>Drawbacks for real-time use:</strong></p>
+    <ul>
+      <li><strong>High latency:</strong> Client must wait for updates.</li>
+      <li><strong>Inefficiency:</strong> Repeated requests even when no updates.</li>
+      <li><strong>Scalability issues:</strong> Server load increases with polling.</li>
+    </ul>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>Traditional HTTP</th><th>Real-Time Needed</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Model</td><td>Request-Response</td><td>Continuous exchange</td></tr>
+          <tr><td>Latency</td><td>High (client waits)</td><td>Low</td></tr>
+          <tr><td>Overhead</td><td>Repeated connections</td><td>Persistent connection</td></tr>
+          <tr><td>Server Push</td><td>No</td><td>Yes</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Server-Sent Events (SSE) — The Forgotten Middle Option</h3>
+    <p>Most courses jump straight from "long polling" to "WebSockets," but <strong>SSE</strong> is the right answer for many one-way real-time use cases.</p>
+
+    <p><strong>What it is:</strong> A long-lived HTTP response that streams events from server to client. Built on plain HTTP/1.1 or HTTP/2 — no protocol upgrade needed.</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">📡</div>
+        <div class="card-title">Use SSE when</div>
+        <div class="card-body">
+          <ul style="margin:0; padding-left: 18px;">
+            <li>Server → client only (notifications, live feeds, stock tickers, log streaming).</li>
+            <li>You want HTTP/proxy/firewall friendliness with no custom infra.</li>
+            <li>Auto-reconnect should be free.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">↔️</div>
+        <div class="card-title">Use WebSocket when</div>
+        <div class="card-body">
+          <ul style="margin:0; padding-left: 18px;">
+            <li>Bidirectional, high-frequency (chat, multiplayer games, collaborative editing).</li>
+            <li>Binary data matters.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>Long Polling</th><th>SSE</th><th>WebSocket</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Direction</td><td>C ↔ S</td><td>S → C only</td><td>Bidirectional</td></tr>
+          <tr><td>Transport</td><td>HTTP</td><td>HTTP</td><td>TCP (upgrade from HTTP)</td></tr>
+          <tr><td>Auto-reconnect</td><td>manual</td><td>built-in</td><td>manual</td></tr>
+          <tr><td>Browser support</td><td>universal</td><td>universal (except IE)</td><td>universal</td></tr>
+          <tr><td>Binary frames</td><td>no</td><td>no</td><td>yes</td></tr>
+          <tr><td>Proxy/firewall friendly</td><td>yes</td><td>yes</td><td>sometimes problematic</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">🧭</span>
+      <div class="callout-content">
+        <div class="callout-title">Rule of thumb</div>
+        <p>Need one-way push? Use SSE. Need bidirectional? Use WebSocket. Need legacy compatibility? Long polling.</p>
+      </div>
+    </div>
+
+    <h3>Major Approaches to Real-Time Data Exchange</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Technique</th><th>Description</th><th>Bi-directional</th><th>Overhead</th><th>Latency</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Polling</td><td>Client repeatedly requests updates at intervals</td><td>No</td><td>High</td><td>High</td></tr>
+          <tr><td><strong>WebSockets</strong></td><td>Persistent, full-duplex TCP connection</td><td>Yes</td><td>Low</td><td>Very low</td></tr>
+          <tr><td>Server-Sent Events (SSE)</td><td>Server pushes updates to client (unidirectional)</td><td>No</td><td>Medium</td><td>Low</td></tr>
+          <tr><td><strong>Long Polling</strong></td><td>Client request held open until new data is available</td><td>No</td><td>Lower than polling</td><td>Medium</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Polling vs. Long Polling vs. WebSockets</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Protocol</th><th>Real-Time</th><th>Bi-Directional</th><th>Persistent</th><th>Overhead</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Polling</td><td>No</td><td>No</td><td>No</td><td>High</td></tr>
+          <tr><td>Long Polling</td><td>Yes</td><td>No</td><td>No</td><td>Moderate</td></tr>
+          <tr><td>WebSockets</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Low</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>WebSockets: Persistent, Full-Duplex Communication</h3>
+    <p>WebSockets provide a <strong>persistent, full-duplex TCP connection</strong> between client and server. Once established, data can flow in both directions at any time, with minimal overhead.</p>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">☎️</span>
+      <div class="callout-content">
+        <div class="callout-title">Analogy</div>
+        <p>Like a phone call (continuous conversation) vs. sending letters (HTTP requests).</p>
+      </div>
+    </div>
+
+    <h4>How WebSockets Work — Step-by-Step</h4>
+    <ol>
+      <li><strong>Handshake:</strong> Client sends HTTP request with an <code>Upgrade: websocket</code> header.</li>
+      <li><strong>Upgrade:</strong> Server replies with <code>101 Switching Protocols</code> if it supports WebSockets.</li>
+      <li><strong>Data Exchange:</strong> Both client and server can send/receive messages in real time (as frames).</li>
+      <li><strong>Close:</strong> Either party can terminate the connection.</li>
+    </ol>
+
+    <h4>WebSocket Handshake Diagrams</h4>
+    <div class="archd-seq" aria-label="WebSocket handshake basic">
+      <div class="archd-seq-step"><span class="num">1</span>Client requests an HTTP upgrade</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">HTTP GET (Upgrade: websocket)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Server switches protocols</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow left"><span class="label">101 Switching Protocols</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Frames flow both directions</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">WebSocket Frames</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow left"><span class="label">WebSocket Frames</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+    </div>
+
+    <p>A more detailed lifecycle view:</p>
+    <div class="archd-seq" aria-label="WebSocket lifecycle">
+      <div class="archd-seq-step"><span class="num">1</span>HTTP request with Upgrade header</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Upgrade: websocket</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>101 Switching Protocols → persistent connection</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow left"><span class="label">101 Switching Protocols</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Bidirectional data frames</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">data frames anytime</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow left"><span class="label">data frames anytime</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Close connection when done</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Close</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+    </div>
+
+<pre><code class="language-text">Client             Server
+  |   HTTP Upgrade  |
+  |---------------&gt; |
+  | &lt;--- 101 SW     |
+  |                 |  (Connection Open)
+  | &lt;-- Data -----&gt; |
+  | &lt;---- Data ---- |
+  |    ...          |
+  |  [Close Frame]  |
+  |---------------&gt; |
+  |    (Closed)     |</code></pre>
+
+    <p>WebSocket handshake at the HTTP level:</p>
+<pre><code class="language-http">GET /chat HTTP/1.1
+Host: server.example.com
+Upgrade: websocket
+Connection: Upgrade</code></pre>
+
+    <p>Server responds:</p>
+<pre><code class="language-http">HTTP/1.1 101 Switching Protocols
+Upgrade: websocket
+Connection: Upgrade</code></pre>
+
+    <h4>Code: WebSocket Server in Node.js</h4>
+<pre><code class="language-javascript">const WebSocket = require('ws');
+const wss = new WebSocket.Server({ port: 8080 });
+
+wss.on('connection', ws =&gt; {
+  ws.send('Hello WebSocket!');
+  ws.on('message', message =&gt; {
+    console.log('received:', message);
+  });
+});</code></pre>
+
+    <p>An echo server with explicit logging:</p>
+<pre><code class="language-javascript">const WebSocket = require('ws');
+const wss = new WebSocket.Server({ port: 8080 });
+
+wss.on('connection', (ws) =&gt; {
+  console.log('Client connected');
+  ws.on('message', (message) =&gt; {
+    console.log(`Received: ${message}`);
+    ws.send(`Server echo: ${message}`);
+  });
+});</code></pre>
+
+    <h4>Code: WebSocket Client</h4>
+    <p>Vanilla JavaScript:</p>
+<pre><code class="language-javascript">const ws = new WebSocket('ws://localhost:8080');
+ws.onopen = () =&gt; ws.send('Hello, Server!');
+ws.onmessage = e =&gt; console.log('Server:', e.data);</code></pre>
+
+    <p>In a browser script tag:</p>
+<pre><code class="language-html">&lt;script&gt;
+const socket = new WebSocket('ws://localhost:8080');
+socket.onopen = () =&gt; socket.send('Hello, server!');
+socket.onmessage = (event) =&gt; {
+  console.log('Received:', event.data);
+};
+&lt;/script&gt;</code></pre>
+
+    <p>Secure WebSockets (<code>wss://</code>):</p>
+<pre><code class="language-javascript">const ws = new WebSocket('wss://echo.websocket.org');
+ws.onopen = () =&gt; ws.send('Hello, WebSocket!');
+ws.onmessage = (event) =&gt; console.log('Received:', event.data);</code></pre>
+
+    <h4>When to Use WebSockets?</h4>
+    <ul>
+      <li>High-frequency, bidirectional data exchange.</li>
+      <li>Low latency is critical (e.g., multiplayer gaming, chat, live trading).</li>
+    </ul>
+
+    <p><strong>Use cases:</strong></p>
+    <ul>
+      <li>Live chat (WhatsApp, Slack, Discord)</li>
+      <li>Real-time stock price updates (NASDAQ)</li>
+      <li>Online games (Fortnite, Call of Duty)</li>
+      <li>Collaborative tools (Google Docs)</li>
+    </ul>
+
+    <h4>Advantages</h4>
+    <ul>
+      <li><strong>Persistent connection:</strong> No need to reconnect for every message.</li>
+      <li><strong>Low overhead:</strong> Eliminates repeated HTTP requests.</li>
+      <li><strong>Truly real-time:</strong> Both sides can push data instantly.</li>
+      <li><strong>Efficient:</strong> Saves bandwidth and reduces server load.</li>
+    </ul>
+
+    <h3>Long Polling: Simulating Real-Time over HTTP</h3>
+    <p><strong>Long polling</strong> is a technique where the client sends an HTTP request and the server <em>holds</em> the connection open until new data is available. Once data is sent, the client immediately re-requests, creating a loop that simulates real-time updates.</p>
+
+    <p><strong>Difference from regular polling:</strong></p>
+    <ul>
+      <li>Regular polling responds immediately (even if there's no new data).</li>
+      <li><strong>Long polling</strong> holds the request until new data is available.</li>
+    </ul>
+
+    <h4>How Long Polling Works — Step-by-Step</h4>
+    <ol>
+      <li>Client sends an HTTP request (e.g., <code>GET /updates</code>).</li>
+      <li>Server holds the request open until new data is ready.</li>
+      <li>Server responds with new data.</li>
+      <li>Client immediately sends another request (cycle repeats).</li>
+    </ol>
+
+    <h4>Long Polling Flow Diagrams</h4>
+    <div class="archd-seq" aria-label="Long polling basic">
+      <div class="archd-seq-step"><span class="num">1</span>Client sends a long-poll request</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">HTTP Request (long poll)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Server waits for new data or timeout</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow left"><span class="label">HTTP Response (with data or empty)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Client immediately re-requests</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Immediately sends next request</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+    </div>
+
+    <p>A version with <code>alt</code> branches:</p>
+    <div class="archd-seq" aria-label="Long polling with branches">
+      <div class="archd-seq-step"><span class="num">1</span>HTTP GET /updates</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">HTTP GET /updates</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2a</span>Alt — no new data: server holds the connection</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Wait (keeps connection open)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2b</span>Alt — new data: respond and client polls again</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Respond with update</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Immediately sends another GET /updates</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+    </div>
+
+    <p>And another, using "Note over" to show the server holding the request:</p>
+    <div class="archd-seq" aria-label="Long polling note">
+      <div class="archd-seq-step"><span class="num">1</span>Request 1 — server holds until data ready</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Request 1</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Response 1 (New data)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Request 2 — repeat the loop</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Request 2</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Response 2 (New data)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      </div>
+    </div>
+
+    <h4>Code: Long Polling in Node.js/Express</h4>
+    <p>A simple version with a <code>clients</code> queue:</p>
+<pre><code class="language-javascript">const express = require('express');
+const app = express();
+
+let latestMessage = null, clients = [];
+
+app.get('/poll', (req, res) =&gt; {
+  if (latestMessage) {
+    res.json({ message: latestMessage });
+    latestMessage = null;
+  } else {
+    clients.push(res); // Hold the request
+  }
+});
+
+app.post('/send', express.json(), (req, res) =&gt; {
+  latestMessage = req.body.message;
+  clients.forEach(c =&gt; c.json({ message: latestMessage }));
+  clients = [];
+  res.sendStatus(200);
+});</code></pre>
+
+    <p>A version that polls internally with <code>setTimeout</code>:</p>
+<pre><code class="language-javascript">const express = require('express');
+const app = express();
+let lastMessage = null;
+
+app.get('/updates', (req, res) =&gt; {
+  const checkForUpdate = () =&gt; {
+    if (lastMessage) {
+      res.json({ message: lastMessage });
+      lastMessage = null;
+    } else {
+      setTimeout(checkForUpdate, 1000); // check again in 1s
+    }
+  };
+  checkForUpdate();
+});
+
+app.post('/send', express.json(), (req, res) =&gt; {
+  lastMessage = req.body.message;
+  res.sendStatus(200);
+});
+
+app.listen(3000, () =&gt; console.log('Long polling server running on 3000'));</code></pre>
+
+    <p>A version that uses a <code>clients</code> array and broadcasts on an interval:</p>
+<pre><code class="language-javascript">const express = require('express');
+const app = express();
+let clients = [];
+
+app.get('/events', (req, res) =&gt; {
+  clients.push(res);
+});
+
+function sendEvent(data) {
+  clients.forEach(res =&gt; res.json(data));
+  clients = [];
+}
+
+// Simulate sending an event every 5 seconds
+setInterval(() =&gt; sendEvent({ message: "New update!" }), 5000);
+
+app.listen(3000, () =&gt; console.log('Long polling server on port 3000'));</code></pre>
+
+    <h4>Code: Long Polling Client</h4>
+<pre><code class="language-javascript">async function poll() {
+  const { message } = await fetch('/poll').then(r =&gt; r.json());
+  display(message);
+  poll(); // Immediately poll again
+}
+poll();</code></pre>
+
+    <p>A slightly different form:</p>
+<pre><code class="language-javascript">async function poll() {
+  const res = await fetch('/updates');
+  const data = await res.json();
+  console.log('Received:', data.message);
+  poll(); // Immediately start again
+}
+poll();</code></pre>
+
+    <h4>When to Use Long Polling?</h4>
+    <ul>
+      <li><strong>WebSockets not supported</strong> (legacy infrastructure, restrictive firewalls).</li>
+      <li><strong>Low/periodic update frequency is acceptable.</strong></li>
+    </ul>
+
+    <p><strong>Use cases:</strong></p>
+    <ul>
+      <li>Notifications (Twitter, social media)</li>
+      <li>IoT device updates (intermittent connectivity)</li>
+    </ul>
+
+    <h4>Advantages</h4>
+    <ul>
+      <li>Works with standard HTTP infrastructure (proxies, firewalls).</li>
+      <li>No need for special protocol support.</li>
+      <li>Reduces unnecessary polling compared to fixed-interval polling.</li>
+      <li>Easier to implement in REST-based systems.</li>
+    </ul>
+
+    <h4>Limitations</h4>
+    <ul>
+      <li>Higher latency than WebSockets.</li>
+      <li>Not truly bi-directional; mostly server-to-client.</li>
+      <li>Slightly more overhead due to repeated HTTP requests.</li>
+    </ul>
+
+    <h3>WebSockets vs. Long Polling — When to Use Which?</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>WebSockets</th><th>Long Polling</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Connection</td><td>Persistent TCP (single connection)</td><td>Multiple HTTP requests</td></tr>
+          <tr><td>Directionality</td><td>Bi-directional</td><td>Typically server-to-client</td></tr>
+          <tr><td>Latency</td><td>Very low</td><td>Low to moderate</td></tr>
+          <tr><td>Overhead</td><td>Minimal (after handshake)</td><td>Higher (HTTP headers per req)</td></tr>
+          <tr><td>Scalability</td><td>Harder to scale, needs sticky sessions</td><td>Easier to scale horizontally</td></tr>
+          <tr><td>Use Cases</td><td>Chat, gaming, trading, collab docs</td><td>Notifications, IoT, simple updates</td></tr>
+          <tr><td>Browser Support</td><td>Modern browsers</td><td>Universal</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>A more decision-oriented version:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Scenario</th><th>WebSockets</th><th>Long Polling</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>High-frequency, bidirectional updates</strong></td><td>Best choice</td><td>Not suitable</td></tr>
+          <tr><td><strong>Low-latency critical (gaming, chat)</strong></td><td>Yes</td><td>No</td></tr>
+          <tr><td><strong>Environments without WebSocket support</strong></td><td>No</td><td>Good alternative</td></tr>
+          <tr><td><strong>Periodic, low-frequency updates</strong></td><td>Overkill</td><td>Good choice</td></tr>
+          <tr><td><strong>Needs to work with proxies/firewalls</strong></td><td>Sometimes tricky</td><td>Yes</td></tr>
+          <tr><td><strong>Both client/server need to send at any time</strong></td><td>Bidirectional</td><td>Only client can start</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Real-world examples:</strong></p>
+    <ul>
+      <li><strong>WebSockets:</strong> Slack chat, Fortnite, real-time stock tickers</li>
+      <li><strong>Long Polling:</strong> Twitter notifications, IoT sensors</li>
+    </ul>
+
+    <h3>Quick Decision Guide</h3>
+    <div class="archd" aria-label="Real-time protocol decision guide">
+      <div class="archd-node"><span class="archd-icon">❓</span><span>Do you need instant, bi-directional updates?</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Yes</span></div>
+      <div class="archd-node"><span class="archd-icon">❓</span><span>Can you use WebSockets?</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">⚡</span><span>Yes → Use WebSockets</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">⏳</span><span>No → Use Long Polling</span></div>
+      </div>
+    </div>
+    <p class="muted">If the first answer is "No" (no need for bidirectional updates), fall through to Long Polling.</p>
+
+    <h3>Real-Time — Tips for System Design Interviews</h3>
+    <ul>
+      <li><strong>Scalability — WebSockets:</strong> Require load balancers that support sticky sessions or WebSocket proxying (e.g., NGINX with <code>proxy_pass</code> + <code>upgrade</code> headers).</li>
+      <li><strong>Scalability — Long Polling:</strong> Easier to scale horizontally; requests are stateless. Can leverage existing RESTful infrastructure.</li>
+      <li><strong>Fallback:</strong> Try WebSockets, then degrade gracefully to Long Polling if not supported. Always provide a fallback for browsers/environments without WebSocket support.</li>
+      <li><strong>Coordination across servers:</strong> Use a message broker (e.g., Redis Pub/Sub) to coordinate state across multiple backend servers for WebSockets.</li>
+      <li><strong>Security:</strong> Always use <code>wss://</code> (WebSockets over TLS) in production. Authenticate connections (JWT, OAuth). Validate and sanitize all incoming data.</li>
+      <li><strong>Resource cleanup:</strong> Always handle connection close events to free up server resources. For long polling, ensure you properly close connections on timeouts or client disconnects.</li>
+      <li><strong>Rate limiting:</strong> Protect your endpoints from abuse, especially in long polling.</li>
+      <li><strong>Testing:</strong> Simulate slow clients and network interruptions. Test reconnection and error handling. Use tools like <a href="https://github.com/websockets/wscat" target="_blank">wscat</a> for WebSocket debugging.</li>
+    </ul>
+
+    <h3>Real-Time — Further Reading</h3>
+    <ul>
+      <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API" target="_blank">MDN — WebSockets</a></li>
+      <li><a href="https://github.com/websockets/ws" target="_blank">Node.js <code>ws</code> Documentation</a></li>
+      <li><a href="https://socket.io/docs/" target="_blank">Socket.IO Docs</a></li>
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc6455" target="_blank">RFC 6455 — The WebSocket Protocol</a></li>
+    </ul>
+
+    <h2 id="modern-apis">Modern API Protocols — gRPC &amp; GraphQL</h2>
+    <p>While <strong>REST</strong> has long been the standard, modern applications often demand more. As system complexity and client demands have grown, REST shows limitations — and protocols like <strong>gRPC</strong> and <strong>GraphQL</strong> address them.</p>
+
+    <h3>Why Go Beyond REST?</h3>
+    <ul>
+      <li><strong>Over-fetching &amp; Under-fetching:</strong> REST endpoints often return too much or too little data.</li>
+      <li><strong>Multiple round trips:</strong> Fetching related entities may need several requests.</li>
+      <li><strong>Not real-time optimized:</strong> REST primarily uses polling for updates, which is inefficient for real-time needs.</li>
+    </ul>
+
+    <p><strong>Example problem:</strong> Fetching a user profile, but only needing name and email:</p>
+<pre><code class="language-http">GET /users/123
+
+{
+  "id": 123,
+  "name": "Alice",
+  "email": "alice@example.com",
+  "bio": "...",
+  "created_at": "...",
+  // ...lots of unused fields
+}</code></pre>
+
+    <h3>Modern Solutions: gRPC &amp; GraphQL</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Protocol</th><th>Focus</th><th>Serialization</th><th>Strengths</th><th>Best Use Case</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>REST</td><td>Simplicity</td><td>JSON/XML</td><td>Ubiquity, easy debugging</td><td>Public APIs</td></tr>
+          <tr><td><strong>gRPC</strong></td><td>Performance &amp; Microservices</td><td>Protocol Buffers (binary)</td><td>Speed, streaming, multi-language</td><td>Microservices, real-time</td></tr>
+          <tr><td><strong>GraphQL</strong></td><td>Flexibility</td><td>JSON</td><td>Custom data queries, aggregation</td><td>Frontend, mobile, dashboards</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>gRPC — High-Performance Remote Procedure Calls</h3>
+    <p><strong>gRPC</strong> is a high-performance, open-source RPC framework developed by Google. It shines in microservices architectures and real-time systems.</p>
+
+    <h4>How Does gRPC Work?</h4>
+    <ul>
+      <li><strong>Built on HTTP/2</strong>, allowing:
+        <ul>
+          <li><strong>Multiplexed requests:</strong> Multiple calls over one connection</li>
+          <li><strong>Compression:</strong> Smaller payload sizes</li>
+          <li><strong>Full-duplex streaming:</strong> Real-time bidirectional communication</li>
+        </ul>
+      </li>
+      <li><strong>Uses Protocol Buffers (Protobuf):</strong> Smaller and faster serialization than JSON.</li>
+      <li><strong>Auto-generates code:</strong> For many languages (Go, Java, Python, etc.).</li>
+      <li><strong>Supports full duplex streaming:</strong> Both client and server can send/receive data in real time.</li>
+    </ul>
+
+    <h4>gRPC Communication Flow</h4>
+    <div class="archd-seq" aria-label="gRPC communication flow">
+      <div class="archd-seq-step"><span class="num">1</span>Client sends a request</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>gRPC Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">ProtoBuf over HTTP/2</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>gRPC Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Server dispatches to a service implementation</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>gRPC Server</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Process Request</span></div>
+        <div class="archd-node"><span class="archd-icon">🧩</span><span>Service Implementation</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Service fetches data from DB</div>
+      <div class="archd-seq-row">
+        <div class="archd-node"><span class="archd-icon">🧩</span><span>Service Implementation</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Fetch Data</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database / Backend</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node"><span class="archd-icon">🧩</span><span>Service Implementation</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Return Data</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database / Backend</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Encode and respond back to client</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>gRPC Client</span></div>
+        <div class="archd-seq-arrow left"><span class="label">ProtoBuf over HTTP/2</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>gRPC Server</span></div>
+      </div>
+    </div>
+
+    <h4>Client-Server Serialization Diagram</h4>
+    <div class="archd" aria-label="gRPC serialization flow">
+      <div class="archd-row">
+        <div class="archd-node is-user"><span class="archd-icon">🧱</span><span>Client — Data Object</span></div>
+        <div class="archd-node"><span class="archd-icon">⚙️</span><span>Protocol Buffers Serializer</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Binary Data Format</span></div>
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">⚙️</span><span>Protocol Buffers Deserializer</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🧱</span><span>Server — Data Object</span></div>
+      </div>
+    </div>
+
+    <h4>gRPC Architecture (ASCII)</h4>
+<pre><code class="language-text">+-------------+        HTTP/2 + Protobuf        +-------------+
+|  Client     | &lt;==============================&gt;|   Server    |
+| (auto-code) |          (binary, fast)         | (auto-code) |
++-------------+                                 +-------------+
+         ^                                          ^
+         |&lt;--- Bidirectional Streaming ------------&gt;|</code></pre>
+
+    <p>Or, simpler:</p>
+<pre><code class="language-text">Client (any language)
+    |
+    |  (HTTP/2 + Protobuf)
+    V
+gRPC Server (any language)</code></pre>
+
+    <h4>gRPC Service Definitions — Protobuf</h4>
+    <p>A simple Greeter service:</p>
+<pre><code class="language-protobuf">syntax = "proto3";
+
+service Greeter {
+  rpc SayHello (HelloRequest) returns (HelloReply) {}
+}
+
+message HelloRequest {
+  string name = 1;
+}
+
+message HelloReply {
+  string message = 1;
+}</code></pre>
+
+    <p>A UserService with streaming:</p>
+<pre><code class="language-protobuf">// user.proto
+syntax = "proto3";
+
+service UserService {
+  rpc GetUser (UserRequest) returns (UserResponse) {}
+  rpc StreamUsers (stream UserRequest) returns (stream UserResponse) {} // bi-directional streaming
+}
+
+message UserRequest {
+  int32 id = 1;
+}
+
+message UserResponse {
+  int32 id = 1;
+  string name = 2;
+  string email = 3;
+}</code></pre>
+
+    <p>A UserService with activity streaming:</p>
+<pre><code class="language-protobuf">syntax = "proto3";
+
+service UserService {
+  rpc GetUser (UserRequest) returns (UserResponse);
+  rpc StreamUserActivity (ActivityRequest) returns (stream ActivityEvent);
+}
+
+message UserRequest {
+  string user_id = 1;
+}
+
+message UserResponse {
+  string name = 1;
+  string email = 2;
+}
+
+message ActivityRequest {
+  string user_id = 1;
+}
+
+message ActivityEvent {
+  string activity = 1;
+  int64 timestamp = 2;
+}</code></pre>
+
+    <h4>Code: gRPC Python Server</h4>
+    <p>A skeleton Greeter:</p>
+<pre><code class="language-python">import grpc
+from concurrent import futures
+import helloworld_pb2
+import helloworld_pb2_grpc
+
+class Greeter(helloworld_pb2_grpc.GreeterServicer):
+    def SayHello(self, request, context):
+        return helloworld_pb2.HelloReply(message='Hello, %s!' % request.name)
+
+server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+helloworld_pb2_grpc.add_GreeterServicer_to_server(Greeter(), server)
+server.add_insecure_port('[::]:50051')
+server.start()
+server.wait_for_termination()</code></pre>
+
+    <p>A UserService with streaming activity:</p>
+<pre><code class="language-python">import grpc
+from concurrent import futures
+import time
+import user_pb2
+import user_pb2_grpc
+
+class UserService(user_pb2_grpc.UserServiceServicer):
+    def GetUser(self, request, context):
+        # Fetch user logic
+        return user_pb2.UserResponse(name="Alice", email="alice@example.com")
+
+    def StreamUserActivity(self, request, context):
+        # Streaming logic
+        for activity in fetch_activities(request.user_id):
+            yield user_pb2.ActivityEvent(activity=activity, timestamp=int(time.time()))
+
+server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+user_pb2_grpc.add_UserServiceServicer_to_server(UserService(), server)
+server.add_insecure_port('[::]:50051')
+server.start()</code></pre>
+
+    <h4>Code: gRPC Python Client</h4>
+<pre><code class="language-python">import grpc
+import user_pb2
+import user_pb2_grpc
+
+channel = grpc.insecure_channel('localhost:50051')
+stub = user_pb2_grpc.UserServiceStub(channel)
+response = stub.GetUser(user_pb2.UserRequest(id=123))
+print(response.name, response.email)</code></pre>
+
+    <p>Variant using the <code>UserServiceStub</code> directly:</p>
+<pre><code class="language-python">import grpc
+from user_pb2 import UserRequest
+from user_pb2_grpc import UserServiceStub
+
+channel = grpc.insecure_channel('localhost:50051')
+stub = UserServiceStub(channel)
+response = stub.GetUser(UserRequest(user_id='123'))
+print(response.name, response.email)</code></pre>
+
+    <h4>Code: gRPC Go Client</h4>
+<pre><code class="language-go">resp, err := client.GetUser(ctx, &amp;pb.UserRequest{Id: 42})</code></pre>
+
+    <p>Server-side Go example:</p>
+<pre><code class="language-go">func (s *server) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+    // fetch user from DB
+    return &amp;pb.UserResponse{Name: "Alice", Email: "alice@example.com", Age: 30}, nil
+}</code></pre>
+
+    <h4>When to Use gRPC</h4>
+    <ul>
+      <li><strong>Microservices communication:</strong> Efficient inter-service calls.</li>
+      <li><strong>Real-time streaming:</strong> Video, analytics, trading platforms.</li>
+      <li><strong>IoT / low-bandwidth environments:</strong> Small, binary payloads.</li>
+      <li><strong>Multi-language ecosystems:</strong> Auto-generated clients/servers in Go, Java, Python, etc.</li>
+    </ul>
+
+    <div class="callout callout-warning">
+      <span class="callout-icon">🚫</span>
+      <div class="callout-content">
+        <div class="callout-title">Not for</div>
+        <p>Public APIs requiring easy debugging, browser-based clients (gRPC-Web exists but is still limited compared to REST/GraphQL).</p>
+      </div>
+    </div>
+
+    <h3>GraphQL — Flexible Query Language for APIs</h3>
+    <p><strong>GraphQL</strong> is a flexible query language and runtime for APIs developed by Facebook, enabling clients to request exactly what they need — no more, no less.</p>
+
+    <h4>How GraphQL Works</h4>
+    <ul>
+      <li><strong>Single endpoint:</strong> Clients query exactly what they need at <code>/graphql</code> instead of multiple REST endpoints.</li>
+      <li><strong>Schema-driven:</strong> Strongly-typed schema defines data and relationships.</li>
+      <li><strong>Dynamic responses:</strong> Server assembles responses per request.</li>
+    </ul>
+
+    <h4>GraphQL Communication Flow</h4>
+    <div class="archd-seq" aria-label="GraphQL communication flow">
+      <div class="archd-seq-step"><span class="num">1</span>Client posts a query</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>GraphQL Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Query { user { name, email } }</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>GraphQL Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Server resolves the requested fields</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>GraphQL Server</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Fetch name, email</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database / Backend</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>GraphQL Server</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Return name, email</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database / Backend</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Client receives the tailored response</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">💻</span><span>GraphQL Client</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Response { user { name, email } }</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>GraphQL Server</span></div>
+      </div>
+    </div>
+
+<pre><code class="language-text">[Client] --(POST /graphql { query })--&gt; [GraphQL Server] --(resolves fields)--&gt; [Database/APIs]</code></pre>
+
+    <h4>GraphQL Query Example</h4>
+<pre><code class="language-graphql">query {
+  user(id: "1") {
+    id
+    name
+    posts {
+      title
+      comments {
+        text
+      }
+    }
+  }
+}</code></pre>
+
+    <p>A query with arguments:</p>
+<pre><code class="language-graphql">query {
+  user(id: 123) {
+    name
+    email
+    recentTransactions {
+      id
+      amount
+    }
+  }
+}</code></pre>
+
+    <h4>GraphQL Response Example</h4>
+<pre><code class="language-json">{
+  "data": {
+    "user": {
+      "name": "Alice",
+      "email": "alice@example.com",
+      "recentTransactions": [
+        {"id": 1, "amount": 100},
+        {"id": 2, "amount": 50}
+      ]
+    }
+  }
+}</code></pre>
+
+    <p>A more nested example:</p>
+<pre><code class="language-json">{
+  "data": {
+    "user": {
+      "id": 42,
+      "name": "Alice",
+      "posts": [
+        { "title": "First Post", "date": "2023-01-01" }
+      ]
+    }
+  }
+}</code></pre>
+
+    <h4>GraphQL Schema Example (SDL)</h4>
+<pre><code class="language-graphql">type User {
+  id: ID!
+  name: String!
+  email: String!
+  recentTransactions: [Transaction]
+}
+
+type Transaction {
+  id: ID!
+  amount: Float!
+}
+
+type Query {
+  user(id: ID!): User
+}</code></pre>
+
+    <p>A schema with arguments on a field:</p>
+<pre><code class="language-graphql">type User {
+  id: ID!
+  name: String!
+  email: String!
+  transactions(last: Int): [Transaction]
+}
+
+type Transaction {
+  amount: Float!
+  date: String!
+}
+
+type Query {
+  user(id: ID!): User
+}</code></pre>
+
+    <h4>Code: GraphQL Server (Node.js + Apollo)</h4>
+<pre><code class="language-javascript">const { ApolloServer, gql } = require('apollo-server');
+
+const typeDefs = gql`
+  type User { id: ID!, name: String!, posts: [Post!]! }
+  type Post { title: String!, comments: [Comment!]! }
+  type Comment { text: String! }
+  type Query { user(id: ID!): User }
+`;
+
+const resolvers = {
+  Query: {
+    user: (_, { id }) =&gt; ({ id, name: "Alice", posts: [] }),
+  },
+};
+
+const server = new ApolloServer({ typeDefs, resolvers });
+server.listen().then(({ url }) =&gt; console.log(`Server ready at ${url}`));</code></pre>
+
+    <p>A version with resolvers on a nested field:</p>
+<pre><code class="language-javascript">const resolvers = {
+  Query: {
+    user: (parent, args, context) =&gt; fetchUserById(args.id)
+  },
+  User: {
+    transactions: (user, args) =&gt; fetchRecentTransactions(user.id, args.last)
+  }
+};</code></pre>
+
+    <h4>When to Use GraphQL</h4>
+    <ul>
+      <li><strong>Frontend optimization:</strong> Mobile/web clients fetch only what they need.</li>
+      <li><strong>Reducing API requests:</strong> Replace many REST calls with one query.</li>
+      <li><strong>Aggregating data:</strong> Unify multiple databases/services in a single API.</li>
+      <li><strong>Slow/unstable networks:</strong> Smaller, client-tailored payloads.</li>
+      <li><strong>When frontend teams change frequently or need agility.</strong></li>
+    </ul>
+
+    <div class="callout callout-warning">
+      <span class="callout-icon">🚫</span>
+      <div class="callout-content">
+        <div class="callout-title">Not for</div>
+        <p>Simple CRUD APIs (REST is enough); scenarios with complex authorization rules can be harder.</p>
+      </div>
+    </div>
+
+    <h3>REST vs. gRPC vs. GraphQL — Comparison</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>REST</th><th>gRPC</th><th>GraphQL</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Serialization</td><td>JSON/XML</td><td>Protocol Buffers (binary)</td><td>JSON</td></tr>
+          <tr><td>Transport</td><td>HTTP/1.1</td><td>HTTP/2</td><td>HTTP/1.1 or 2</td></tr>
+          <tr><td>Flexibility</td><td>Low</td><td>Medium</td><td>High</td></tr>
+          <tr><td>Performance</td><td>Medium</td><td>High</td><td>Medium</td></tr>
+          <tr><td>Real-Time Support</td><td>Poor (Polling)</td><td>Excellent (streaming)</td><td>Good (Subscriptions)</td></tr>
+          <tr><td>Language Support</td><td>Universal</td><td>Multi-language</td><td>Universal</td></tr>
+          <tr><td>Code Generation</td><td>Manual</td><td>Auto-generated</td><td>Manual / tools</td></tr>
+          <tr><td>Browser Support</td><td>Excellent</td><td>Limited (gRPC-Web)</td><td>Excellent</td></tr>
+          <tr><td>Over/Under-fetching</td><td>Yes</td><td>No</td><td>No</td></tr>
+          <tr><td>Tooling</td><td>Mature</td><td>Evolving</td><td>Evolving</td></tr>
+          <tr><td>Best For</td><td>Public APIs, CRUD</td><td>Microservices, real-time</td><td>Frontend, aggregation</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>REST vs GraphQL vs gRPC — Visualizing the Data Fetch</h3>
+<pre><code class="language-text">REST (Multiple Endpoints)
+-------------------------
+Client
+  |
+  |--GET /user/123-----------------------------&gt;|
+  |&lt;--{id, name, email, ...}--------------------|
+  |
+  |--GET /user/123/transactions---------------&gt;|
+  |&lt;--[{amount, date, ...}, ...]---------------|
+
+GraphQL (Single Query)
+----------------------
+Client
+  |
+  |--POST /graphql (user + transactions)--------&gt;|
+  |&lt;--{user: {name, email, transactions: [...]}}|
+
+gRPC (Single Call, Binary)
+--------------------------
+Client
+  |
+  |--GetUser(user_id=123)----------------------&gt;|
+  |&lt;--UserResponse(name, email, ...)-----------|</code></pre>
+
+    <h3>Example: REST vs GraphQL</h3>
+<pre><code class="language-http"># REST: Multiple endpoints
+GET /users/1
+GET /users/1/posts</code></pre>
+
+<pre><code class="language-graphql"># GraphQL: One endpoint, flexible query
+POST /graphql
+{
+  user(id: 1) {
+    name
+    posts { title }
+  }
+}</code></pre>
+
+    <h3>Decision Tree</h3>
+<pre><code class="language-text">Start
+ |
+ +-- Does your client require flexible data fetching or aggregation from multiple sources?
+ |       +-- Yes: Use GraphQL
+ |       +-- No:
+ |
+ +-- Do you need efficient, low-latency, real-time, or microservice-to-microservice communication?
+         +-- Yes: Use gRPC
+         +-- No: Use REST</code></pre>
+
+    <h3>Modern APIs — Tips &amp; Interview Phrases</h3>
+    <ul>
+      <li><strong>gRPC:</strong> Use for internal systems, not public APIs (browsers don't natively support gRPC).</li>
+      <li><strong>GraphQL:</strong> Use when frontend teams change frequently, or need agility; avoid for simple CRUD APIs.</li>
+      <li><strong>REST:</strong> Still great for simple, stable, widely accessible APIs.</li>
+      <li><strong>Justify your choice:</strong> Explain trade-offs. <em>"I'd use gRPC for internal microservice comms due to its speed and low latency, but REST or GraphQL for public APIs for broader compatibility."</em></li>
+      <li><strong>Security:</strong> All protocols require authentication. gRPC supports TLS; GraphQL needs to guard against complex/expensive queries (query depth limiting, complexity analysis).</li>
+      <li><strong>Versioning:</strong> REST uses URL versioning (<code>/v1/resource</code>); gRPC uses proto file evolution; GraphQL evolves the schema with field deprecations.</li>
+      <li><strong>Combine protocols:</strong> It's common to use REST/GraphQL for external APIs and gRPC for internal communication.</li>
+      <li><strong>For real-time needs:</strong> Prefer gRPC (streaming) or GraphQL subscriptions over REST polling.</li>
+      <li><strong>Beware proxies that may not handle HTTP/2 well</strong> when deploying gRPC.</li>
+    </ul>
+
+    <h3>Modern APIs — Interview Questions</h3>
+    <ul>
+      <li>Compare REST, gRPC, and GraphQL — pros/cons, serialization, real-time capabilities.</li>
+      <li>When would you use gRPC over REST? (microservices, internal APIs, streaming)</li>
+      <li>What are the trade-offs of GraphQL in large systems? (complexity, caching, security)</li>
+      <li>How does gRPC handle authentication? (TLS, token-based, etc.)</li>
+      <li>How would you scale a GraphQL API? (caching, batching, complexity analysis)</li>
+      <li>How do you prevent over-fetching in REST? (fields projection query params or switch to GraphQL)</li>
+    </ul>
+
+    <h3>Modern APIs — Further Reading</h3>
+    <ul>
+      <li><a href="https://grpc.io/docs/" target="_blank">gRPC Official Docs</a></li>
+      <li><a href="https://graphql.org/learn/" target="_blank">GraphQL Official Docs</a></li>
+      <li><a href="https://docs.microsoft.com/en-us/azure/architecture/best-practices/api-design" target="_blank">RESTful API Design Guidelines (Microsoft)</a></li>
+    </ul>
+
+    <h2 id="combined-tips">Combined Tips &amp; Tricks</h2>
+    <p>A consolidated master list, drawn from across all sections.</p>
+
+    <h3>Choosing Protocols</h3>
+    <ul>
+      <li><strong>Protocol choice matters.</strong> Use TCP for reliability, UDP for speed, HTTP for web, WebSockets for real-time, REST for standard APIs, gRPC for microservices, GraphQL for frontend-driven needs.</li>
+      <li><strong>Always start with requirements.</strong> Is reliability or speed more important? (TCP vs UDP)</li>
+      <li><strong>For critical data</strong> (banking, file transfer), use TCP.</li>
+      <li><strong>For low-latency, real-time</strong> (gaming, chat), use UDP or WebSockets.</li>
+      <li><strong>REST is great for CRUD APIs;</strong> use GraphQL or gRPC for complex, dynamic, or high-performance needs.</li>
+      <li><strong>gRPC is efficient but not browser-native;</strong> use where clients support it (microservices).</li>
+      <li><strong>GraphQL optimizes bandwidth;</strong> use when clients need flexibility in data fetching.</li>
+    </ul>
+
+    <h3>State Management</h3>
+    <ul>
+      <li><strong>Handle state properly.</strong> Use tokens or sessions for authentication; avoid storing sensitive data in cookies without encryption.</li>
+      <li><strong>Stateless protocols</strong> (HTTP, REST) need session management — use cookies, tokens, or sessions.</li>
+      <li><strong>Use proper HTTP status codes</strong> — they help debugging and client behavior.</li>
+    </ul>
+
+    <h3>API Hygiene</h3>
+    <ul>
+      <li><strong>Use proper HTTP methods.</strong> GET for fetch, POST for create, PUT for update, DELETE for remove.</li>
+      <li><strong>Paginate API responses.</strong> Never return unbounded lists in REST/GraphQL.</li>
+      <li><strong>Version your APIs.</strong> Avoid breaking changes for existing consumers. Use <code>/v1/</code>, <code>/v2/</code> from day one.</li>
+      <li><strong>Always document your API</strong> (Swagger/OpenAPI).</li>
+      <li><strong>Return helpful error messages</strong> (but not sensitive info).</li>
+      <li><strong>Support filtering, sorting, and searching via query params.</strong></li>
+    </ul>
+
+    <h3>Performance</h3>
+    <ul>
+      <li><strong>Optimize for performance:</strong> Use caching (HTTP headers like <code>Cache-Control</code>, <code>ETag</code>), pagination for large lists, and WebSockets or gRPC streams for real-time data.</li>
+      <li><strong>Minimize data transfer.</strong> Use compression, caching, and optimize request/response payloads.</li>
+      <li><strong>Implement rate limiting and throttling</strong> to prevent abuse.</li>
+      <li><strong>Set appropriate timeouts</strong> in clients and servers to avoid hanging.</li>
+    </ul>
+
+    <h3>Security</h3>
+    <ul>
+      <li><strong>Security first.</strong> Always use HTTPS for sensitive data. gRPC and GraphQL need authentication and input validation.</li>
+      <li><strong>Always prefer HTTPS.</strong> Modern browsers and search engines penalize plain HTTP.</li>
+      <li><strong>WebSockets — always use <code>wss://</code></strong> (TLS) in production.</li>
+      <li><strong>Authenticate connections</strong> (JWT, OAuth) for both API and WebSocket endpoints.</li>
+      <li><strong>Validate and sanitize all incoming data.</strong></li>
+      <li><strong>For GraphQL:</strong> Implement query depth and cost analysis to prevent expensive queries (DoS risk).</li>
+      <li><strong>Understand CORS:</strong> Cross-Origin Resource Sharing controls which domains can access your API.</li>
+    </ul>
+
+    <h3>Operational Excellence</h3>
+    <ul>
+      <li><strong>WebSockets require special infrastructure.</strong> Load balancing and scaling can be tricky; use sticky sessions or message brokers (Redis Pub/Sub).</li>
+      <li><strong>Fallback logic:</strong> Try WebSockets, then degrade gracefully to Long Polling if not supported.</li>
+      <li><strong>Log requests and errors</strong> for monitoring and debugging.</li>
+      <li><strong>Test your API</strong> (unit, integration, and contract tests).</li>
+      <li><strong>Debug with tools:</strong> <a href="https://www.postman.com/" target="_blank">Postman</a>, browser DevTools, <a href="https://github.com/websockets/wscat" target="_blank">wscat</a> for WebSockets.</li>
+    </ul>
+
+    <h3>Interview-Specific</h3>
+    <ul>
+      <li><strong>Understand trade-offs.</strong> WebSockets are great for speed but harder to scale; REST is simple but less flexible; gRPC is fast but requires client code generation.</li>
+      <li><strong>Be ready to compare protocols and justify your choices</strong> for different scenarios.</li>
+      <li><strong>Practice drawing diagrams</strong> and walking through request-response cycles or protocol handshakes.</li>
+    </ul>
+
+    <h2 id="interview-questions">Sample Interview Questions</h2>
+
+    <h3>Foundations</h3>
+    <ul>
+      <li>What's the difference between TCP and UDP?</li>
+      <li>Why is TCP considered reliable?</li>
+      <li>When would you use UDP over TCP?</li>
+      <li>How does TCP ensure reliable data transmission?</li>
+      <li>Why is DNS implemented over UDP?</li>
+    </ul>
+
+    <h3>HTTP</h3>
+    <ul>
+      <li>What is HTTP, and how does it work?</li>
+      <li>Why is HTTP stateless, and how do you handle sessions?</li>
+      <li>What are the differences between HTTP and HTTPS?</li>
+      <li>Explain the HTTP request-response cycle with an example.</li>
+      <li>When would you use PUT vs. PATCH?</li>
+      <li>List and explain key HTTP status codes.</li>
+      <li>How do cookies, sessions, and tokens differ?</li>
+      <li>How does caching work in HTTP?</li>
+    </ul>
+
+    <h3>REST</h3>
+    <ul>
+      <li>What are the core constraints of REST?</li>
+      <li>Explain the difference between PUT and PATCH.</li>
+      <li>How do you implement authentication and authorization in REST APIs?</li>
+      <li>How does caching work in RESTful APIs?</li>
+      <li>Compare REST, GraphQL, and gRPC.</li>
+    </ul>
+
+    <h3>Real-Time</h3>
+    <ul>
+      <li>What is a WebSocket handshake?</li>
+      <li>WebSockets vs. Long Polling — when to use each?</li>
+      <li>How would you scale a WebSocket-based system?</li>
+      <li>What are the main differences between REST, gRPC, and GraphQL for real-time use?</li>
+    </ul>
+
+    <h3>Modern APIs</h3>
+    <ul>
+      <li>When would you use gRPC over REST?</li>
+      <li>What are the trade-offs of GraphQL in large systems?</li>
+      <li>How does gRPC handle authentication?</li>
+      <li>How do you prevent over-fetching in REST?</li>
+      <li>How would you secure a GraphQL API against malicious queries?</li>
+    </ul>
+
+    <h2 id="quick-reference">Quick Reference Table</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Protocol</th><th>Type</th><th>Reliability</th><th>Speed</th><th>Real-Time</th><th>Use Cases</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>TCP</td><td>Connection</td><td>High</td><td>Medium</td><td>No</td><td>HTTP, FTP, Email</td></tr>
+          <tr><td>UDP</td><td>Connectionless</td><td>Low</td><td>High</td><td>Yes</td><td>Gaming, Streaming, DNS</td></tr>
+          <tr><td>HTTP</td><td>Application</td><td>Medium*</td><td>Medium</td><td>No</td><td>Web pages, APIs</td></tr>
+          <tr><td>HTTPS</td><td>Application+TLS</td><td>Medium*</td><td>Medium</td><td>No</td><td>Secure web pages, APIs</td></tr>
+          <tr><td>WebSockets</td><td>Real-time TCP</td><td>High</td><td>High</td><td>Yes</td><td>Chat, gaming, live data</td></tr>
+          <tr><td>REST</td><td>API design</td><td>N/A</td><td>N/A</td><td>Polling</td><td>Public APIs, CRUD</td></tr>
+          <tr><td>gRPC</td><td>API protocol</td><td>High</td><td>High</td><td>Yes</td><td>Microservices, IoT, streaming</td></tr>
+          <tr><td>GraphQL</td><td>Query language</td><td>N/A</td><td>High</td><td>Subs.</td><td>Frontend APIs, mobile/web, aggregation</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted">* Relies on TCP for reliability and ordering.</p>
+
+    <h2 id="summary">Summary &amp; Key Takeaways</h2>
+    <ul>
+      <li><strong>TCP:</strong> Reliable, ordered, slower. Use for critical data.</li>
+      <li><strong>UDP:</strong> Fast, unreliable. Use for real-time, loss-tolerant data.</li>
+      <li><strong>HTTP/REST:</strong> Foundation of the web and API communication.</li>
+      <li><strong>WebSockets:</strong> Real-time, bidirectional, persistent.</li>
+      <li><strong>gRPC:</strong> High-performance, binary, great for microservices.</li>
+      <li><strong>GraphQL:</strong> Flexible, single endpoint, client-driven data fetching.</li>
+      <li><strong>Trade-offs are central</strong> — there is no one-size-fits-all protocol. Each shines in different scenarios.</li>
+      <li><strong>Choose based on use case</strong> — and be ready to justify your decision.</li>
+    </ul>
+
+    <blockquote>
+      <em>"If you deeply understand protocol trade-offs, your system design and interviews both get easier — because protocol choice shapes everything from latency to scalability to security."</em>
+    </blockquote>
+
+    <h2 id="further-reading">Further Reading</h2>
+
+    <h3>HTTP</h3>
+    <ul>
+      <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP" target="_blank">MDN Web Docs — HTTP</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc2616" target="_blank">RFC 2616 — HTTP/1.1</a></li>
+      <li><a href="https://tools.ietf.org/html/rfc7230" target="_blank">RFC 7230 — HTTP/1.1 Message Syntax and Routing</a></li>
+    </ul>
+
+    <h3>REST</h3>
+    <ul>
+      <li><a href="https://restfulapi.net/" target="_blank">RESTful API Design — Best Practices</a></li>
+      <li><a href="https://swagger.io/specification/" target="_blank">OpenAPI Specification</a></li>
+      <li><a href="https://www.postman.com/" target="_blank">Postman</a></li>
+    </ul>
+
+    <h3>Real-Time</h3>
+    <ul>
+      <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API" target="_blank">MDN — WebSockets</a></li>
+      <li><a href="https://github.com/websockets/ws" target="_blank">Node.js <code>ws</code> Documentation</a></li>
+      <li><a href="https://socket.io/docs/" target="_blank">Socket.IO Docs</a></li>
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc6455" target="_blank">RFC 6455 — The WebSocket Protocol</a></li>
+      <li><a href="https://expressjs.com/" target="_blank">Express.js Docs</a></li>
+    </ul>
+
+    <h3>Modern APIs</h3>
+    <ul>
+      <li><a href="https://grpc.io/docs/" target="_blank">gRPC Docs</a></li>
+      <li><a href="https://graphql.org/learn/" target="_blank">GraphQL Docs</a></li>
+      <li><a href="https://docs.microsoft.com/en-us/azure/architecture/best-practices/api-design" target="_blank">RESTful API Design Guidelines (Microsoft)</a></li>
+    </ul>
+
+    <p><strong>Next Up:</strong> Chapter 4 — Architectural Patterns — see how these protocols fit into scalable system architectures (monolithic, layered, microservices, event-driven).</p>
+
+    <nav class="chapter-nav">
+      <a class="chapter-nav-card" href="2 - Networking %26 Communication.html">
+        <div class="chapter-nav-label">← Previous</div>
+        <div class="chapter-nav-title">Chapter 2 — Networking &amp; Communication</div>
+      </a>
+      <a class="chapter-nav-card next" href="4 - Architectural Patterns (System Design Fundamentals).html">
+        <div class="chapter-nav-label">Next chapter →</div>
+        <div class="chapter-nav-title">Chapter 4 — Architectural Patterns</div>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../assets/system-design.js"></script>
+
+</body>
+</html>

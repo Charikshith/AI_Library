@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chapter 11 — The System Design Blueprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<link rel="stylesheet" href="../assets/system-design.css">
+</head>
+<body><a href="../../../notes.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;z-index:99999;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600;background:#0f172a;color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.28)">&#8592; AI Library</a>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">
+    <span class="brand-icon">SD</span>
+    <span>Mastering System Design</span>
+  </a>
+  <div class="topbar-actions">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Chapter 11 — On This Page</h3>
+    <ul class="toc-list" id="tocList">
+      <li><a href="#learning-outcomes">Learning Outcomes</a></li>
+      <li><a href="#what-is-system-design">What Is System Design?</a></li>
+      <li><a href="#the-4-step-system-design-process">The 4-Step System Design Process</a></li>
+      <li><a href="#step-1-understanding-the-problem-and-defining-scope">Step 1 — Problem &amp; Scope</a></li>
+      <li><a href="#step-2-estimating-scale-and-identifying-bottlenecks">Step 2 — Scale &amp; Bottlenecks</a></li>
+      <li><a href="#step-3-high-level-design">Step 3 — High-Level Design</a></li>
+      <li><a href="#step-4-making-tech-and-infrastructure-decisions">Step 4 — Tech &amp; Infra Decisions</a></li>
+      <li><a href="#managing-45-minutes-of-interview-time">Managing 45 Minutes</a></li>
+      <li><a href="#common-interview-frameworks">Common Interview Frameworks</a></li>
+      <li><a href="#reading-the-interviewer">Reading the Interviewer</a></li>
+      <li><a href="#handling-i-dont-know">Handling "I Don't Know"</a></li>
+      <li><a href="#state-trade-offs-explicitly">State Trade-offs Explicitly</a></li>
+      <li><a href="#tips-and-tricks-for-system-design-interviews">Tips and Tricks</a></li>
+      <li><a href="#conclusion-your-blueprint-for-success">Conclusion</a></li>
+      <li><a href="#further-reading">Further Reading</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <span class="chapter-label">Chapter 11</span>
+      <h1>The System Design Blueprint: A 4-Step Method for Scalable Systems</h1>
+      <p class="hero-subtitle">
+        The capstone of the foundational chapters — a proven 4-step methodology, time-management tactics for the 45-minute interview, and the interview frameworks (RADIO, REACTO) you'll lean on for every case study that follows.
+      </p>
+      <div class="hero-author">By Charikshith</div>
+    </section>
+
+    <p>Welcome to the <strong>capstone of the foundational chapters</strong> of our system design series. In this chapter, we shift gears from core theory to practical application. We'll break down a proven <strong>4-step system design approach</strong> — a blueprint you can follow to tackle any real-world system design problem, from initial requirements to strategic technical decisions.</p>
+
+    <p>This is the framework we'll use for every case study (Chapters 12 onwards).</p>
+
+    <h2 id="learning-outcomes">🎯 Learning Outcomes</h2>
+    <p>After reading this chapter, you'll be able to:</p>
+    <ol class="outcomes-list">
+      <li><span class="outcome-num">1</span><span>Walk through any system design problem using the <strong>4-step framework</strong>.</span></li>
+      <li><span class="outcome-num">2</span><span>Do <strong>back-of-the-envelope estimations</strong> for QPS, storage, and bandwidth.</span></li>
+      <li><span class="outcome-num">3</span><span>Manage <strong>45 minutes</strong> of interview time across the four steps without running out.</span></li>
+      <li><span class="outcome-num">4</span><span>Recognize when to <strong>go deeper vs. zoom out</strong> based on interviewer cues.</span></li>
+      <li><span class="outcome-num">5</span><span>State <strong>trade-offs explicitly</strong> — the single skill that separates a junior from senior in design interviews.</span></li>
+    </ol>
+
+    <h2 id="what-is-system-design">What Is System Design?</h2>
+    <p>Before we dive into the framework, let's recap what system design means in practice:</p>
+    <ul>
+      <li><strong>System design</strong> is the process of defining a system's architecture, components, and interactions to meet requirements such as <em>scalability</em>, <em>performance</em>, and <em>maintainability</em>.</li>
+      <li>It's about <strong>building solutions</strong> that are robust, scalable, and sustainable — not just working software.</li>
+      <li>System design is full of <strong>trade-offs:</strong> performance vs. cost, complexity vs. simplicity, and more. Every decision must align with long-term vision and business goals.</li>
+    </ul>
+
+    <h2 id="the-4-step-system-design-process">The 4-Step System Design Process</h2>
+    <p>Here's the high-level process we'll use for every case study:</p>
+
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">1</div>
+        <div class="step-title">Problem &amp; Scope</div>
+        <div class="step-body">Clarify functional &amp; non-functional requirements and constraints before drawing a single box.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <div class="step-title">Scale &amp; Bottlenecks</div>
+        <div class="step-body">Estimate traffic, storage, and bandwidth. Identify what breaks first under load.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <div class="step-title">High-Level Design</div>
+        <div class="step-body">Sketch services, APIs, and communication patterns. Boxes and arrows time.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">4</div>
+        <div class="step-title">Tech &amp; Infra Decisions</div>
+        <div class="step-body">Pick stack, scaling strategy, and performance levers — justify every choice with trade-offs.</div>
+      </div>
+    </div>
+
+    <p>Let's dig into each step.</p>
+
+    <h2 id="step-1-understanding-the-problem-and-defining-scope">Step 1: Understanding the Problem &amp; Defining Scope</h2>
+    <ol>
+      <li><strong>Functional Requirements</strong>
+        <ul>
+          <li>What should the system do?</li>
+          <li><em>Example:</em> For a URL shortener: create short URLs, redirect to the original, track analytics.</li>
+        </ul>
+      </li>
+      <li><strong>Non-Functional Requirements</strong>
+        <ul>
+          <li>Performance (latency, throughput).</li>
+          <li>Scalability (handle millions of requests).</li>
+          <li>Security, Reliability, Compliance, etc.</li>
+        </ul>
+      </li>
+      <li><strong>Constraints</strong>
+        <ul>
+          <li>Time, budget, team, regulatory, and technical limitations.</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h4>Example: URL Shortener</h4>
+    <ul>
+      <li><strong>Functional:</strong> Shorten URLs, redirect, analytics.</li>
+      <li><strong>Non-Functional:</strong> &lt; 100ms latency, 99.99% uptime, GDPR compliance.</li>
+      <li><strong>Constraints:</strong> Launch in 3 months, AWS only, $1000/mo budget.</li>
+    </ul>
+
+    <h2 id="step-2-estimating-scale-and-identifying-bottlenecks">Step 2: Estimating Scale &amp; Identifying Bottlenecks</h2>
+    <ol>
+      <li><strong>Estimate Traffic</strong>
+        <ul>
+          <li>What's the expected peak load? How fast will it grow?</li>
+          <li><em>Example:</em> 10M requests/day, 2× annual growth.</li>
+        </ul>
+      </li>
+      <li><strong>Identify Bottlenecks</strong>
+        <ul>
+          <li>Which parts could fail under load? (DB, CPU, network, etc.)</li>
+        </ul>
+      </li>
+      <li><strong>Capacity Planning</strong>
+        <ul>
+          <li>Estimate storage, bandwidth, and compute needs to avoid failure.</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h4>Example: Rough Traffic Estimation</h4>
+<pre><code class="language-python">DAILY_REQS = 10_000_000
+BYTES_PER_REQ = 1_000  # e.g., analytics payload, overhead
+bandwidth_needed = DAILY_REQS * BYTES_PER_REQ / (24 * 3600)  # bytes/sec
+print(f"Required bandwidth: {bandwidth_needed/1024:.2f} KB/s")</code></pre>
+
+    <h2 id="step-3-high-level-design">Step 3: High-Level Design — Services, APIs &amp; Communication</h2>
+    <ol>
+      <li><strong>Core Services</strong>
+        <ul>
+          <li>Break into logical components (shortener service, analytics service, etc.).</li>
+        </ul>
+      </li>
+      <li><strong>API Design</strong>
+        <ul>
+          <li>Define endpoints and request/response formats.</li>
+        </ul>
+      </li>
+      <li><strong>Communication Patterns</strong>
+        <ul>
+          <li>Synchronous (REST) vs. Asynchronous (queues, events).</li>
+        </ul>
+      </li>
+      <li><strong>Service Interaction</strong>
+        <ul>
+          <li>How do services talk? Direct, via API Gateway, or through message queues?</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h3>URL Shortener — High-Level Architecture</h3>
+    <div class="archd" aria-label="URL Shortener high-level architecture">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">POST /shorten · GET /:code</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔗</span><span>Shortener Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">↪️</span><span>Redirect Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📊</span><span>Analytics Service</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+    </div>
+
+    <h4>Example: API Endpoint (Flask)</h4>
+<pre><code class="language-python">from flask import Flask, request, jsonify, redirect
+
+app = Flask(__name__)
+
+@app.route('/shorten', methods=['POST'])
+def shorten():
+    original_url = request.json['url']
+    code = generate_code(original_url)
+    store_url(code, original_url)
+    return jsonify({'short_url': f'https://sho.rt/{code}'})
+
+@app.route('/&lt;code&gt;', methods=['GET'])
+def redirect_url(code):
+    original_url = get_original_url(code)
+    log_hit(code)
+    return redirect(original_url)</code></pre>
+
+    <h2 id="step-4-making-tech-and-infrastructure-decisions">Step 4: Making Tech &amp; Infrastructure Decisions Strategically</h2>
+    <ol>
+      <li><strong>Tech Stack</strong>
+        <ul>
+          <li>SQL or NoSQL? In-memory cache (e.g., Redis)? Message queues?</li>
+        </ul>
+      </li>
+      <li><strong>Scalability &amp; Availability</strong>
+        <ul>
+          <li>Load balancing, auto-scaling, replication.</li>
+        </ul>
+      </li>
+      <li><strong>Performance</strong>
+        <ul>
+          <li>Caching, latency vs. throughput, CDN, etc.</li>
+        </ul>
+      </li>
+      <li><strong>Trade-Offs</strong>
+        <ul>
+          <li>Performance vs. cost, simplicity vs. flexibility, etc.</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h4>Example Choices</h4>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">🗄️</div>
+        <div class="card-title">Database</div>
+        <div class="card-body">NoSQL (Cassandra) for fast writes, high scalability.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <div class="card-title">Cache</div>
+        <div class="card-body">Redis to store hot URLs and cut DB read pressure.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚖️</div>
+        <div class="card-title">Load Balancer</div>
+        <div class="card-body">AWS ALB for HTTP routing across instances.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📈</div>
+        <div class="card-title">Scaling</div>
+        <div class="card-body">Auto-Scaling Groups for elastic capacity.</div>
+      </div>
+    </div>
+
+    <h4>Example: Redis Caching</h4>
+<pre><code class="language-python">import redis
+
+r = redis.Redis(host='localhost', port=6379)
+
+def get_original_url(code):
+    url = r.get(code)
+    if url:
+        return url
+    # fallback: fetch from DB, then cache it
+    url = db.fetch_url(code)
+    r.setex(code, 3600, url)
+    return url</code></pre>
+
+    <h2 id="managing-45-minutes-of-interview-time">Managing 45 Minutes of Interview Time</h2>
+    <p>A typical system design interview is <strong>45 minutes</strong>. Most candidates run out of time because they spend 20 minutes on requirements. Here's the rough budget:</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Phase</th>
+            <th>Time</th>
+            <th>What to do</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1. Requirements + scope</td>
+            <td><strong>5 min</strong></td>
+            <td>Functional + 2-3 NFRs + back-of-envelope numbers. <strong>Don't linger.</strong></td>
+          </tr>
+          <tr>
+            <td>2. High-level design (boxes &amp; arrows)</td>
+            <td><strong>10 min</strong></td>
+            <td>Sketch core components and data flow. Get the interviewer's nod.</td>
+          </tr>
+          <tr>
+            <td>3. Deep-dive into 1-2 components</td>
+            <td><strong>20 min</strong></td>
+            <td>Pick the most interesting/scaling-relevant pieces. Show data models, APIs, algorithms.</td>
+          </tr>
+          <tr>
+            <td>4. Scaling, failure modes, trade-offs</td>
+            <td><strong>10 min</strong></td>
+            <td>What happens at 10× scale? What if a region fails? What did we sacrifice?</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-content">
+        <div class="callout-title">The #1 Mistake</div>
+        <p>Spending 25 minutes on phase 1-2 and never getting to a deep-dive. The deep-dive is where you actually <em>demonstrate</em> your level. <strong>Time-box ruthlessly.</strong></p>
+      </div>
+    </div>
+
+    <h2 id="common-interview-frameworks">Common Interview Frameworks</h2>
+    <p>Different mentors give different acronyms. They all roughly describe the same flow. Pick whichever you remember:</p>
+
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">R</div>
+        <div class="step-title">RADIO</div>
+        <div class="step-body">Requirements → API → Data → I/O (throughput, latency) → Optimizations.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">R</div>
+        <div class="step-title">REACTO</div>
+        <div class="step-body">Repeat the question → Examples → Approach → Code (or design) → Test → Optimize.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">4</div>
+        <div class="step-title">The 4-Step (this book)</div>
+        <div class="step-body">Requirements → Scale → High-level → Tech.</div>
+      </div>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">None Is "Right"</div>
+        <p>What matters is having <em>a</em> structure so you don't freeze when the prompt is "design YouTube."</p>
+      </div>
+    </div>
+
+    <h2 id="reading-the-interviewer">Reading the Interviewer</h2>
+    <p>System design interviews are <strong>collaborative.</strong> Watch for cues:</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Interviewer signal</th>
+            <th>What it likely means</th>
+            <th>What to do</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>"Interesting, what about X?"</td>
+            <td>They want you to go deeper on X</td>
+            <td>Drop your current path; deep-dive X</td>
+          </tr>
+          <tr>
+            <td>"OK, let's move on"</td>
+            <td>You've spent too long here</td>
+            <td>Wrap up in 30 seconds and move forward</td>
+          </tr>
+          <tr>
+            <td>"How would this handle 100M users?"</td>
+            <td>Scaling question — invite to discuss bottlenecks</td>
+            <td>Walk through 10×, 100×, 1000× and what breaks at each</td>
+          </tr>
+          <tr>
+            <td>"What if the database goes down?"</td>
+            <td>Failure mode question</td>
+            <td>Talk replicas, failover, RPO/RTO targets</td>
+          </tr>
+          <tr>
+            <td>Silence after you propose something</td>
+            <td>They're skeptical or want more depth</td>
+            <td>Explain <em>why</em> you chose it; offer an alternative</td>
+          </tr>
+          <tr>
+            <td>"Can you draw that?"</td>
+            <td>They want a visual aid</td>
+            <td>Sketch boxes and arrows — even rough is better than none</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="handling-i-dont-know">Handling "I Don't Know"</h2>
+    <p>The right answer is <strong>never "I don't know" and stop.</strong> It's: "I don't know, but here's how I'd approach finding out."</p>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Good</div>
+        <p>"I haven't used Cassandra in production, but I know it's a wide-column store optimized for high write throughput. For our use case — append-heavy event logs — that seems like a fit. I'd want to validate by checking it handles our read patterns too."</p>
+      </div>
+    </div>
+
+    <div class="callout callout-warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-content">
+        <div class="callout-title">Bad</div>
+        <p>"I don't know Cassandra. Pass."</p>
+      </div>
+    </div>
+
+    <p>Showing how you reason in the face of uncertainty is <strong>more impressive</strong> than memorized facts.</p>
+
+    <h2 id="state-trade-offs-explicitly">State Trade-offs Explicitly (the One Skill That Matters Most)</h2>
+    <p>Juniors propose solutions. Seniors propose solutions <em>and name what they're sacrificing.</em> In every interview, after every choice, say:</p>
+
+    <blockquote>
+      "I'm choosing X. The trade-off is that we lose Y, but Y is acceptable here because Z."
+    </blockquote>
+
+    <p><strong>Examples:</strong></p>
+    <ul>
+      <li>"We'll use eventual consistency for the feed. <strong>Trade-off:</strong> users might briefly see stale posts. <strong>Acceptable because</strong> feed staleness &lt;1s is fine, and we gain massive read throughput."</li>
+      <li>"We'll shard by user_id. <strong>Trade-off:</strong> cross-user analytics queries get harder. <strong>Acceptable because</strong> 99% of queries are single-user; we'll run analytics on a separate column store."</li>
+      <li>"We'll cache aggressively. <strong>Trade-off:</strong> cache invalidation gets complex. <strong>Acceptable because</strong> writes are &lt;5% of traffic, and 60s of staleness is fine for this data."</li>
+    </ul>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">One Sentence, One Level</div>
+        <p>This sentence pattern alone is worth a level on the rubric.</p>
+      </div>
+    </div>
+
+    <h2 id="tips-and-tricks-for-system-design-interviews">💡 Tips and Tricks for System Design Interviews</h2>
+    <ul>
+      <li><strong>Always start with requirements:</strong> Don't jump to solutions; clarify what's needed.</li>
+      <li><strong>Think in trade-offs:</strong> There's no perfect design — always state what you're optimizing for.</li>
+      <li><strong>Draw diagrams:</strong> Visuals help clarify architecture and component interactions.</li>
+      <li><strong>Estimate with numbers:</strong> Even rough calculations (requests/sec, data size) show your depth.</li>
+      <li><strong>Consider failure modes:</strong> Think about what happens when a component fails (DB down? Cache miss?).</li>
+      <li><strong>Justify tech choices:</strong> Explain <em>why</em> you picked a tool or architecture.</li>
+      <li><strong>Iterate:</strong> Revise your design as you find new bottlenecks or constraints.</li>
+    </ul>
+
+    <h2 id="conclusion-your-blueprint-for-success">Conclusion: Your Blueprint for Success</h2>
+    <ul>
+      <li><strong>Start with clear requirements and constraints.</strong></li>
+      <li><strong>Use scale and bottleneck analysis to guide architecture.</strong></li>
+      <li><strong>Create a high-level design balancing performance, cost, and complexity.</strong></li>
+      <li><strong>Make informed infrastructure and tech choices to ensure scalability and availability.</strong></li>
+    </ul>
+
+    <p>By following this four-step process, you'll build systems that are robust, reliable, and ready for real-world growth.</p>
+
+    <h2 id="further-reading">📚 Further Reading</h2>
+    <ul>
+      <li><a href="https://github.com/donnemartin/system-design-primer" target="_blank">System Design Primer (GitHub)</a></li>
+      <li><a href="https://dataintensive.net/" target="_blank">Designing Data-Intensive Applications by Martin Kleppmann</a></li>
+      <li><a href="https://aws.amazon.com/architecture/" target="_blank">AWS Architecture Center</a></li>
+    </ul>
+
+    <p><strong>Next Up:</strong> Chapter 12 — Design a URL Shortener (TinyURL) — applying this blueprint to our first real-world case study.</p>
+
+    <nav class="chapter-nav">
+      <a class="chapter-nav-card" href="10 - Security in System Design – Principles, Practices %26 Protocols.html">
+        <div class="chapter-nav-label">← Previous</div>
+        <div class="chapter-nav-title">Chapter 10 — Security</div>
+      </a>
+      <a class="chapter-nav-card next" href="12 - Design a URL Shortener (TinyURL).html">
+        <div class="chapter-nav-label">Next chapter →</div>
+        <div class="chapter-nav-title">Chapter 12 — URL Shortener</div>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../assets/system-design.js"></script>
+
+</body>
+</html>

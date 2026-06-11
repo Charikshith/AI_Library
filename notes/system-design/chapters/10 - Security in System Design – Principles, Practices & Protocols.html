@@ -1,0 +1,2251 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chapter 10 — Security</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<link rel="stylesheet" href="../assets/system-design.css">
+<style>
+/* ===== Chapter 10 — Security diagrams ===== */
+figure.sec-figure {
+  margin: 28px 0;
+  padding: 0;
+}
+figure.sec-figure figcaption {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ---- Layered Security (image-24): clients fan-in to API gateway, fan-out to microservices ---- */
+.sec-layered {
+  background: linear-gradient(180deg, var(--bg-elevated), var(--bg-muted));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px 24px;
+  display: grid;
+  grid-template-columns: 1fr auto 1.4fr auto 1fr;
+  gap: 18px;
+  align-items: center;
+}
+.sec-layered .col-stack { display: flex; flex-direction: column; gap: 12px; }
+.sec-layered .lane-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  text-align: center;
+  margin-bottom: 6px;
+}
+.sec-gateway {
+  background: linear-gradient(135deg, var(--primary-faint), var(--accent-faint));
+  border: 2px dashed var(--primary);
+  border-radius: var(--radius);
+  padding: 18px 14px;
+  display: flex; flex-direction: column; gap: 10px;
+  align-items: stretch;
+}
+.sec-gateway .gw-title {
+  font-size: 12px; font-weight: 800;
+  color: var(--primary);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  text-align: center;
+}
+.sec-fan {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; color: var(--text-faint);
+}
+@media (max-width: 820px) {
+  .sec-layered { grid-template-columns: 1fr; }
+  .sec-fan { transform: rotate(90deg); }
+}
+
+/* ---- CIA Triad (image-25): triangle layout ---- */
+.cia-triangle {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  margin: 28px auto;
+  aspect-ratio: 1 / 0.92;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.cia-node {
+  position: absolute;
+  width: 130px;
+  padding: 14px 10px;
+  border-radius: 14px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 13.5px;
+  border: 2px solid;
+  box-shadow: var(--shadow-sm);
+  background: var(--bg);
+}
+.cia-node .cia-icon { font-size: 22px; display: block; margin-bottom: 4px; }
+.cia-node.c { top: 6%; left: 50%; transform: translateX(-50%);
+  border-color: var(--primary); color: var(--primary); background: var(--primary-faint); }
+.cia-node.i { bottom: 8%; right: 5%;
+  border-color: var(--danger); color: var(--danger); background: var(--danger-faint); }
+.cia-node.a { bottom: 8%; left: 5%;
+  border-color: var(--success); color: var(--success); background: var(--success-faint); }
+.cia-center {
+  position: absolute;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 96px; height: 96px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 16px;
+  box-shadow: var(--shadow-md);
+}
+.cia-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.cia-svg line { stroke: var(--border-strong); stroke-width: 2; stroke-dasharray: 6 6; }
+
+/* ---- Symmetric vs Asymmetric (image-27): 2-col compare ---- */
+.compare-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin: 28px 0;
+}
+.compare-2col .compare-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.compare-2col .compare-card.sym { border-top: 4px solid var(--primary); }
+.compare-2col .compare-card.asym { border-top: 4px solid var(--accent); }
+.compare-2col .compare-title {
+  font-weight: 800; font-size: 15px; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.compare-2col .compare-card.sym .compare-title { color: var(--primary); }
+.compare-2col .compare-card.asym .compare-title { color: var(--accent); }
+.flow-line {
+  display: flex; align-items: center; gap: 6px;
+  margin: 10px 0;
+  flex-wrap: wrap;
+}
+.flow-line .pill {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1.5px solid var(--border-strong);
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.flow-line .pill.key-shared { background: var(--primary-faint); border-color: var(--primary); color: var(--primary); }
+.flow-line .pill.key-pub    { background: var(--success-faint); border-color: var(--success); color: var(--success); }
+.flow-line .pill.key-priv   { background: var(--danger-faint); border-color: var(--danger); color: var(--danger); }
+.flow-line .arrow { color: var(--text-faint); font-weight: 700; }
+@media (max-width: 720px) { .compare-2col { grid-template-columns: 1fr; } }
+
+/* ---- Hashing flow (image-29) ---- */
+.hash-flow {
+  background: linear-gradient(180deg, var(--bg-elevated), var(--bg-muted));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.hash-block {
+  background: var(--bg);
+  border: 2px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 14px 16px;
+  text-align: center;
+  min-width: 130px;
+}
+.hash-block .lbl {
+  font-size: 11px; font-weight: 700;
+  color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+.hash-block .val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; font-weight: 600; color: var(--text);
+  word-break: break-all;
+}
+.hash-block.input { border-color: var(--primary); }
+.hash-block.input .val { color: var(--primary); }
+.hash-block.salt { border-color: var(--accent); background: var(--accent-faint); }
+.hash-block.fn {
+  border-color: var(--text-muted);
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: white;
+}
+.hash-block.fn .lbl, .hash-block.fn .val { color: white; }
+.hash-block.digest { border-color: var(--success); }
+.hash-block.digest .val { color: var(--success); }
+.hash-arrow {
+  font-size: 22px; color: var(--text-faint); font-weight: 700;
+}
+
+/* ---- Network security overview (image-31): concentric / stacked layers ---- */
+.net-layers {
+  background: linear-gradient(180deg, var(--bg-elevated), var(--bg-muted));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  align-items: stretch;
+}
+.net-layer {
+  border-radius: 10px;
+  padding: 14px 18px;
+  display: flex; align-items: center; gap: 12px;
+  font-weight: 600; font-size: 14px;
+  border: 1.5px solid;
+  position: relative;
+}
+.net-layer + .net-layer { margin-top: 10px; }
+.net-layer .net-num {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--bg); color: var(--text);
+  border: 2px solid currentColor;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800;
+  flex-shrink: 0;
+}
+.net-layer .net-icon { font-size: 20px; }
+.net-layer .net-body { flex: 1; }
+.net-layer .net-sub {
+  display: block; font-size: 12px; font-weight: 500;
+  color: var(--text-muted); margin-top: 2px;
+}
+.net-layer.l1 { background: var(--bg-muted); border-color: var(--border-strong); color: var(--text); }
+.net-layer.l2 { background: var(--danger-faint); border-color: var(--danger); color: var(--danger); }
+.net-layer.l3 { background: var(--accent-faint); border-color: var(--accent); color: var(--accent); }
+.net-layer.l4 { background: var(--primary-faint); border-color: var(--primary); color: var(--primary); }
+.net-layer.l5 { background: var(--success-faint); border-color: var(--success); color: var(--success); }
+.net-layer.l6 { background: var(--bg-elevated); border-color: var(--border-strong); color: var(--text-muted); }
+.net-down {
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 16px;
+  font-weight: 700;
+  margin: 2px 0;
+}
+</style>
+</head>
+<body><a href="../../../notes.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;z-index:99999;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600;background:#0f172a;color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.28)">&#8592; AI Library</a>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">
+    <span class="brand-icon">SD</span>
+    <span>Mastering System Design</span>
+  </a>
+  <div class="topbar-actions">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Chapter 10 — On This Page</h3>
+    <ul class="toc-list" id="tocList">
+      <li><a href="#learning-outcomes">Learning Outcomes</a></li>
+      <li><a href="#why-security-matters">Why Security Matters</a></li>
+      <li><a href="#security-in-distributed-systems">Security in Distributed Systems</a></li>
+      <li><a href="#the-cia-triad">The CIA Triad</a></li>
+      <li><a href="#threat-modeling">Threat Modeling &amp; Attack Vectors</a></li>
+      <li><a href="#common-attacks">Common Attacks</a></li>
+      <li><a href="#security-in-the-sdlc">Security in the SDLC</a></li>
+      <li><a href="#authentication-authorization">Authentication &amp; Authorization</a></li>
+      <li><a href="#data-protection">Data Protection &amp; Secure Communication</a></li>
+      <li><a href="#network-infrastructure">Network &amp; Infrastructure Security</a></li>
+      <li><a href="#network-segmentation">Network Segmentation &amp; Isolation</a></li>
+      <li><a href="#zero-trust">Zero Trust Security Model</a></li>
+      <li><a href="#cloud-environments">Securing Cloud Environments</a></li>
+      <li><a href="#serverless-container">Serverless &amp; Container Security</a></li>
+      <li><a href="#microservices-security">Security in Microservices</a></li>
+      <li><a href="#owasp-top-10">OWASP Top 10</a></li>
+      <li><a href="#oauth-flows">OAuth 2.0 Flows</a></li>
+      <li><a href="#jwt-pitfalls">JWT Pitfalls</a></li>
+      <li><a href="#defense-in-depth">Defense in Depth</a></li>
+      <li><a href="#secrets-management">Secrets Management</a></li>
+      <li><a href="#security-headers">Security Headers</a></li>
+      <li><a href="#combined-tips">Combined Tips &amp; Tricks</a></li>
+      <li><a href="#interview-questions">Sample Interview Questions</a></li>
+      <li><a href="#summary">Summary &amp; Quick Reference</a></li>
+      <li><a href="#further-reading">Further Reading</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <span class="chapter-label">Chapter 10</span>
+      <h1>Security in System Design: Principles, Practices &amp; Protocols</h1>
+      <p class="hero-subtitle">
+        Security is a core pillar — not a feature. This chapter walks through the CIA triad, threat modeling, OAuth 2.0 flows, JWT pitfalls, encryption &amp; PKI, network segmentation, Zero Trust, defense-in-depth, OWASP Top 10, and the security headers every app should set by default.
+      </p>
+      <div class="hero-author">By Charikshith</div>
+    </section>
+
+    <p>Security is not just a feature — it's a <strong>core pillar</strong> of reliable, scalable, and trustworthy system architecture. In this chapter, we'll explore security for distributed systems, drawing from fundamental principles, real-world attacks, best practices, and interview-ready explanations.</p>
+
+    <p>This chapter covers: the CIA triad, threat modeling, authentication &amp; authorization, encryption &amp; PKI, network &amp; infrastructure security, zero-trust, cloud/container/serverless security, microservices security, OWASP Top 10, and security in the SDLC.</p>
+
+    <blockquote>
+      <em>"Security is a non-functional requirement, but it's critical for user trust, data protection, and system reliability."</em>
+    </blockquote>
+
+    <h2 id="learning-outcomes">🎯 Learning Outcomes</h2>
+    <p>After reading this chapter, you'll be able to:</p>
+    <ol class="outcomes-list">
+      <li><span class="outcome-num">1</span><span>Apply the <strong>CIA triad</strong> to evaluate a system's security posture.</span></li>
+      <li><span class="outcome-num">2</span><span>Pick the right <strong>OAuth 2.0 flow</strong> for a given client type (web app, SPA, mobile, machine-to-machine).</span></li>
+      <li><span class="outcome-num">3</span><span>Avoid the <strong>top JWT pitfalls</strong> (storing tokens in localStorage, not validating signatures, no expiry).</span></li>
+      <li><span class="outcome-num">4</span><span>Apply <strong>defense-in-depth</strong> with WAF → API Gateway → app-level auth → DB-level access controls.</span></li>
+      <li><span class="outcome-num">5</span><span>Design <strong>secrets management</strong> with rotation, least privilege, and audit logs.</span></li>
+    </ol>
+
+    <h2 id="why-security-matters">Why Security Matters</h2>
+    <ul>
+      <li><strong>User trust:</strong> Users won't share data with insecure platforms.</li>
+      <li><strong>Data protection:</strong> Prevent leaks, theft, and accidental exposure.</li>
+      <li><strong>System reliability:</strong> Systems under attack can't perform well.</li>
+      <li><strong>Compliance:</strong> Laws like <strong>GDPR</strong> and <strong>HIPAA</strong> strictly mandate how data should be handled.</li>
+    </ul>
+    <p><strong>Real-world breaches</strong> (Equifax, Facebook) show that neglecting security can lead to massive financial and reputational damage.</p>
+
+    <h2 id="security-in-distributed-systems">Security in Distributed Systems</h2>
+    <p>Distributed architectures = more components, more entry points, more vulnerabilities.</p>
+
+    <p><strong>Key considerations:</strong></p>
+    <ul>
+      <li>Data protection <strong>in transit</strong> and <strong>at rest</strong>.</li>
+      <li>Robust <strong>authentication / authorization.</strong></li>
+      <li><strong>Secure APIs:</strong> Input validation, rate limiting, exploit protection.</li>
+      <li><strong>Node &amp; network protection:</strong> Segmentation, firewalls, monitoring.</li>
+    </ul>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Layered Security</div>
+        <p>Security must be enforced at every layer: API, service, data, infrastructure. A breach in one layer should not compromise the others.</p>
+      </div>
+    </div>
+
+    <figure class="sec-figure">
+      <div class="sec-layered" aria-label="Layered security: client apps fan in to an API management gateway and out to backend microservices">
+        <div class="col-stack">
+          <div class="lane-label">Clients</div>
+          <div class="archd-node is-user"><span class="archd-icon">📱</span><span>Mobile App</span></div>
+          <div class="archd-node is-user"><span class="archd-icon">💻</span><span>SPA / Web</span></div>
+          <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser (MVC)</span></div>
+        </div>
+        <div class="sec-fan">➜</div>
+        <div class="sec-gateway">
+          <div class="gw-title">API Management</div>
+          <div class="archd-node is-infra"><span class="archd-icon">📘</span><span>Developer Portal</span></div>
+          <div class="archd-node is-service"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+          <div class="archd-node is-infra"><span class="archd-icon">📤</span><span>Publisher Portal</span></div>
+        </div>
+        <div class="sec-fan">➜</div>
+        <div class="col-stack">
+          <div class="lane-label">Microservices</div>
+          <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Service 1</span></div>
+          <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Service 2</span></div>
+          <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Service 3</span></div>
+        </div>
+      </div>
+      <figcaption>Layered security: every client type traverses the API Management plane before reaching backend microservices.</figcaption>
+    </figure>
+
+    <h2 id="the-cia-triad">The CIA Triad</h2>
+    <p>The backbone of security:</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Principle</th><th>Goal</th><th>Techniques</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>(C) Confidentiality</strong></td><td>Prevent unauthorized data access</td><td>Encryption (at rest/in transit), access control</td></tr>
+          <tr><td><strong>(I) Integrity</strong></td><td>Prevent data tampering</td><td>Hashing, digital signatures, checksums, versioning</td></tr>
+          <tr><td><strong>(A) Availability</strong></td><td>Ensure system/data are accessible when needed</td><td>Redundancy, DDoS protection, failover</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>CIA Triad Diagram</h3>
+    <figure class="sec-figure">
+      <div class="cia-triangle" aria-label="CIA Triad — Confidentiality, Integrity, Availability around a central System Security core">
+        <svg class="cia-svg" viewBox="0 0 100 92" preserveAspectRatio="none" aria-hidden="true">
+          <line x1="50" y1="18" x2="15" y2="78" />
+          <line x1="50" y1="18" x2="85" y2="78" />
+          <line x1="15" y1="78" x2="85" y2="78" />
+        </svg>
+        <div class="cia-node c">
+          <span class="cia-icon">🔒</span>
+          Confidentiality
+        </div>
+        <div class="cia-node a">
+          <span class="cia-icon">⚡</span>
+          Availability
+        </div>
+        <div class="cia-node i">
+          <span class="cia-icon">🛡️</span>
+          Integrity
+        </div>
+        <div class="cia-center">CIA<br>Triad</div>
+      </div>
+      <figcaption>The three pillars of security — every system control should reinforce at least one.</figcaption>
+    </figure>
+
+    <h2 id="threat-modeling">Threat Modeling &amp; Attack Vectors</h2>
+    <p><strong>Threat modeling</strong> helps you think like an attacker.</p>
+
+    <h3>Steps</h3>
+    <ul>
+      <li><strong>Identify attack surface:</strong> Exposed APIs, UIs, network endpoints.</li>
+      <li><strong>Entry points:</strong> Vulnerable integrations, user errors.</li>
+      <li><strong>Assets to protect:</strong> Sensitive data, financial transactions, IP.</li>
+    </ul>
+
+    <h3>STRIDE Model</h3>
+    <figure class="sec-figure">
+      <div class="card-grid" aria-label="STRIDE threat model: six categories of attacker behavior">
+        <div class="card">
+          <div class="card-icon">🎭</div>
+          <div class="card-title">Spoofing</div>
+          <div class="card-body">Impersonating a user or system identity.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🛠️</div>
+          <div class="card-title">Tampering</div>
+          <div class="card-body">Modifying data in transit or at rest.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🚫</div>
+          <div class="card-title">Repudiation</div>
+          <div class="card-body">Denying actions performed (lack of audit trails).</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📂</div>
+          <div class="card-title">Information Disclosure</div>
+          <div class="card-body">Exposing sensitive data to unauthorized parties.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">💥</div>
+          <div class="card-title">Denial of Service</div>
+          <div class="card-body">Making the system unavailable to legitimate users.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">⬆️</div>
+          <div class="card-title">Elevation of Privilege</div>
+          <div class="card-body">Gaining higher access than authorized.</div>
+        </div>
+      </div>
+      <figcaption>STRIDE — a mnemonic of the six attacker goals to consider during threat modeling.</figcaption>
+    </figure>
+
+    <h3>Common Attack Vectors</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Vector</th><th>Description</th><th>Defense</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Insecure APIs</td><td>Poor validation, lack of auth</td><td>Input validation, auth, rate limiting</td></tr>
+          <tr><td>Misconfigured Servers</td><td>Defaults, missing patches</td><td>Config management, regular audits</td></tr>
+          <tr><td>Poor Authentication</td><td>Weak passwords, no 2FA, session flaws</td><td>Strong auth, MFA, secure token handling</td></tr>
+          <tr><td>Open Ports/Services</td><td>Unnecessary or exposed ports</td><td>Firewalls, segmentation, port closure</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="archd" aria-label="Attacker probes path from Internet through Firewall to Web Service">
+      <div class="archd-node is-external"><span class="archd-icon">🌐</span><span>Internet</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🧱</span><span>Firewall</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node"><span class="archd-icon">🖥️</span><span>Web Service</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Internal APIs</span></div>
+      </div>
+    </div>
+
+    <p>Attackers probe every interface — APIs, open ports, misconfigured servers.</p>
+
+    <h2 id="common-attacks">Common Attacks</h2>
+
+    <h3>DDoS (Distributed Denial of Service)</h3>
+    <ul>
+      <li><strong>Description:</strong> Flooding system with traffic to disrupt service.</li>
+      <li><strong>Target:</strong> Availability.</li>
+      <li><strong>Mitigation:</strong> Rate limiting, traffic scrubbing (e.g., Cloudflare), autoscaling and failover.</li>
+    </ul>
+
+    <h3>Man-in-the-Middle (MITM)</h3>
+    <ul>
+      <li><strong>Description:</strong> Attacker intercepts communication.</li>
+      <li><strong>Targets:</strong> Confidentiality &amp; Integrity.</li>
+      <li><strong>Protection:</strong> HTTPS (TLS), certificate pinning, VPNs.</li>
+    </ul>
+
+    <h3>Injection Attacks (e.g., SQL Injection)</h3>
+    <ul>
+      <li><strong>Description:</strong> Attacker sends malicious input to execute unwanted commands.</li>
+      <li><strong>Impacts:</strong> Data integrity, confidentiality.</li>
+      <li><strong>Mitigation:</strong> Input validation, parameterized queries, WAF (Web Application Firewall).</li>
+    </ul>
+
+    <h3>Spoofing Attacks</h3>
+    <ul>
+      <li><strong>Description:</strong> Impersonation of another user or system.</li>
+      <li><strong>Types:</strong> IP spoofing, email spoofing, DNS spoofing.</li>
+      <li><strong>Defense:</strong> Multi-factor authentication, token-based authentication, IP whitelisting.</li>
+    </ul>
+
+    <h2 id="security-in-the-sdlc">Security in the SDLC</h2>
+    <p><strong>Embed security from the start (Shift Left):</strong> Integrate security practices early in the development process to prevent vulnerabilities instead of fixing them later.</p>
+
+    <h3>Phases</h3>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">1</div>
+        <div class="step-title">Requirements</div>
+        <div class="step-body">Threat modeling — identify and assess potential security threats before development begins.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <div class="step-title">Design</div>
+        <div class="step-body">Secure architecture — create system designs that minimize attack surfaces and enforce least privilege.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <div class="step-title">Development</div>
+        <div class="step-body">Secure coding — follow coding standards and best practices to avoid introducing vulnerabilities.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">4</div>
+        <div class="step-title">Testing</div>
+        <div class="step-body">Security tests, fuzzing — detect and fix vulnerabilities through automated and manual security testing.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">5</div>
+        <div class="step-title">Deployment</div>
+        <div class="step-body">Secrets management — protect credentials, keys, and sensitive configurations in production environments.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">6</div>
+        <div class="step-title">Maintenance</div>
+        <div class="step-body">Patch management — continuously update and patch systems to address newly discovered vulnerabilities.</div>
+      </div>
+    </div>
+
+    <h2 id="authentication-authorization">Authentication &amp; Authorization</h2>
+
+    <h3>Authentication vs. Authorization</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Concept</th><th>What is it?</th><th>Example</th><th>Mnemonic</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Authentication</strong></td><td>Verifying <em>who</em> the user is</td><td>Logging in with password/MFA</td><td>"Who are you?"</td></tr>
+          <tr><td><strong>Authorization</strong></td><td>Deciding <em>what</em> the authenticated user can do</td><td>Accessing admin dashboard</td><td>"What can you do here?"</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Key point:</strong> You <em>authenticate</em> first, then the system <em>authorizes</em> your actions.</p>
+
+    <h3>Common Authentication Methods</h3>
+
+    <h4>1. Basic Authentication</h4>
+    <p>Username and password sent with every request (use only with HTTPS).</p>
+<pre><code class="language-bash">GET /protected HTTP/1.1
+Authorization: Basic dXNlcjpwYXNz</code></pre>
+
+    <h4>2. OAuth 2.0</h4>
+    <p>Delegated access: third-party apps access user data without seeing credentials. Example: "Login with Google" or "Login with Facebook".</p>
+
+    <h4>3. OpenID Connect</h4>
+    <p>Built on OAuth2; adds an identity layer for authentication. Use case: Single Sign-On (SSO) across multiple apps.</p>
+
+    <h4>4. JWT (JSON Web Token)</h4>
+    <p>Stateless: server issues a signed token after login; client sends it with each request.</p>
+<pre><code class="language-javascript">{
+  "sub": "1234567890",
+  "name": "John Doe",
+  "role": "admin",
+  "exp": 1711234567
+}</code></pre>
+
+    <h3>Session-Based vs. Token-Based Authentication</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>Session-Based</th><th>Token-Based (e.g., JWT)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Storage</strong></td><td>Server memory/database</td><td>Client-side (token)</td></tr>
+          <tr><td><strong>Scalability</strong></td><td>Challenging in distributed env</td><td>Scales easily in microservices</td></tr>
+          <tr><td><strong>State</strong></td><td>Stateful</td><td>Stateless</td></tr>
+          <tr><td><strong>Security Concerns</strong></td><td>Session hijacking, CSRF</td><td>Token theft, token expiry</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Session-based flow:</strong></p>
+    <ol>
+      <li>User logs in.</li>
+      <li>Server creates a session, sends session ID cookie.</li>
+      <li>Client sends cookie with each request.</li>
+      <li>Cons: Scalability challenges in distributed systems.</li>
+    </ol>
+
+    <p><strong>Token-based flow:</strong></p>
+    <ol>
+      <li>User logs in.</li>
+      <li>Server issues signed JWT.</li>
+      <li>Client sends JWT in <code>Authorization</code> header.</li>
+      <li>Cons: Requires secure token storage and handling.</li>
+    </ol>
+
+    <h3>Access Control Models (Authorization)</h3>
+
+    <h4>1. RBAC — Role-Based Access Control</h4>
+    <ul>
+      <li>Assign permissions to roles, roles to users.</li>
+      <li><strong>Example roles:</strong> <code>admin</code>, <code>editor</code>, <code>viewer</code>.</li>
+      <li><strong>Pros:</strong> Simple, scalable for standard teams.</li>
+      <li><strong>Cons:</strong> Not granular for complex orgs.</li>
+    </ul>
+
+    <h4>2. ABAC — Attribute-Based Access Control</h4>
+    <ul>
+      <li>Access based on user attributes (department, project, clearance).</li>
+      <li><strong>Pros:</strong> Fine-grained control.</li>
+      <li><strong>Cons:</strong> Harder to manage at scale.</li>
+    </ul>
+
+    <h4>3. DAC — Discretionary Access Control</h4>
+    <ul>
+      <li>Resource owners set access permissions.</li>
+      <li><strong>Example:</strong> File-sharing apps.</li>
+    </ul>
+
+    <h4>4. MAC — Mandatory Access Control</h4>
+    <ul>
+      <li>Central authority enforces strict policies.</li>
+      <li><strong>Example:</strong> Military/government systems.</li>
+    </ul>
+
+    <h3>Single Sign-On (SSO) &amp; Identity Federation</h3>
+    <ul>
+      <li><strong>SSO:</strong> User logs in once, gains access to multiple apps/services without re-authenticating.</li>
+      <li><strong>Identity Federation:</strong> Trust external identity providers (Google, Facebook, Microsoft) for authentication across organizational boundaries.</li>
+      <li><strong>Benefit:</strong> Fewer passwords, less friction, better user experience.</li>
+    </ul>
+
+    <h3>Code Examples</h3>
+
+    <h4>JWT Authentication with Node.js / Express</h4>
+<pre><code class="language-javascript">const jwt = require('jsonwebtoken');
+
+// Issue JWT after login
+app.post('/login', (req, res) => {
+  // ...validate user
+  const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+  res.json({ token });
+});
+
+// Verify JWT on protected route
+function authenticateJWT(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (authHeader) {
+    const token = authHeader.split(' ')[1];
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+      if (err) return res.sendStatus(403);
+      req.user = user;
+      next();
+    });
+  } else {
+    res.sendStatus(401);
+  }
+}</code></pre>
+
+    <p>A simpler form:</p>
+<pre><code class="language-javascript">const jwt = require('jsonwebtoken');
+function authenticate(req, res, next) {
+  const token = req.header('Authorization').replace('Bearer ', '');
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = payload;
+    next();
+  } catch (err) {
+    res.status(401).json({error: 'Unauthorized'});
+  }
+}</code></pre>
+
+    <h4>RBAC Middleware</h4>
+<pre><code class="language-javascript">function authorizeRoles(...allowedRoles) {
+  return (req, res, next) => {
+    if (req.user && allowedRoles.includes(req.user.role)) {
+      next();
+    } else {
+      res.sendStatus(403); // Forbidden
+    }
+  }
+}
+
+// Usage:
+app.get('/admin', authenticateJWT, authorizeRoles('admin'), (req, res) => {
+  res.send('Welcome, admin!');
+});</code></pre>
+
+    <h3>Authentication &amp; Authorization Flow</h3>
+    <div class="archd-seq" aria-label="Authentication and Authorization Flow">
+      <div class="archd-seq-step"><span class="num">1</span>User enters credentials</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">username/password</span></div>
+        <div class="archd-node"><span class="archd-icon">💻</span><span>Client/App</span></div>
+        <div class="archd-seq-arrow right"><span class="label">credentials</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Auth Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Server authenticates the user</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow left"><span class="label">success/error</span></div>
+        <div class="archd-node"><span class="archd-icon">💻</span><span>Client/App</span></div>
+        <div class="archd-seq-arrow left"><span class="label">JWT token</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Auth Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Client sends JWT for each protected resource</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">request</span></div>
+        <div class="archd-node"><span class="archd-icon">💻</span><span>Client/App</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Authorization: Bearer JWT</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Auth Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Server verifies JWT and returns resource</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow left"><span class="label">resource</span></div>
+        <div class="archd-node"><span class="archd-icon">💻</span><span>Client/App</span></div>
+        <div class="archd-seq-arrow left"><span class="label">200 OK / 403</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Auth Server</span></div>
+      </div>
+    </div>
+
+    <h3>RBAC Model</h3>
+    <div class="archd" aria-label="RBAC mapping users to roles to resource permissions">
+      <div class="archd-row">
+        <div class="archd-node is-user"><span class="archd-icon">👩</span><span>User: Alice</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👨</span><span>User: Bob</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">role assignment</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🛡️</span><span>Role: Admin</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">✏️</span><span>Role: Editor</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">permissions</span></div>
+      <div class="archd-node is-data"><span class="archd-icon">📊</span><span>Resource: Dashboard (Read / Write / Delete)</span></div>
+    </div>
+
+    <h3>End-to-End Auth Flow</h3>
+    <div class="archd" aria-label="End-to-end authentication and authorization flow">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Login</span></div>
+      <div class="archd-node is-service"><span class="archd-icon">🔐</span><span>Auth Service</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">JWT Token</span></div>
+      <div class="archd-node"><span class="archd-icon">📱</span><span>Client App</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Token</span></div>
+      <div class="archd-node is-service"><span class="archd-icon">🌐</span><span>API</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Policy Check</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">⚖️</span><span>RBAC / ABAC</span></div>
+    </div>
+
+    <h3>Authentication / Authorization Tips</h3>
+    <ul>
+      <li><strong>Always use HTTPS</strong> even for development.</li>
+      <li><strong>Keep JWTs short-lived:</strong> Use refresh tokens for longer sessions.</li>
+      <li><strong>Never store sensitive data in JWTs:</strong> Tokens can be decoded by anyone.</li>
+      <li><strong>Secure cookies:</strong> Set <code>HttpOnly</code>, <code>Secure</code>, and <code>SameSite</code> attributes.</li>
+      <li><strong>Centralize session/token invalidation</strong> to handle logout and token revocation.</li>
+      <li><strong>Use established libraries:</strong> Don't roll your own crypto/auth code.</li>
+      <li><strong>Implement rate limiting:</strong> Protect authentication endpoints from brute-force attacks.</li>
+      <li><strong>Audit permissions regularly:</strong> Remove unused roles/permissions (principle of least privilege).</li>
+      <li><strong>Log authentication events</strong> for auditing and intrusion detection.</li>
+      <li><strong>Educate users:</strong> Encourage strong passwords and enable MFA.</li>
+    </ul>
+
+    <h2 id="data-protection">Data Protection &amp; Secure Communication</h2>
+
+    <h3>Encryption: The Heart of Data Protection</h3>
+    <p>Encryption converts readable data (<strong>plaintext</strong>) into an unreadable format (<strong>ciphertext</strong>) using a secret key.</p>
+
+    <div class="archd-seq" aria-label="Encryption and Decryption flow">
+      <div class="archd-seq-step"><span class="num">1</span>Encryption</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node"><span class="archd-icon">📄</span><span>Plaintext</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Encrypt (Key)</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🔐</span><span>Ciphertext</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Decryption</div>
+      <div class="archd-seq-row cols-2">
+        <div class="archd-node is-infra"><span class="archd-icon">🔐</span><span>Ciphertext</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Decrypt (Key)</span></div>
+        <div class="archd-node"><span class="archd-icon">📄</span><span>Plaintext</span></div>
+      </div>
+    </div>
+
+    <h3>Symmetric vs. Asymmetric Encryption</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Symmetric Encryption</th><th>Asymmetric Encryption</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Single key (shared)</td><td>Key pair: Public + Private</td></tr>
+          <tr><td>Fast, efficient</td><td>Slower, but more secure for key exchange</td></tr>
+          <tr><td>Used for large data</td><td>Used for identity, digital signatures, key exchange</td></tr>
+          <tr><td>Challenge: secure key sharing</td><td>Challenge: computational overhead</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <figure class="sec-figure">
+      <div class="compare-2col" aria-label="Symmetric encryption uses one shared key; asymmetric uses a public/private key pair">
+        <div class="compare-card sym">
+          <div class="compare-title">🔑 Symmetric</div>
+          <div class="flow-line">
+            <span class="pill">📄 Plaintext</span>
+            <span class="arrow">→</span>
+            <span class="pill key-shared">🔑 Shared Key</span>
+            <span class="arrow">→</span>
+            <span class="pill">🔐 Ciphertext</span>
+          </div>
+          <div class="flow-line">
+            <span class="pill">🔐 Ciphertext</span>
+            <span class="arrow">→</span>
+            <span class="pill key-shared">🔑 Shared Key</span>
+            <span class="arrow">→</span>
+            <span class="pill">📄 Plaintext</span>
+          </div>
+          <p class="muted" style="font-size:13px;margin-top:10px;">
+            Same secret encrypts and decrypts — fast (AES, ChaCha20). Challenge: share the key safely.
+          </p>
+        </div>
+        <div class="compare-card asym">
+          <div class="compare-title">🔐 Asymmetric</div>
+          <div class="flow-line">
+            <span class="pill">📄 Plaintext</span>
+            <span class="arrow">→</span>
+            <span class="pill key-pub">🟢 Public Key</span>
+            <span class="arrow">→</span>
+            <span class="pill">🔐 Ciphertext</span>
+          </div>
+          <div class="flow-line">
+            <span class="pill">🔐 Ciphertext</span>
+            <span class="arrow">→</span>
+            <span class="pill key-priv">🔴 Private Key</span>
+            <span class="arrow">→</span>
+            <span class="pill">📄 Plaintext</span>
+          </div>
+          <p class="muted" style="font-size:13px;margin-top:10px;">
+            Public encrypts, only private decrypts (RSA, ECC). Slower — used for identity &amp; key exchange.
+          </p>
+        </div>
+      </div>
+      <figcaption>One key vs. a pair: symmetric is fast for bulk data; asymmetric solves trustless key exchange.</figcaption>
+    </figure>
+
+    <p><strong>Symmetric Encryption:</strong></p>
+    <ul>
+      <li>Uses <strong>one key</strong> for both encryption and decryption.</li>
+      <li><strong>Fast</strong> and efficient — ideal for encrypting <strong>large amounts of data.</strong></li>
+      <li>Example algorithms: <strong>AES</strong>, <strong>DES</strong>, <strong>Blowfish.</strong></li>
+    </ul>
+
+    <p><strong>Asymmetric Encryption:</strong></p>
+    <ul>
+      <li>Uses a <strong>key pair</strong> — one <strong>public key</strong> (for encryption) and one <strong>private key</strong> (for decryption).</li>
+      <li>Enables <strong>secure key exchange</strong> and <strong>digital signatures.</strong></li>
+      <li>Example algorithms: <strong>RSA</strong>, <strong>ECC</strong>, <strong>Diffie-Hellman.</strong></li>
+    </ul>
+
+    <p><strong>Combined Usage:</strong> Often used together, e.g., in TLS handshakes — asymmetric encryption secures key exchange; symmetric encryption is then used for data transmission.</p>
+
+    <p><strong>Example (Python <code>cryptography</code> library — symmetric):</strong></p>
+<pre><code class="language-python">from cryptography.fernet import Fernet
+
+# Generate a key
+key = Fernet.generate_key()
+cipher = Fernet(key)
+
+# Encrypt
+plaintext = b'secret data'
+ciphertext = cipher.encrypt(plaintext)
+
+# Decrypt
+decrypted = cipher.decrypt(ciphertext)
+assert decrypted == plaintext</code></pre>
+
+    <h3>TLS Handshake (Simplified)</h3>
+    <ol>
+      <li><strong>Client Hello:</strong> Client proposes cipher suites.</li>
+      <li><strong>Server Hello:</strong> Server selects cipher suite, sends certificate (with public key).</li>
+      <li><strong>Key Exchange:</strong> Client encrypts a random symmetric key with server's public key.</li>
+      <li><strong>Secure Session:</strong> Both use the symmetric key for fast, secure data transfer.</li>
+    </ol>
+
+    <figure class="sec-figure">
+      <div class="archd-seq" aria-label="TLS handshake sequence between Client and Server">
+        <div class="archd-seq-step"><span class="num">1</span>Client Hello — propose cipher suites &amp; TLS version</div>
+        <div class="archd-seq-row cols-2">
+          <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+          <div class="archd-seq-arrow right"><span class="label">ClientHello + ciphers</span></div>
+          <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+        </div>
+        <div class="archd-seq-step"><span class="num">2</span>Server Hello — select cipher &amp; send certificate</div>
+        <div class="archd-seq-row cols-2">
+          <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+          <div class="archd-seq-arrow left"><span class="label">ServerHello + cert (public key)</span></div>
+          <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+        </div>
+        <div class="archd-seq-step"><span class="num">3</span>Key exchange — client encrypts symmetric key with server's public key</div>
+        <div class="archd-seq-row cols-2">
+          <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Client</span></div>
+          <div class="archd-seq-arrow right"><span class="label">encrypted pre-master secret</span></div>
+          <div class="archd-node is-service"><span class="archd-icon">🖥️</span><span>Server</span></div>
+        </div>
+        <div class="archd-seq-step"><span class="num">4</span>Finished — both sides switch to symmetric encryption</div>
+        <div class="archd-seq-row cols-2">
+          <div class="archd-node is-user"><span class="archd-icon">🔐</span><span>Client (session key)</span></div>
+          <div class="archd-seq-arrow right"><span class="label">encrypted application data</span></div>
+          <div class="archd-node is-service"><span class="archd-icon">🔐</span><span>Server (session key)</span></div>
+        </div>
+      </div>
+      <figcaption>TLS handshake: asymmetric crypto establishes trust &amp; exchanges a symmetric session key for fast bulk encryption.</figcaption>
+    </figure>
+
+    <h3>Encryption: At Rest &amp; In Transit</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Encryption at Rest</th><th>Encryption in Transit</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Protects stored data (disks, DBs, backups)</td><td>Protects data moving across network</td></tr>
+          <tr><td>Techniques: Full-disk, field-level encryption</td><td>Techniques: TLS/SSL (HTTPS)</td></tr>
+          <tr><td>Use Cases: Cloud storage, user files, logs</td><td>Use Cases: APIs, login sessions</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="archd" aria-label="Data flow encrypted in transit and at rest">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">API call (HTTPS)</span></div>
+      <div class="archd-node"><span class="archd-icon">🖥️</span><span>Server</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Stores (Encrypted)</span></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Backup (Encrypted)</span></div>
+      <div class="archd-node is-data"><span class="archd-icon">☁️</span><span>Cloud Storage</span></div>
+    </div>
+
+    <h3>TLS/SSL and HTTPS</h3>
+    <ul>
+      <li><strong>HTTPS = HTTP over TLS.</strong> Adds a secure encryption layer (TLS) on top of HTTP. TLS = Transport Layer Security; SSL = Secure Sockets Layer.</li>
+      <li><strong>Ensures confidentiality, integrity, and authenticity:</strong> Protects data from being read, altered, or spoofed during transmission.</li>
+      <li><strong>TLS Handshake:</strong> Key exchange + cipher negotiation. Establishes a secure session.</li>
+    </ul>
+
+    <p><strong>Sample HTTPS server (Express.js):</strong></p>
+<pre><code class="language-javascript">const https = require('https');
+const fs = require('fs');
+const app = require('./app');
+const options = {
+  key: fs.readFileSync('key.pem'),
+  cert: fs.readFileSync('cert.pem')
+};
+https.createServer(options, app).listen(443);</code></pre>
+
+    <h3>Hashing &amp; Salting: Secure Password Storage</h3>
+
+    <h4>Hashing</h4>
+    <p>Hashing converts input data into a fixed-length string using a mathematical algorithm. It is a <strong>one-way</strong> operation.</p>
+
+    <figure class="sec-figure">
+      <div class="hash-flow" aria-label="Hashing flow: input plus salt run through a one-way function produces a fixed-length digest">
+        <div class="hash-block input">
+          <div class="lbl">Input</div>
+          <div class="val">"Apple"</div>
+        </div>
+        <span class="hash-arrow">+</span>
+        <div class="hash-block salt">
+          <div class="lbl">Salt</div>
+          <div class="val">"yrtZd"</div>
+        </div>
+        <span class="hash-arrow">→</span>
+        <div class="hash-block fn">
+          <div class="lbl">Hash Function</div>
+          <div class="val">bcrypt / SHA-256</div>
+        </div>
+        <span class="hash-arrow">→</span>
+        <div class="hash-block digest">
+          <div class="lbl">Fixed-length Digest</div>
+          <div class="val">fa54f6asf4as6ff…</div>
+        </div>
+      </div>
+      <figcaption>One-way hashing: identical inputs yield identical hashes, so a per-record <strong>salt</strong> defeats rainbow tables.</figcaption>
+    </figure>
+
+    <p><strong>Pros:</strong></p>
+    <ul>
+      <li><strong>Irreversible:</strong> Protects original data even if hashes are leaked.</li>
+      <li><strong>Efficient:</strong> Quick to compute and compare during authentication.</li>
+      <li><strong>Fixed output size:</strong> Consistent length regardless of input size.</li>
+      <li><strong>Good for integrity checks:</strong> Detects if data has been tampered with.</li>
+    </ul>
+
+    <p><strong>Cons:</strong></p>
+    <ul>
+      <li><strong>Vulnerable to rainbow table attacks:</strong> Precomputed hash databases can reveal common passwords.</li>
+      <li><strong>Identical inputs = identical hashes:</strong> Enables pattern recognition if no extra protection (like salting).</li>
+    </ul>
+
+    <h4>Salting</h4>
+    <p>Salting adds a <strong>unique random value (salt)</strong> to each password <strong>before hashing.</strong> Ensures even identical passwords produce <strong>different hashes.</strong></p>
+
+    <p><strong>Pros:</strong></p>
+    <ul>
+      <li><strong>Prevents rainbow table attacks.</strong></li>
+      <li><strong>Increases security:</strong> Makes brute-force attacks more difficult.</li>
+      <li><strong>Protects common passwords.</strong></li>
+    </ul>
+
+    <p><strong>Cons:</strong></p>
+    <ul>
+      <li><strong>Requires storage for salts:</strong> Each salt must be stored securely with the hash.</li>
+      <li><strong>Adds computational overhead.</strong></li>
+      <li><strong>Not encryption:</strong> Doesn't allow password recovery — only verification.</li>
+    </ul>
+
+    <h4>Common Secure Hash Algorithms</h4>
+    <p><strong>SHA-256</strong>, <strong>SHA-512</strong>, <strong>bcrypt</strong>, <strong>scrypt</strong>, <strong>Argon2</strong> (preferred for password storage).</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Technique</th><th>Purpose</th><th>Reversible</th><th>Security Level</th><th>Example Use</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Hashing</strong></td><td>Converts data into fixed hash</td><td>No</td><td>Moderate</td><td>Data integrity, checksums</td></tr>
+          <tr><td><strong>Salting</strong></td><td>Adds randomness to hashes</td><td>No</td><td>High</td><td>Password storage</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Hashing example with bcrypt (Python):</strong></p>
+<pre><code class="language-python">import bcrypt
+
+password = b"supersecret"
+# Generate salt and hash
+hashed = bcrypt.hashpw(password, bcrypt.gensalt())
+
+# To verify:
+bcrypt.checkpw(password, hashed)  # Returns True</code></pre>
+
+    <p>A simpler form:</p>
+<pre><code class="language-python">import bcrypt
+
+password = b"supersecret"
+salt = bcrypt.gensalt()
+hashed = bcrypt.hashpw(password, salt)
+# Store hashed in DB, never store raw password!</code></pre>
+
+    <h3>Public Key Infrastructure (PKI) &amp; Digital Certificates</h3>
+    <p><strong>PKI</strong> is a framework that manages <strong>digital certificates</strong> and <strong>public-key encryption</strong> to enable secure communication, authentication, and data integrity over untrusted networks.</p>
+
+    <p>PKI provides the foundation for <strong>HTTPS</strong>, <strong>digital signatures</strong>, <strong>email encryption</strong>, and <strong>secure user/device authentication.</strong></p>
+
+    <h4>Key Components</h4>
+    <ul>
+      <li><strong>Certificate Authority (CA):</strong> Issues and verifies digital certificates.</li>
+      <li><strong>Registration Authority (RA):</strong> Verifies identities before certificate issuance.</li>
+      <li><strong>Public/Private Key Pair:</strong> Used for encryption and decryption or signing and verification.</li>
+      <li><strong>Digital Certificates:</strong> Bind public keys to verified identities.</li>
+      <li><strong>Certificate Revocation List (CRL):</strong> Tracks invalid or compromised certificates.</li>
+    </ul>
+
+    <h4>Pros of PKI</h4>
+    <ul>
+      <li><strong>Strong security:</strong> Enables encryption, authentication, and data integrity.</li>
+      <li><strong>Scalability:</strong> Supports secure communication across large distributed systems.</li>
+      <li><strong>Trust framework:</strong> Certificates issued by trusted authorities enhance reliability.</li>
+      <li><strong>Non-repudiation:</strong> Digital signatures prove the origin and authenticity of data.</li>
+      <li><strong>Automation support:</strong> Modern systems allow automated certificate renewal and management.</li>
+    </ul>
+
+    <h4>Cons of PKI</h4>
+    <ul>
+      <li><strong>Complex setup and management:</strong> Requires proper configuration, key rotation, and certificate lifecycle management.</li>
+      <li><strong>High cost:</strong> Involves infrastructure, licensing, and operational expenses.</li>
+      <li><strong>Single point of trust:</strong> Compromise of a CA can impact many users.</li>
+      <li><strong>Revocation challenges:</strong> CRLs or OCSP responses may be slow or unavailable.</li>
+      <li><strong>User mismanagement:</strong> Improper key handling can compromise security.</li>
+    </ul>
+
+    <h4>Common Use Cases</h4>
+    <ul>
+      <li><strong>HTTPS (SSL/TLS):</strong> Secure web communication.</li>
+      <li><strong>Email encryption:</strong> Protects message content (S/MIME).</li>
+      <li><strong>Code signing:</strong> Verifies authenticity of software.</li>
+      <li><strong>VPNs and Zero Trust networks:</strong> Ensures secure device and user access.</li>
+    </ul>
+
+    <h4>Certificate Chain Diagram</h4>
+    <div class="archd" aria-label="Certificate Chain — Root CA to Browser">
+      <div class="archd-node is-infra"><span class="archd-icon">🏛️</span><span>Root CA</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🏢</span><span>Intermediate CA</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node"><span class="archd-icon">📜</span><span>Server Certificate</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-user"><span class="archd-icon">🌐</span><span>Browser</span></div>
+    </div>
+
+    <h3>Secure API Communication</h3>
+
+    <figure class="sec-figure">
+      <div class="archd" aria-label="Secure API architecture: client routes through auth, rate limit, API, and encrypted data store">
+        <div class="archd-row">
+          <div class="archd-node is-user"><span class="archd-icon">💻</span><span>API Client (Web)</span></div>
+          <div class="archd-node is-user"><span class="archd-icon">📱</span><span>API Client (Mobile)</span></div>
+        </div>
+        <div class="archd-arrow"><span class="archd-arrow-label">HTTPS / TLS</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🛡️</span><span>WAF — block OWASP Top 10</span></div>
+        <div class="archd-arrow"></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>Auth Gateway (OAuth2 / JWT / mTLS)</span></div>
+        <div class="archd-arrow"></div>
+        <div class="archd-node is-infra"><span class="archd-icon">⏱️</span><span>Rate Limiter &amp; Input Validation</span></div>
+        <div class="archd-arrow"><span class="archd-arrow-label">verified request</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>API Endpoint</span></div>
+        <div class="archd-arrow"><span class="archd-arrow-label">encrypted query</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🔐</span><span>Encrypted Data Store</span></div>
+      </div>
+      <figcaption>A hardened API path: every request is encrypted in transit, authenticated, rate-limited, validated — and data stays encrypted at rest.</figcaption>
+    </figure>
+
+    <p><strong>Key techniques:</strong></p>
+    <ul>
+      <li><strong>HTTPS (TLS):</strong> Encrypts data in transit.</li>
+      <li><strong>API keys:</strong> Identify and authenticate API consumers.</li>
+      <li><strong>OAuth 2.0 / OpenID Connect:</strong> Provide secure delegated authorization.</li>
+      <li><strong>JWT:</strong> Enable stateless authentication and authorization.</li>
+      <li><strong>HMAC:</strong> Ensures message integrity and authenticity.</li>
+      <li><strong>Rate limiting &amp; throttling:</strong> Prevent abuse or denial-of-service attacks.</li>
+      <li><strong>Input validation:</strong> Protects against injection and data corruption attacks.</li>
+    </ul>
+
+    <p><strong>Pros:</strong> Data confidentiality, integrity, authentication &amp; authorization, scalability, user trust.</p>
+
+    <p><strong>Cons:</strong> Added complexity, performance overhead, key management risks, misconfiguration risks, maintenance burden.</p>
+
+    <p><strong>Best practices:</strong></p>
+    <ul>
+      <li>Always use <strong>HTTPS</strong> (disable plain HTTP).</li>
+      <li>Implement <strong>strong authentication</strong> (OAuth 2.0, API keys, or mutual TLS).</li>
+      <li>Apply <strong>rate limiting</strong>, <strong>monitoring</strong>, and <strong>logging.</strong></li>
+      <li>Rotate and expire <strong>tokens/keys</strong> regularly.</li>
+      <li>Use <strong>WAFs (Web Application Firewalls)</strong> to filter malicious traffic.</li>
+    </ul>
+
+    <p><strong>JWT example (Python, PyJWT):</strong></p>
+<pre><code class="language-python">import jwt
+SECRET = 'your-secret-key'
+
+# Encode
+token = jwt.encode({'user': 'alice'}, SECRET, algorithm='HS256')
+
+# Decode/verify
+payload = jwt.decode(token, SECRET, algorithms=['HS256'])</code></pre>
+
+    <h3>Data Protection — Cheat Sheet</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Concept</th><th>What to Use/Do</th><th>Why</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Data at Rest</td><td>Full-disk, DB encryption</td><td>Protects stored data</td></tr>
+          <tr><td>Data in Transit</td><td>TLS/SSL, HTTPS</td><td>Prevents eavesdropping</td></tr>
+          <tr><td>Passwords</td><td>Hash + Salt (bcrypt, Argon2)</td><td>Not reversible, secure</td></tr>
+          <tr><td>Communication Auth</td><td>PKI, CA-signed certificates</td><td>Verifies identity</td></tr>
+          <tr><td>APIs</td><td>HTTPS, JWT/OAuth2, rate limiting</td><td>Secure, prevent abuse</td></tr>
+          <tr><td>Certificate Mgmt</td><td>Automate renewal, use strong CAs</td><td>Avoid expired/weak certs</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="network-infrastructure">Network &amp; Infrastructure Security</h2>
+
+    <figure class="sec-figure">
+      <div class="net-layers" aria-label="Network security layers: Internet, DDoS protection, WAF, load balancer, application, database">
+        <div class="net-layer l1">
+          <div class="net-num">1</div>
+          <div class="net-icon">🌐</div>
+          <div class="net-body">
+            <strong>Internet — Untrusted Edge</strong>
+            <span class="net-sub">Bots, scanners, attackers, real users — all arrive here.</span>
+          </div>
+        </div>
+        <div class="net-down">▼</div>
+        <div class="net-layer l2">
+          <div class="net-num">2</div>
+          <div class="net-icon">🛡️</div>
+          <div class="net-body">
+            <strong>DDoS Protection / CDN</strong>
+            <span class="net-sub">Cloudflare, AWS Shield — absorb volumetric attacks &amp; cache.</span>
+          </div>
+        </div>
+        <div class="net-down">▼</div>
+        <div class="net-layer l3">
+          <div class="net-num">3</div>
+          <div class="net-icon">🧱</div>
+          <div class="net-body">
+            <strong>WAF — Web Application Firewall</strong>
+            <span class="net-sub">Filters injection, XSS, OWASP Top 10 payloads.</span>
+          </div>
+        </div>
+        <div class="net-down">▼</div>
+        <div class="net-layer l4">
+          <div class="net-num">4</div>
+          <div class="net-icon">⚖️</div>
+          <div class="net-body">
+            <strong>Load Balancer / Reverse Proxy</strong>
+            <span class="net-sub">TLS termination, routing, health checks (NGINX, ALB).</span>
+          </div>
+        </div>
+        <div class="net-down">▼</div>
+        <div class="net-layer l5">
+          <div class="net-num">5</div>
+          <div class="net-icon">🧩</div>
+          <div class="net-body">
+            <strong>Application Tier</strong>
+            <span class="net-sub">Auth, RBAC/ABAC, input validation, business logic.</span>
+          </div>
+        </div>
+        <div class="net-down">▼</div>
+        <div class="net-layer l6">
+          <div class="net-num">6</div>
+          <div class="net-icon">🗄️</div>
+          <div class="net-body">
+            <strong>Database / Data Tier — Private Subnet</strong>
+            <span class="net-sub">Encryption at rest, row-level security, per-service users.</span>
+          </div>
+        </div>
+      </div>
+      <figcaption>Network security overview — every layer narrows the attack surface before traffic reaches your data.</figcaption>
+    </figure>
+
+    <h3>Why Network Security Matters</h3>
+    <ul>
+      <li><strong>External Threats:</strong> DDoS, intrusion attempts, IP spoofing, etc.</li>
+      <li><strong>Internal Risks:</strong> Misconfiguration, lateral movement after a breach.</li>
+      <li><strong>Cloud-Native Expansion:</strong> More exposure, new attack surfaces.</li>
+      <li><strong>Business Impact:</strong> Reliability, uptime, user trust, and data protection.</li>
+    </ul>
+
+    <h3>Firewalls</h3>
+    <p><strong>Purpose:</strong> Filter traffic based on IP, port, protocol.</p>
+
+    <p><strong>Types:</strong></p>
+    <ul>
+      <li><strong>Network-based:</strong> Protects entry points (perimeter gateway).</li>
+      <li><strong>Host-based:</strong> Secures individual servers/devices.</li>
+      <li><strong>Cloud firewalls:</strong> Tailored for cloud resources (e.g., AWS Security Groups).</li>
+    </ul>
+
+    <p><strong>Example: AWS Security Group (Terraform)</strong></p>
+<pre><code class="language-bash">resource "aws_security_group" "web_sg" {
+  name        = "web_sg"
+  description = "Allow HTTP and HTTPS"
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}</code></pre>
+
+    <h3>Reverse Proxies</h3>
+    <p><strong>Purpose:</strong> Route incoming requests, mask backend identities, add security layers (SSL termination, load balancing).</p>
+
+    <p><strong>Popular tools:</strong> NGINX, AWS ALB, HAProxy.</p>
+
+    <p><strong>Basic NGINX reverse proxy:</strong></p>
+<pre><code class="language-bash">server {
+    listen 80;
+    server_name example.com;
+
+    location / {
+        proxy_pass http://backend-service:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}</code></pre>
+
+    <p><strong>With TLS:</strong></p>
+<pre><code class="language-bash">server {
+    listen 443 ssl;
+    server_name example.com;
+    ssl_certificate /etc/ssl/cert.pem;
+    ssl_certificate_key /etc/ssl/key.pem;
+
+    location / {
+        proxy_pass http://backend:8080;
+    }
+}</code></pre>
+
+    <div class="archd-seq" aria-label="User to Reverse Proxy to Backend Server flow">
+      <div class="archd-seq-step"><span class="num">1</span>Request forwarded through reverse proxy</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Request</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🔁</span><span>Reverse Proxy</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Request</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Backend Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Response returned through proxy</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Response</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🔁</span><span>Reverse Proxy</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Response</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Backend Server</span></div>
+      </div>
+    </div>
+
+    <h3>Firewall vs. Reverse Proxy</h3>
+
+    <h4>Firewall</h4>
+    <p>A <strong>security barrier</strong> that filters incoming and outgoing network traffic based on defined security rules.</p>
+
+    <p><strong>Pros:</strong> Blocks unauthorized traffic; enforces policies based on IP/port/protocol/packet state; prevents malware/DDoS/brute-force; supports network segmentation (e.g., DMZ).</p>
+
+    <p><strong>Cons:</strong> Can't inspect application-level payloads deeply (unless NGFW); needs constant rule updates; doesn't provide caching/load balancing.</p>
+
+    <h4>Reverse Proxy</h4>
+    <p>Sits in front of web servers and acts as an <strong>intermediary</strong> for client requests.</p>
+
+    <p><strong>Pros:</strong> Hides internal server identities; load balancing; SSL/TLS termination; caching; can integrate WAF and authentication features.</p>
+
+    <p><strong>Cons:</strong> Adds complexity; can be a single point of failure if not redundant; slight latency; misconfiguration risk.</p>
+
+    <h4>Comparison Table</h4>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>Firewall</th><th>Reverse Proxy</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Primary Purpose</strong></td><td>Block unauthorized network traffic</td><td>Handle and manage web traffic to backend servers</td></tr>
+          <tr><td><strong>OSI Layer</strong></td><td>Network (Layer 3/4)</td><td>Application (Layer 7)</td></tr>
+          <tr><td><strong>Direction</strong></td><td>Controls traffic <em>into and out of</em> the network</td><td>Handles traffic <em>into</em> web servers</td></tr>
+          <tr><td><strong>Security Role</strong></td><td>Network perimeter defense</td><td>Application-level protection and traffic management</td></tr>
+          <tr><td><strong>Functions</strong></td><td>Filtering, monitoring, blocking</td><td>Load balancing, SSL termination, caching, routing</td></tr>
+          <tr><td><strong>Visibility</strong></td><td>Sees IPs, ports, and protocols</td><td>Sees HTTP/HTTPS requests and responses</td></tr>
+          <tr><td><strong>Example Tools</strong></td><td>pfSense, Cisco ASA, Fortinet</td><td>NGINX, HAProxy, Apache HTTPD, Cloudflare</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Summary:</strong> Firewalls protect the <strong>network layer;</strong> reverse proxies protect the <strong>application layer.</strong> They're complementary — often used together.</p>
+
+    <div class="archd" aria-label="Firewall and Reverse Proxy in the request path">
+      <div class="archd-node is-external"><span class="archd-icon">🌐</span><span>Internet</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Incoming Requests</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🧱</span><span>Firewall (Network Layer)</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Filtered Traffic</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🔁</span><span>Reverse Proxy (App Layer)</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">LB / Caching</span></div>
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Web Server 1</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Web Server 2</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Queries</span></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+    </div>
+
+    <h3>API Traffic Control: Rate Limiting, Throttling, IP Filtering</h3>
+
+    <h4>Rate Limiting</h4>
+    <p>Controls how many requests a client (IP, user, API key) can make within a specified time period.</p>
+
+    <p><strong>Example:</strong> A user may make <strong>100 requests per minute.</strong> Exceeding returns <strong>429 – Too Many Requests.</strong></p>
+
+    <p><strong>Pros:</strong> Prevents DDoS / API abuse; ensures fair usage; manages server load; protects against brute-force login.</p>
+
+    <p><strong>Cons:</strong> Can block legitimate bursts; adds latency at gateways; requires state management.</p>
+
+    <p><strong>Tools:</strong> NGINX, Kong Gateway, Cloudflare, AWS API Gateway.</p>
+
+    <h4>Throttling</h4>
+    <p><strong>Softer version</strong> of rate limiting: rather than rejecting excess requests, throttling <strong>queues or delays</strong> them.</p>
+
+    <p><strong>Example:</strong> After 100 requests/min, additional requests are processed slower (e.g., 1 per second).</p>
+
+    <p><strong>Pros:</strong> Prevents overload gracefully; better UX than hard blocking; useful for streaming/real-time systems.</p>
+
+    <p><strong>Cons:</strong> Adds response latency; more complex; might not fully protect against massive spikes.</p>
+
+    <p><strong>Use cases:</strong> Payment gateways, file uploads / video streaming, real-time APIs.</p>
+
+    <h4>IP Filtering</h4>
+    <p>Allows or blocks traffic based on the <strong>source IP address.</strong> First layer of defense at network or application level.</p>
+
+    <p><strong>Example:</strong> Allow only requests from specific corporate IPs; block known malicious IPs.</p>
+
+    <p><strong>Pros:</strong> Simple and effective for basic access control; reduces attack surface; works with firewalls/proxies/LBs.</p>
+
+    <p><strong>Cons:</strong> Ineffective against spoofed IPs / botnets; static allowlists need updates; not suitable for mobile clients or dynamic-IP cloud environments.</p>
+
+    <p><strong>Implementation:</strong> Firewall rules (AWS Security Groups, NACLs), reverse proxies, API Gateways.</p>
+
+    <h4>Summary Table</h4>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Technique</th><th>Purpose</th><th>Behavior</th><th>Pros</th><th>Cons</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Rate Limiting</strong></td><td>Restrict total requests per time window</td><td>Blocks excess</td><td>Prevents abuse, DDoS</td><td>May block legitimate spikes</td></tr>
+          <tr><td><strong>Throttling</strong></td><td>Slow down excess requests</td><td>Queues or delays</td><td>Smooth handling, user-friendly</td><td>Adds latency</td></tr>
+          <tr><td><strong>IP Filtering</strong></td><td>Allow/block based on IPs</td><td>Drops or denies</td><td>Simple, low-cost security</td><td>Hard to manage dynamic IPs</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="archd" aria-label="API Gateway IP Filter Rate Limit Throttle flow">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client App</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Request</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🛂</span><span>IP Filter</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Allowed</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">⏱️</span><span>Rate Limiter</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Within Limit</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🐢</span><span>Throttler</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Processed</span></div>
+      <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Backend Service</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Logs / Alerts</span></div>
+      <div class="archd-node is-data"><span class="archd-icon">📊</span><span>Monitoring &amp; Logs</span></div>
+    </div>
+
+    <p>Simplified mental model:</p>
+<pre><code class="language-bash">[User]-->(API Gateway)--(Token Bucket)-->[Backend Service]</code></pre>
+
+    <h2 id="network-segmentation">Network Segmentation &amp; Isolation</h2>
+    <p><strong>Network segmentation</strong> is the practice of dividing a network into smaller logical or physical subnetworks (segments) to limit lateral movement, enforce granular security policies, and improve performance. <strong>Isolation</strong> means enforcing strict controls (often via firewalls or access control) so that one segment cannot freely access another.</p>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Lateral Movement</div>
+        <p>The technique attackers use to move within a network after gaining initial access — typically moving from one compromised system to others, in search of sensitive data, credentials, or critical assets.</p>
+      </div>
+    </div>
+
+    <h3>Why It Matters</h3>
+    <ul>
+      <li>Reduces blast radius when a system is compromised.</li>
+      <li>Enforces least-privilege access between services.</li>
+      <li>Improves performance and traffic management.</li>
+      <li>Helps meet compliance and audit requirements (PCI, HIPAA, etc.).</li>
+    </ul>
+
+    <h3>Common Segmentation Patterns</h3>
+    <ul>
+      <li><strong>Perimeter (Internet) → DMZ → Application → Database.</strong></li>
+      <li><strong>VLAN-based segmentation</strong> (L2 segmentation inside LANs).</li>
+      <li><strong>Subnet + ACLs</strong> (IP subnets with routing / access control lists).</li>
+      <li><strong>Zone-based firewalling</strong> (separate security zones).</li>
+      <li><strong>Microsegmentation</strong> (host-level segmentation using software agents, service mesh, cloud security groups).</li>
+      <li><strong>Zero Trust segmentation</strong> (authenticate &amp; authorize every connection).</li>
+    </ul>
+
+    <h3>Techniques / Tools</h3>
+    <ul>
+      <li><strong>VLANs</strong> (switch-level segmentation).</li>
+      <li><strong>Subnets + routing</strong> (logical segments).</li>
+      <li><strong>Firewalls / NGFWs</strong> (policy enforcement between segments).</li>
+      <li><strong>Security groups / NACLs</strong> (cloud-native segmentation).</li>
+      <li><strong>VPNs and private links</strong> (isolate management and inter-datacenter traffic).</li>
+      <li><strong>Service mesh / sidecars</strong> (mTLS, policies between microservices).</li>
+      <li><strong>Host-based firewalls</strong> (iptables, Windows Firewall).</li>
+      <li><strong>Network access control (NAC)</strong> and identity-aware proxies.</li>
+    </ul>
+
+    <h3>Pros</h3>
+    <ul>
+      <li>Limits lateral movement and attack surface.</li>
+      <li>Better compliance and auditability.</li>
+      <li>Fine-grained policy control.</li>
+      <li>Can improve network performance.</li>
+    </ul>
+
+    <h3>Cons / Trade-offs</h3>
+    <ul>
+      <li>Increased management complexity.</li>
+      <li>Misconfiguration risk.</li>
+      <li>Potential operational overhead.</li>
+      <li>Can add latency if traffic traverses multiple enforcement points.</li>
+    </ul>
+
+    <h3>Best Practices</h3>
+    <ul>
+      <li>Start with a <strong>clear segmentation plan:</strong> Categorize assets by sensitivity &amp; function.</li>
+      <li>Apply <strong>least privilege:</strong> Default deny between segments; allow only required flows.</li>
+      <li><strong>Defense-in-depth:</strong> Combine perimeter, segment firewalls, host controls.</li>
+      <li><strong>Centralize policy management</strong> (IaC for network/firewall rules).</li>
+      <li><strong>Document</strong> allowed flows and maintain network maps.</li>
+      <li><strong>Automate</strong> audits and drift detection.</li>
+      <li><strong>Use monitoring &amp; IDS/IPS</strong> per segment.</li>
+      <li>Test via chaos / attack simulations and pentesting.</li>
+    </ul>
+
+    <h3>Implementation Checklist</h3>
+    <ul>
+      <li>☐ Inventory assets and classify by sensitivity (prod, dev, management, public).</li>
+      <li>☐ Define required flows (source → dest: ports/protocols).</li>
+      <li>☐ Design segments (DMZ, app, db, management, monitoring, CI/CD).</li>
+      <li>☐ Implement segmentation (VLANs/subnets, security groups, NGFW rules).</li>
+      <li>☐ Harden management plane (separate network + MFA for admin access).</li>
+      <li>☐ Deploy host-based protections &amp; microsegmentation if required.</li>
+      <li>☐ Configure logging &amp; monitoring per segment.</li>
+      <li>☐ Set up automated policy tests and regular audits.</li>
+      <li>☐ Plan for incident response (how to quarantine a segment).</li>
+    </ul>
+
+    <h3>Typical Segmented Layout</h3>
+    <div class="archd" aria-label="Typical segmented network layout with DMZ, app, db">
+      <div class="archd-node is-external"><span class="archd-icon">🌐</span><span>Internet</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🌍</span><span>CDN &amp; Load Balancer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🧱</span><span>Perimeter Firewall</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node"><span class="archd-icon">🛡️</span><span>Web App DMZ</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🧱</span><span>App Firewall</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>App Subnet</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🧱</span><span>DB Firewall</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>DB Subnet</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-external"><span class="archd-icon">🛠️</span><span>Management Network</span></div>
+        <div class="archd-node is-external"><span class="archd-icon">📈</span><span>Monitoring &amp; IDS</span></div>
+      </div>
+    </div>
+
+    <h3>When to Use Microsegmentation</h3>
+    <ul>
+      <li>Highly dynamic, east-west traffic heavy environments (K8s, microservices).</li>
+      <li>Environments with strict compliance or where host-level compromise risk is high.</li>
+      <li>When you need policy tied to identity/service, not to network addresses.</li>
+    </ul>
+
+    <h3>Pitfalls to Avoid</h3>
+    <ul>
+      <li>Over-segmentation causing operational headache.</li>
+      <li>Relying on network segmentation alone (forget host-level controls).</li>
+      <li>Not version-controlling network policies.</li>
+      <li>Ignoring management plane isolation.</li>
+    </ul>
+
+    <h2 id="zero-trust">Zero Trust Security Model</h2>
+    <p><strong>Definition:</strong> A cybersecurity framework based on the principle: <strong>"Never trust, always verify."</strong></p>
+
+    <p>Zero Trust assumes that <strong>no user, device, or application</strong> — whether inside or outside the network — should be automatically trusted. Every access request must be <strong>authenticated, authorized, and continuously validated.</strong></p>
+
+    <blockquote>
+      The traditional perimeter-based security model is obsolete — threats can come from <strong>inside</strong> the network too.
+    </blockquote>
+
+    <h3>Key Principles</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Principle</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>1. Verify Explicitly</strong></td><td>Always authenticate and authorize every request using <strong>all available data</strong> (identity, device, location, behavior).</td></tr>
+          <tr><td><strong>2. Least Privilege Access</strong></td><td>Give users and applications <strong>only the minimum required access.</strong></td></tr>
+          <tr><td><strong>3. Assume Breach</strong></td><td>Design systems as if they are already compromised. Continuously monitor, inspect, and segment traffic.</td></tr>
+          <tr><td><strong>4. Microsegmentation</strong></td><td>Divide the network into isolated zones so that attackers cannot move laterally.</td></tr>
+          <tr><td><strong>5. Continuous Monitoring</strong></td><td>Use real-time analytics and telemetry to detect anomalies and re-evaluate trust dynamically.</td></tr>
+          <tr><td><strong>6. Strong Identity and Device Management</strong></td><td>Use MFA, SSO, and device posture checks (e.g., OS version, security patches).</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>How Zero Trust Works</h3>
+    <ol>
+      <li><strong>User/Device requests access</strong> → identity verified (via SSO/MFA).</li>
+      <li><strong>Policy Engine</strong> evaluates context (who, what, where, how).</li>
+      <li><strong>Access granted</strong> only to the specific resource, for a specific session.</li>
+      <li><strong>Session continuously monitored</strong> for anomalies (behavioral analytics).</li>
+      <li><strong>Access revoked</strong> if the session or device becomes non-compliant.</li>
+    </ol>
+
+    <h3>Zero Trust Architecture Components</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Component</th><th>Function</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Identity Provider (IdP)</strong></td><td>Authenticates users (Azure AD, Okta).</td></tr>
+          <tr><td><strong>Policy Engine</strong></td><td>Decides access based on identity, device, risk score, and context.</td></tr>
+          <tr><td><strong>Policy Enforcement Point (PEP)</strong></td><td>Enforces decisions (reverse proxy, gateway, endpoint agent).</td></tr>
+          <tr><td><strong>Telemetry &amp; Analytics</strong></td><td>Collects logs, detects anomalies, provides continuous trust evaluation.</td></tr>
+          <tr><td><strong>Microsegmented Network</strong></td><td>Isolates systems and limits lateral movement.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Advantages</h3>
+    <ul>
+      <li>Prevents unauthorized access — even if attackers breach the network.</li>
+      <li>Reduces lateral movement and insider threat impact.</li>
+      <li>Improves compliance (NIST SP 800-207, ISO 27001).</li>
+      <li>Scales well across cloud, hybrid, and remote environments.</li>
+      <li>Enhances visibility across all access points.</li>
+    </ul>
+
+    <h3>Challenges</h3>
+    <ul>
+      <li>Complex to implement in legacy networks.</li>
+      <li>Requires identity centralization and strong IAM policies.</li>
+      <li>Continuous monitoring can increase operational overhead.</li>
+      <li>Needs integration across identity, network, endpoint, and application layers.</li>
+    </ul>
+
+    <h3>Comparison: Traditional vs. Zero Trust</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Aspect</th><th>Traditional Security</th><th>Zero Trust Security</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Trust Model</strong></td><td>"Trust but verify"</td><td>"Never trust, always verify"</td></tr>
+          <tr><td><strong>Perimeter</strong></td><td>Network boundary (firewall)</td><td>Identity &amp; device-centric</td></tr>
+          <tr><td><strong>Access</strong></td><td>Implicit once inside network</td><td>Explicit, per request/session</td></tr>
+          <tr><td><strong>Focus</strong></td><td>Keep outsiders out</td><td>Protect resources everywhere</td></tr>
+          <tr><td><strong>Visibility</strong></td><td>Limited</td><td>Continuous monitoring &amp; analytics</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Zero Trust Architecture Diagram</h3>
+    <div class="archd" aria-label="Zero Trust Architecture with policy engine, IdP, monitoring">
+      <div class="archd-node is-external"><span class="archd-icon">👤</span><span>External User / Device</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Access Request</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>Zero Trust Gateway (PEP)</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🆔</span><span>Identity Provider (SSO, MFA)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">⚖️</span><span>Policy Engine</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📈</span><span>Continuous Monitoring</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Allow / Deny</span></div>
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Application Server</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database</span></div>
+      </div>
+    </div>
+
+    <h3>Zero Trust in Practice</h3>
+    <ul>
+      <li>Use <strong>SSO + MFA</strong> for all users and admins.</li>
+      <li>Enforce <strong>device posture checks</strong> before granting access.</li>
+      <li>Apply <strong>microsegmentation</strong> at network and workload level.</li>
+      <li>Implement <strong>just-in-time (JIT)</strong> privileged access.</li>
+      <li>Integrate with <strong>SIEM/SOAR</strong> tools for active monitoring.</li>
+      <li>Continuously <strong>evaluate session risk</strong> and revoke access dynamically.</li>
+    </ul>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Analogy</div>
+        <p>Zero Trust is like airport security — every traveler must show ID (authenticate), get screened (policy check), and can only enter specific gates (authorized resources). Even inside, behavior is continuously monitored.</p>
+      </div>
+    </div>
+
+    <h2 id="cloud-environments">Securing Cloud Environments</h2>
+
+    <h3>Shared Responsibility Model</h3>
+    <p>Security in the cloud is a <strong>shared responsibility</strong> between the <strong>cloud provider</strong> and the <strong>customer.</strong></p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Responsibility</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Cloud Provider</strong></td><td>Secures physical infrastructure, hardware, network, and foundational services (AWS, Azure, GCP).</td></tr>
+          <tr><td><strong>Customer</strong></td><td>Secures data, identity, access, and configurations within the cloud environment.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Key Cloud Security Practices</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Practice</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>IAM (Identity &amp; Access Mgmt)</strong></td><td>Enforce RBAC, least privilege, and MFA.</td></tr>
+          <tr><td><strong>Encryption</strong></td><td>Encrypt data at rest (EBS, S3, Cloud Storage) and data in transit (via TLS/HTTPS).</td></tr>
+          <tr><td><strong>Audit Logging</strong></td><td>Enable detailed audit trails (AWS CloudTrail, Azure Monitor, GCP Audit Logs).</td></tr>
+          <tr><td><strong>CSPM (Cloud Security Posture Management)</strong></td><td>Continuously scan cloud resources for misconfigurations, policy violations, and compliance gaps.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>AWS IAM Policy Example</h3>
+<pre><code class="language-javascript">{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:GetObject"],
+      "Resource": ["arn:aws:s3:::mybucket/*"]
+    }
+  ]
+}</code></pre>
+
+    <blockquote>
+      Grants read-only access to all objects in the S3 bucket <code>mybucket</code>.
+    </blockquote>
+
+    <h3>Additional Cloud Security Best Practices</h3>
+    <ul>
+      <li><strong>Network segmentation:</strong> Use VPCs, subnets, and security groups to isolate workloads.</li>
+      <li><strong>Zero Trust principles:</strong> Verify each access request — don't assume trust inside your network.</li>
+      <li><strong>Key management:</strong> Use managed services like <strong>AWS KMS</strong>, <strong>Azure Key Vault</strong>, <strong>GCP KMS</strong> for secure key lifecycle.</li>
+      <li><strong>Monitoring &amp; alerting:</strong> Use SIEM tools (AWS GuardDuty, Azure Sentinel) for threat detection.</li>
+      <li><strong>Backup &amp; recovery:</strong> Automate snapshots, versioning, cross-region backups.</li>
+      <li><strong>Compliance automation:</strong> Use <strong>CSPM</strong> and <strong>CIEM</strong> to maintain governance.</li>
+    </ul>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Aspect</th><th>Best Practice</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Access Management</strong></td><td>RBAC, least privilege, MFA</td></tr>
+          <tr><td><strong>Data Protection</strong></td><td>Encryption (in transit &amp; at rest)</td></tr>
+          <tr><td><strong>Visibility &amp; Monitoring</strong></td><td>Logging, threat detection, alerts</td></tr>
+          <tr><td><strong>Configuration Security</strong></td><td>CSPM &amp; automated policy enforcement</td></tr>
+          <tr><td><strong>Resilience</strong></td><td>Regular backups, versioning, DR planning</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="serverless-container">Serverless &amp; Container Security</h2>
+
+    <h3>Serverless Security</h3>
+    <p>Serverless functions (AWS Lambda, Azure Functions, GCP Cloud Functions) abstract away infrastructure, but <strong>security of the code and configurations</strong> remains your responsibility.</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Practice</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>IAM Roles (Least Privilege)</strong></td><td>Assign narrowly scoped IAM roles — each function should only access the resources it truly needs.</td></tr>
+          <tr><td><strong>Timeouts &amp; Execution Limits</strong></td><td>Set strict runtime limits to prevent resource abuse or infinite loops.</td></tr>
+          <tr><td><strong>API Gateway Security</strong></td><td>Front serverless functions with API Gateways that enforce authentication, rate limiting, and IP filtering.</td></tr>
+          <tr><td><strong>Input Validation</strong></td><td>Sanitize and validate inputs to prevent injection attacks.</td></tr>
+          <tr><td><strong>Logging &amp; Monitoring</strong></td><td>Use services like AWS CloudWatch Logs or Azure Monitor for visibility and anomaly detection.</td></tr>
+          <tr><td><strong>Dependency Management</strong></td><td>Regularly scan third-party libraries for vulnerabilities (AWS CodeGuru, Snyk).</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Container Security</h3>
+    <p>Containers (Docker, Kubernetes workloads) share the host kernel, requiring <strong>strong isolation and image hygiene.</strong></p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Practice</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Image Scanning</strong></td><td>Scan container images using <strong>Trivy</strong>, <strong>Clair</strong>, <strong>Anchore</strong> to detect known CVEs.</td></tr>
+          <tr><td><strong>Run as Non-Root</strong></td><td>Prevent privilege escalation by running containers under non-root users.</td></tr>
+          <tr><td><strong>Limit Privileges</strong></td><td>Use minimal capabilities (<code>--cap-drop=ALL</code>) and read-only file systems.</td></tr>
+          <tr><td><strong>Network Policies (Kubernetes)</strong></td><td>Use <strong>NetworkPolicies</strong> to restrict pod-to-pod communication and block lateral movement.</td></tr>
+          <tr><td><strong>Image Signing</strong></td><td>Use <strong>Notary</strong> or <strong>Cosign</strong> to verify image authenticity before deployment.</td></tr>
+          <tr><td><strong>Runtime Protection</strong></td><td>Employ tools like <strong>Falco</strong> or <strong>AppArmor</strong> to detect abnormal container activity.</td></tr>
+          <tr><td><strong>Patch &amp; Update</strong></td><td>Regularly rebuild and update images with the latest OS and library patches.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Summary Table</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Area</th><th>Key Security Measures</th><th>Tools/Services</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Serverless</strong></td><td>IAM least privilege, input validation, API Gateway protection</td><td>AWS Lambda + CloudWatch, Azure Functions + Defender, GCP Functions + Security Scanner</td></tr>
+          <tr><td><strong>Containers</strong></td><td>Image scanning, non-root execution, network policies, runtime hardening</td><td>Trivy, Clair, Falco, AppArmor, Kubernetes NetworkPolicies</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Best Practices Across Both</h3>
+    <ul>
+      <li>Adopt the <strong>Principle of Least Privilege</strong> everywhere.</li>
+      <li>Automate security checks in <strong>CI/CD pipelines.</strong></li>
+      <li>Use <strong>Infrastructure as Code (IaC)</strong> scanning tools (Checkov, tfsec).</li>
+      <li>Continuously monitor logs and metrics for anomalies.</li>
+      <li>Rotate and securely store <strong>secrets</strong> using KMS or Vault.</li>
+    </ul>
+
+    <h2 id="microservices-security">Security in Microservices</h2>
+
+    <h3>1. Service-to-Service Authentication</h3>
+    <p>Each microservice must verify the identity of the other before sharing data.</p>
+    <ul>
+      <li>Use <strong>JWT</strong> for stateless authentication and authorization.</li>
+      <li>Use <strong>Mutual TLS (mTLS)</strong> to authenticate both client and server using digital certificates.</li>
+      <li>Rotate tokens and certificates regularly.</li>
+      <li>Store secrets securely (AWS Secrets Manager, HashiCorp Vault).</li>
+    </ul>
+    <p><em>Example:</em> Service A → includes JWT in request → Service B verifies signature and claims.</p>
+
+    <h3>2. API Gateway</h3>
+    <p>Acts as a <strong>central entry point</strong> for all external traffic into your microservices.</p>
+    <ul>
+      <li>Enforces <strong>authentication</strong>, <strong>authorization</strong>, <strong>input validation.</strong></li>
+      <li>Implements <strong>rate limiting</strong>, <strong>IP filtering</strong>, <strong>request logging.</strong></li>
+      <li>Hides internal services from external exposure.</li>
+      <li>Integrates with <strong>IAM</strong> or <strong>OAuth 2.0</strong> providers for user identity management.</li>
+    </ul>
+    <p><em>Example:</em> API Gateway verifies OAuth token before routing request to internal services.</p>
+
+    <h3>3. Service Mesh</h3>
+    <p>A <strong>service mesh</strong> (Istio, Linkerd, Consul) adds security, observability, and traffic management between microservices without changing application code.</p>
+    <ul>
+      <li>Provides <strong>fine-grained traffic policies</strong> and <strong>mTLS encryption</strong> for all inter-service communication.</li>
+      <li>Implements <strong>zero-trust</strong> principles inside the cluster.</li>
+      <li>Enables <strong>access control</strong>, <strong>telemetry</strong>, <strong>automatic certificate rotation.</strong></li>
+      <li>Offloads network security from developers — handled by <strong>sidecar proxies</strong> (Envoy).</li>
+    </ul>
+    <p><em>Example:</em> Service A ↔ Service B communication is automatically encrypted and authenticated by the service mesh.</p>
+
+    <h3>Summary Table</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Layer</th><th>Security Focus</th><th>Techniques / Tools</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Edge (External)</strong></td><td>Secure user access</td><td>API Gateway, OAuth 2.0, WAF</td></tr>
+          <tr><td><strong>Service-to-Service</strong></td><td>Authenticate internal requests</td><td>JWT, mTLS, Service Accounts</td></tr>
+          <tr><td><strong>Intra-Service (Network)</strong></td><td>Encrypted and controlled communication</td><td>Service Mesh (Istio, Linkerd)</td></tr>
+          <tr><td><strong>Secrets Management</strong></td><td>Protect credentials and tokens</td><td>HashiCorp Vault, AWS Secrets Manager</td></tr>
+          <tr><td><strong>Monitoring &amp; Auditing</strong></td><td>Detect abnormal behavior</td><td>Prometheus, OpenTelemetry, SIEM</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Secure Microservices Architecture</h3>
+    <div class="archd" aria-label="Secure microservices architecture with API gateway, service mesh, and vault">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">Authenticated Request</span></div>
+      <div class="archd-node is-service"><span class="archd-icon">🚪</span><span>API Gateway (Auth, Rate Limit, Validation)</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">JWT / OAuth Token</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Service A</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Service B</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Service C</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">mTLS + Policy</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🕸️</span><span>Service Mesh (mTLS, Policy, Observability)</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🔐</span><span>Secrets Manager / Vault</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">📊</span><span>Monitoring &amp; Logging</span></div>
+      </div>
+    </div>
+
+    <p><strong>Key takeaways:</strong></p>
+    <ul>
+      <li>Apply <strong>Zero Trust:</strong> authenticate and encrypt <em>every</em> service call.</li>
+      <li>Use <strong>API Gateways</strong> for edge protection, and <strong>Service Meshes</strong> for internal trust.</li>
+      <li>Automate <strong>certificate and token management.</strong></li>
+      <li>Continuously <strong>monitor, log, and analyze</strong> inter-service communication.</li>
+    </ul>
+
+    <h2 id="owasp-top-10">Common Vulnerabilities — OWASP Top 10</h2>
+    <ul>
+      <li><strong>Injection:</strong> SQL, NoSQL, OS command injection.</li>
+      <li><strong>Broken Authentication:</strong> Weak or no authentication.</li>
+      <li><strong>Sensitive Data Exposure:</strong> Unencrypted data.</li>
+      <li><strong>Security Misconfiguration:</strong> Default creds, open ports.</li>
+      <li><strong>XSS, CSRF, SSRF:</strong> Client-side and server-side threats.</li>
+    </ul>
+
+    <p><strong>Mitigation:</strong></p>
+    <ul>
+      <li>Input validation.</li>
+      <li>Secure authentication.</li>
+      <li>Encrypt sensitive data.</li>
+      <li>Harden configuration.</li>
+      <li>Secure defaults.</li>
+    </ul>
+
+    <h2 id="oauth-flows">OAuth 2.0 Flows — Pick the Right One</h2>
+    <p>Most security failures in modern apps come from picking the wrong OAuth flow or skipping steps. Here's the decision tree.</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Flow</th><th>Use for</th><th>What you need to know</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Authorization Code + PKCE</strong></td><td>SPAs, mobile apps</td><td>Modern best practice. PKCE prevents code interception.</td></tr>
+          <tr><td><strong>Authorization Code</strong> (no PKCE)</td><td>Server-side web apps with a client secret</td><td>Classic flow; needs a confidential client (secret server-side).</td></tr>
+          <tr><td><strong>Client Credentials</strong></td><td>Machine-to-machine (one service calls another)</td><td>No user; just a service identity.</td></tr>
+          <tr><td><strong>Device Code</strong></td><td>TVs, CLI tools, IoT devices</td><td>"Visit example.com/device and enter ABC-123"</td></tr>
+          <tr><td><strong><s>Implicit</s></strong> (deprecated)</td><td><s>SPAs</s></td><td><strong>Don't use.</strong> Token in URL = browser history leakage. Use Auth Code + PKCE.</td></tr>
+          <tr><td><strong><s>Resource Owner Password</s></strong> (deprecated)</td><td><s>Trusted first-party login</s></td><td><strong>Don't use.</strong> App handles the password directly — defeats OAuth's purpose.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">In a System Design Interview</div>
+        <p>"We'll use Authorization Code + PKCE for the SPA, Client Credentials for our microservices to talk to each other, and Device Code for the CLI tool."</p>
+      </div>
+    </div>
+
+    <h3>Authorization Code + PKCE Flow (Sequence)</h3>
+    <div class="archd-seq" aria-label="Authorization Code + PKCE OAuth flow">
+      <div class="archd-seq-step"><span class="num">1</span>User initiates login from SPA</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">click Login</span></div>
+        <div class="archd-node"><span class="archd-icon">📱</span><span>SPA / Mobile</span></div>
+        <div class="archd-seq-arrow right"><span class="label">redirect + code_challenge</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔐</span><span>Auth Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Auth Server returns short-lived code</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow left"><span class="label">login form</span></div>
+        <div class="archd-node"><span class="archd-icon">📱</span><span>SPA / Mobile</span></div>
+        <div class="archd-seq-arrow left"><span class="label">auth code</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔐</span><span>Auth Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Client exchanges code + verifier for tokens</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">—</span></div>
+        <div class="archd-node"><span class="archd-icon">📱</span><span>SPA / Mobile</span></div>
+        <div class="archd-seq-arrow right"><span class="label">code + code_verifier</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔐</span><span>Auth Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Auth Server returns access &amp; refresh tokens</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow left"><span class="label">logged in</span></div>
+        <div class="archd-node"><span class="archd-icon">📱</span><span>SPA / Mobile</span></div>
+        <div class="archd-seq-arrow left"><span class="label">access_token + refresh_token</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔐</span><span>Auth Server</span></div>
+      </div>
+    </div>
+
+    <h2 id="jwt-pitfalls">JWT Pitfalls — What Goes Wrong</h2>
+    <p>JWT is everywhere, but it's also where the most security mistakes happen.</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Pitfall</th><th>Why it's bad</th><th>Fix</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Storing JWT in <code>localStorage</code></strong></td><td>Any XSS instantly steals the token (no <code>HttpOnly</code> protection)</td><td>Use <code>HttpOnly</code>, <code>Secure</code>, <code>SameSite=Lax</code> cookies instead</td></tr>
+          <tr><td><strong>Not validating the signature</strong></td><td>Anyone can forge a JWT with admin claims</td><td>Always verify with the public key/secret. Reject <code>alg: none</code>.</td></tr>
+          <tr><td><strong>Accepting <code>alg: none</code></strong></td><td>Famous CVE — library lets you skip signature</td><td>Pin the expected algorithm in your verifier</td></tr>
+          <tr><td><strong>No expiry (<code>exp</code>)</strong></td><td>Stolen token works forever</td><td>Set short <code>exp</code> (15-60 min). Use refresh tokens for long-lived sessions.</td></tr>
+          <tr><td><strong>No token revocation strategy</strong></td><td>Can't invalidate before <code>exp</code> even if you know the token is compromised</td><td>Keep a blocklist OR use short expiry + refresh</td></tr>
+          <tr><td><strong>Storing sensitive data in the payload</strong></td><td>JWT payload is base64-encoded, <em>not encrypted</em> — anyone with the token can read it</td><td>Don't put PII or secrets in the JWT. Use opaque tokens or encrypt the payload (JWE).</td></tr>
+          <tr><td><strong>Confusing JWT with sessions</strong></td><td>JWTs can't be revoked easily; sessions can be deleted server-side</td><td>If you need instant revocation, use server-side sessions.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="defense-in-depth">Defense in Depth — Layered Security</h2>
+    <p>A single security control will eventually fail. <strong>Layer your defenses</strong> so an attacker has to bypass multiple controls.</p>
+
+    <div class="archd" aria-label="Defense in Depth layered security stack">
+      <div class="archd-node is-external"><span class="archd-icon">🌐</span><span>Internet</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🛡️</span><span>[1] CDN / Anti-DDoS (Cloudflare, AWS Shield)</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🧱</span><span>[2] WAF — blocks OWASP Top 10</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>[3] API Gateway — auth, rate limits, JWT</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-service"><span class="archd-icon">🔐</span><span>[4] App-level authorization — role/permission</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>[5] DB access controls — row-level security, per-service users</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">🔒</span><span>[6] Encryption at rest — data stays encrypted on disk</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-external"><span class="archd-icon">📋</span><span>[7] Audit logs — every access logged for IR</span></div>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Lesson</div>
+        <p>Even if one layer is bypassed, the next catches it. Don't rely on a single "wall."</p>
+      </div>
+    </div>
+
+    <h2 id="secrets-management">Secrets Management — Don't Put Secrets in Code</h2>
+    <p>Hard-coded API keys, DB passwords, and TLS certs in source repos are how breaches happen. Use a <strong>secrets manager.</strong></p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Tool</th><th>Pros</th><th>Cons</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>HashiCorp Vault</strong></td><td>Cloud-agnostic, dynamic secrets, fine-grained policies</td><td>Operational complexity</td></tr>
+          <tr><td><strong>AWS Secrets Manager / Parameter Store</strong></td><td>Native AWS integration, automatic rotation</td><td>AWS-only</td></tr>
+          <tr><td><strong>GCP Secret Manager</strong></td><td>Native GCP integration, versioned</td><td>GCP-only</td></tr>
+          <tr><td><strong>Azure Key Vault</strong></td><td>Native Azure integration</td><td>Azure-only</td></tr>
+          <tr><td><strong>Doppler / 1Password Secrets Automation</strong></td><td>Developer-friendly UX</td><td>Hosted SaaS</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>The non-negotiables for any secrets system:</strong></p>
+    <ol>
+      <li><strong>Rotate</strong> secrets regularly (and ideally on-demand if compromised).</li>
+      <li><strong>Audit</strong> — log every access; alert on unusual patterns.</li>
+      <li><strong>Least privilege</strong> — each service gets only the secrets it needs.</li>
+      <li><strong>Never in source control</strong> — use <code>.gitignore</code> + pre-commit hooks (<code>gitleaks</code>, <code>trufflehog</code>).</li>
+    </ol>
+
+    <h2 id="security-headers">Common Security Headers — Defaults Every App Should Set</h2>
+    <p>These belong on every HTTP response. Forgetting them is a finding in any security audit.</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Header</th><th>What it does</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>Strict-Transport-Security</code></td><td>Force HTTPS for all future requests (HSTS)</td></tr>
+          <tr><td><code>Content-Security-Policy</code></td><td>Whitelist allowed scripts/styles (strongest XSS defense)</td></tr>
+          <tr><td><code>X-Content-Type-Options: nosniff</code></td><td>Stop browsers from guessing MIME types</td></tr>
+          <tr><td><code>X-Frame-Options: DENY</code></td><td>Prevent clickjacking (or use CSP's <code>frame-ancestors</code>)</td></tr>
+          <tr><td><code>Referrer-Policy: strict-origin-when-cross-origin</code></td><td>Limit referer leakage</td></tr>
+          <tr><td><code>Permissions-Policy</code></td><td>Disable browser features (camera, mic) you don't need</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="combined-tips">Combined Tips &amp; Tricks</h2>
+    <p>A consolidated master list from all sections.</p>
+
+    <h3>General</h3>
+    <ul>
+      <li><strong>Shift Left:</strong> Start thinking about security early in your project. Embed security throughout the SDLC.</li>
+      <li><strong>Automate security checks:</strong> Use CI tools to catch issues early. Integrate security tests and vulnerability scans into CI/CD pipelines.</li>
+      <li><strong>Principle of Least Privilege:</strong> Give only the permissions needed.</li>
+      <li><strong>Patch early, patch often:</strong> Stay on top of OS, library, and container image updates.</li>
+      <li><strong>Review regularly:</strong> Security is an ongoing process, not a one-time setup.</li>
+      <li><strong>Educate your team:</strong> Security awareness is everyone's job.</li>
+    </ul>
+
+    <h3>Authentication &amp; Authorization</h3>
+    <ul>
+      <li>Always use <strong>multi-factor authentication (MFA)</strong> where possible.</li>
+      <li>Store sensitive tokens/secrets in <strong>vaults</strong> (AWS Secrets Manager, HashiCorp Vault).</li>
+      <li>Rotate keys and secrets regularly. Automate rotation.</li>
+    </ul>
+
+    <h3>Data Protection</h3>
+    <ul>
+      <li><strong>Encrypt everywhere:</strong> Both at rest and in transit — never skip one.</li>
+      <li>Use <strong>parameterized queries</strong> to prevent SQL injection.</li>
+      <li>Always <strong>salt</strong> and <strong>hash</strong> passwords — never store them in plaintext.</li>
+      <li><strong>Hash, don't encrypt, passwords:</strong> And always salt them.</li>
+      <li><strong>Automate certificate renewal:</strong> Use tools like Let's Encrypt with auto-renewal.</li>
+    </ul>
+
+    <h3>Network Security</h3>
+    <ul>
+      <li>Regularly <strong>scan for open ports</strong> and <strong>unused services.</strong></li>
+      <li>Use <strong>security groups</strong> and <strong>VPCs</strong> in the cloud for isolation.</li>
+      <li><strong>Harden your APIs:</strong> Rate limiting, IP filtering, input validation, strong authentication.</li>
+      <li><strong>Trust but verify:</strong> Use mTLS, certificate pinning, threat modeling.</li>
+    </ul>
+
+    <h3>Monitoring &amp; Logging</h3>
+    <ul>
+      <li>Log <strong>all security events</strong> and review them regularly.</li>
+      <li>Set up <strong>alerting</strong> for suspicious activities.</li>
+      <li><strong>Enable logging and monitoring:</strong> Know when and where breaches or anomalies happen.</li>
+      <li><strong>Log everything (securely):</strong> Centralize logs and protect them with encryption.</li>
+    </ul>
+
+    <h3>Operations</h3>
+    <ul>
+      <li><strong>Embrace CSPM:</strong> Use tools to continuously assess your cloud security posture.</li>
+      <li><strong>Practice incident response:</strong> Regularly test your recovery and incident response plans.</li>
+      <li><strong>Red team exercises:</strong> Regularly test your defenses.</li>
+    </ul>
+
+    <h2 id="interview-questions">Sample Interview Questions</h2>
+    <ol>
+      <li>How would you design a secure authentication system for a distributed application?</li>
+      <li>Explain how the CIA triad applies to system design.</li>
+      <li>What are common security threats in a microservices architecture, and how would you mitigate them?</li>
+      <li>How would you protect your system from a DDoS attack?</li>
+      <li>What role does TLS/HTTPS play in system security?</li>
+      <li>How would you implement certificate management at scale?</li>
+      <li>How can you ensure secure data storage in a cloud-based system?</li>
+      <li>What is threat modeling and how would you incorporate it into your design process?</li>
+      <li>What is the difference between hashing and encryption?</li>
+      <li>Why is asymmetric encryption slower than symmetric?</li>
+      <li>How does PKI build trust online?</li>
+      <li>How would you secure data at rest and in motion?</li>
+      <li>How do you protect APIs from abuse and unauthorized access?</li>
+      <li>Explain the Zero Trust security model.</li>
+      <li>How would you implement microsegmentation?</li>
+      <li>What are the OWASP Top 10 vulnerabilities, and how do you mitigate them?</li>
+    </ol>
+
+    <h2 id="summary">Summary &amp; Quick Reference</h2>
+    <ul>
+      <li><strong>Security</strong> is ongoing. It must be built into every phase and layer of your system.</li>
+      <li><strong>CIA triad:</strong> Confidentiality, Integrity, Availability.</li>
+      <li><strong>Threat modeling</strong> and awareness of <strong>common attack vectors</strong> are critical.</li>
+      <li>Use <strong>modern authentication &amp; access control</strong> (OAuth2, JWT, RBAC/ABAC).</li>
+      <li><strong>Encrypt data everywhere</strong> — at rest and in transit.</li>
+      <li><strong>Harden your network</strong> with firewalls, segmentation, zero trust, monitoring.</li>
+      <li><strong>DR is more than backups</strong> — it's about system continuity.</li>
+    </ul>
+
+    <h3>Quick Reference: Security by Layer</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Layer</th><th>Key Controls</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>App/API</td><td>Input validation, auth, rate limiting</td></tr>
+          <tr><td>Data</td><td>Encryption, hashing, access controls</td></tr>
+          <tr><td>Network</td><td>Firewalls, segmentation, Zero Trust</td></tr>
+          <tr><td>Cloud/Infra</td><td>IAM, audit, secure defaults</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <blockquote>
+      <em>Building secure systems isn't a checkbox — it's the foundation of good architecture.</em>
+    </blockquote>
+
+    <h2 id="further-reading">📚 Further Reading</h2>
+    <ul>
+      <li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html" target="_blank">OWASP Authentication Cheat Sheet</a></li>
+      <li><a href="https://jwt.io/introduction" target="_blank">JWT.io Introduction</a></li>
+      <li><a href="https://auth0.com/docs/get-started/authentication-and-authorization-protocols/oauth-2-0-and-openid-connect" target="_blank">OAuth 2.0 and OpenID Connect</a></li>
+      <li><a href="https://owasp.org/www-project-top-ten/" target="_blank">OWASP Top 10</a></li>
+      <li><a href="https://www.nist.gov/cyberframework" target="_blank">NIST Cybersecurity Framework</a></li>
+      <li><a href="https://aws.amazon.com/architecture/security-identity-compliance/" target="_blank">AWS Security Best Practices</a></li>
+      <li><a href="https://letsencrypt.org/" target="_blank">Let's Encrypt</a></li>
+    </ul>
+
+    <nav class="chapter-nav">
+      <a class="chapter-nav-card" href="9 - Reliability, Availability %26 Disaster Recovery.html">
+        <div class="chapter-nav-label">← Previous</div>
+        <div class="chapter-nav-title">Chapter 9 — Reliability</div>
+      </a>
+      <a class="chapter-nav-card next" href="11 - The System Design Blueprint.html">
+        <div class="chapter-nav-label">Next chapter →</div>
+        <div class="chapter-nav-title">Chapter 11 — System Design Blueprint</div>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../assets/system-design.js"></script>
+
+</body>
+</html>

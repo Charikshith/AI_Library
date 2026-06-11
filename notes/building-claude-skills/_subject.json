@@ -1,0 +1,28 @@
+{
+  "title": "Building Claude Skills",
+  "eyebrow": "Anthropic's complete guide",
+  "description": "The complete guide to building effective Skills for Claude — what a skill is, the SKILL.md structure and YAML frontmatter, planning and design, testing and iteration, distribution, and proven patterns. Converted from Anthropic's official PDF.",
+  "tagline": "Everything you need to build effective Skills for Claude — structure, the all-important SKILL.md frontmatter, planning, testing, distribution, and the patterns that work.",
+  "tags": ["claude", "skills", "anthropic", "mcp", "guide"],
+  "added": "2026-06-11",
+  "library": true,
+  "stats": [
+    { "num": "6", "label": "Chapters" },
+    { "num": "3", "label": "Disclosure Levels" },
+    { "num": "5", "label": "Patterns" },
+    { "num": "~30m", "label": "To First Skill" }
+  ],
+  "learn": [
+    "What a skill is and the three-level progressive-disclosure model",
+    "Technical requirements: file structure and the SKILL.md YAML frontmatter",
+    "How to write an effective description field that triggers reliably",
+    "How to test triggering, function, and performance — and iterate on feedback",
+    "How to distribute skills (Claude.ai, Claude Code, API) and position them",
+    "Five proven patterns for standalone and MCP-enhanced skills"
+  ],
+  "phases": [
+    { "icon": "📘", "title": "Foundations", "from": 1, "to": 2, "range": "Chapters 1–2" },
+    { "icon": "🛠️", "title": "Build & Test", "from": 3, "to": 4, "range": "Chapters 3–4" },
+    { "icon": "🚀", "title": "Ship & Master", "from": 5, "to": 7, "range": "Chapters 5–7" }
+  ]
+}

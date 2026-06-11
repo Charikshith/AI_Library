@@ -1,47 +1,37 @@
 #!/usr/bin/env python3
-"""Generate the AI Library static site from markdown sources.
+"""Generate the AI Library static site using the "Mastering System Design" design
+system *verbatim* — its real assets (assets/system-design.css + system-design.js),
+its Inter/JetBrains-Mono typography, Prism code highlighting, topbar + theme toggle,
+hero + stat cards, chapter-card grids, and the chapter reading layout (TOC sidebar +
+reading-progress bar).
 
-Two content types, both markdown-sourced, both rendered into a self-contained
-static site (data embedded inline so pages work locally AND on GitHub Pages):
+Two content types, both markdown-sourced:
 
-  1. TOOLS  — the catalogue. Source of truth = the tables in README.md between
-              the <!-- TOOLS:START --> / <!-- TOOLS:END --> markers.
-              Output: index.html
+  1. TOOLS  — README.md tables between <!-- TOOLS:START --> / <!-- TOOLS:END -->.
+              Output: index.html  (their home-hero + section/chapter-card grid)
 
-  2. NOTES  — long-form study notes organised as Subjects -> Chapters.
-              Source of truth = notes/<subject>/*.md  (+ an optional
-              notes/<subject>/_subject.json for title/description/tags/date).
-              Output: notes.html (index), notes/<subject>/index.html,
-                      and notes/<subject>/<chapter>.html (themed, highlighted).
+  2. NOTES  — notes/<subject>/markdown/*.md (+ _subject.json). Output: notes.html,
+              notes/<subject>/html/index.html (course landing), and
+              notes/<subject>/html/<chapter>.html (their reading layout).
+              A subject with "prebuilt": "<file>" ships its own ready-made HTML
+              (e.g. System Design) and is linked as-is instead of generated.
+
+Their CSS/JS are linked from /assets (a copy lives in each prebuilt subject too).
 
 Usage:  python scripts/build.py   (or: py scripts/build.py)
 """
 
-import argparse
 import json
-import os
 import re
-import sys
 from datetime import date
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from themes import THEMES, DEFAULT_THEME
-
-# Active theme — set in main() from --theme; defaults to DEFAULT_THEME so a plain
-# `python scripts/build.py` keeps the current look.
-THEME = THEMES[DEFAULT_THEME]
-
 ROOT = Path(__file__).resolve().parent.parent
 README = ROOT / "README.md"
-NOTES_DIR = ROOT / "notes"      # subjects: notes/<subject>/markdown/*.md (+ _subject.json)
-                                # generated chapter pages go in notes/<subject>/html/
-                                # the landing (index.html) + notes index (notes.html) are
-                                # written to the repo root; GitHub Pages serves from root.
+NOTES_DIR = ROOT / "notes"
 
 START = "<!-- TOOLS:START -->"
 END = "<!-- TOOLS:END -->"
-
 LINK_RE = re.compile(r"\[(?P<name>.+?)\]\((?P<url>.+?)\)")
 TAG_RE = re.compile(r"`([^`]+)`")
 NUM_RE = re.compile(r"^\s*(\d+)\s*[-.]?\s*(.*)$")
@@ -61,7 +51,6 @@ def slugify(s: str) -> str:
 
 
 def chapter_meta(stem: str):
-    """Return (number, title) parsed from a chapter filename stem."""
     m = NUM_RE.match(stem)
     if m and m.group(2).strip():
         return m.group(1), m.group(2).strip()
@@ -69,7 +58,6 @@ def chapter_meta(stem: str):
 
 
 def chapter_sort_key(path):
-    """Sort chapters by their numeric prefix (so 2 < 10); unnumbered files go last."""
     m = NUM_RE.match(path.stem)
     if m and m.group(1):
         return (0, int(m.group(1)), path.stem.lower())
@@ -77,7 +65,6 @@ def chapter_sort_key(path):
 
 
 def embed_md(text: str) -> str:
-    """JSON-encode markdown for safe inline embedding inside a <script>."""
     return json.dumps(text, ensure_ascii=False).replace("</", "<\\/")
 
 
@@ -86,9 +73,8 @@ def embed_md(text: str) -> str:
 # --------------------------------------------------------------------------- #
 def parse_tools(md: str):
     if START not in md or END not in md:
-        raise SystemExit("Could not find TOOLS:START / TOOLS:END markers in README.md")
+        raise SystemExit("Could not find TOOLS markers in README.md")
     section = md.split(START, 1)[1].split(END, 1)[0]
-
     tools, current = [], None
     for raw in section.splitlines():
         line = raw.strip()
@@ -120,400 +106,357 @@ def parse_subjects():
     for sub in sorted(p for p in NOTES_DIR.iterdir() if p.is_dir()):
         meta_file = sub / "_subject.json"
         meta = json.loads(meta_file.read_text(encoding="utf-8")) if meta_file.exists() else {}
-        chapters = []
         md_dir = sub / "markdown"
         md_files = list(md_dir.glob("*.md")) if md_dir.exists() else list(sub.glob("*.md"))
         md_files.sort(key=chapter_sort_key)
+        chapters = []
         for md in md_files:
             num, title = chapter_meta(md.stem)
-            chapters.append({
-                "num": num, "title": title, "slug": slugify(md.stem),
-                "text": md.read_text(encoding="utf-8"),
-            })
+            chapters.append({"num": num, "title": title, "slug": slugify(md.stem),
+                             "text": md.read_text(encoding="utf-8")})
         subjects.append({
             "slug": sub.name,
             "title": meta.get("title", sub.name.replace("-", " ").title()),
             "description": meta.get("description", ""),
             "tags": meta.get("tags", []),
             "added": meta.get("added", ""),
+            "prebuilt": meta.get("prebuilt"),
+            # library: generated like a subject, but surfaced from the Library catalogue
+            # (a README entry links to it) and hidden from the Notes index.
+            "library": meta.get("library", False),
+            "eyebrow": meta.get("eyebrow"),
+            "tagline": meta.get("tagline"),
+            "stats": meta.get("stats", []),
+            "learn": meta.get("learn", []),
+            "phases": meta.get("phases", []),
+            "cta_secondary": meta.get("cta_secondary"),
             "chapters": chapters,
         })
     return subjects
 
 
+def group_phases(s):
+    chapters = s["chapters"]
+    groups, used = [], set()
+    for ph in s["phases"]:
+        frm, to = ph.get("from", 0), ph.get("to", 10**9)
+        items = [c for c in chapters if c["num"].isdigit() and frm <= int(c["num"]) <= to]
+        used.update(c["slug"] for c in items)
+        groups.append([ph, items])
+    leftovers = [c for c in chapters if c["slug"] not in used]
+    if leftovers:
+        (groups[-1][1].extend(leftovers) if groups else groups.append([{"title": "Chapters"}, leftovers]))
+    return groups
+
+
 # --------------------------------------------------------------------------- #
-# Shared markup
+# Shared markup — their design system, linked verbatim
 # --------------------------------------------------------------------------- #
-def theme_root_css() -> str:
-    """Build the :root{} block (palette + fonts) from the active THEME."""
-    decls = "".join(f"{k}:{v};" for k, v in THEME["vars"].items())
-    decls += f"--display:{THEME['display']};--body:{THEME['body']};--mono:{THEME['mono']};"
-    return ":root{" + decls + "}"
+FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">'
+         '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+         '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900'
+         '&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">')
+PRISM_CSS = '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">'
+PRISM_JS = ('<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>'
+            '<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>'
+            '<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>'
+            '<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>')
 
-GRAIN = ('<svg class="grain" xmlns="http://www.w3.org/2000/svg"><filter id="noise">'
-         '<feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves="2" stitchTiles="stitch"/>'
-         '</filter><rect width="100%" height="100%" filter="url(#noise)"/></svg>')
+# Entrance reveal + stat count-up. Bails out under reduced-motion; only hides elements
+# once it has run (html.anim), so content is never stuck invisible if JS fails.
+ANIM_JS = ('<script>(function(){'
+           'if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)return;'
+           'document.documentElement.classList.add("anim");'
+           'var io=new IntersectionObserver(function(es){es.forEach(function(e){'
+           'if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target);}});},'
+           '{rootMargin:"0px 0px -6% 0px",threshold:.08});'
+           'document.querySelectorAll(".chapter-card,.home-section-header,.home-intro-card")'
+           '.forEach(function(el,i){el.style.transitionDelay=((i%6)*45)+"ms";io.observe(el);});'
+           'document.querySelectorAll(".home-stat-num").forEach(function(el){'
+           'var m=el.textContent.trim().match(/^(\\D*)(\\d+)(.*)$/);if(!m)return;'
+           'var pre=m[1],t=parseInt(m[2],10),post=m[3],s=null,dur=900;el.textContent=pre+"0"+post;'
+           'function f(ts){if(!s)s=ts;var p=Math.min((ts-s)/dur,1);'
+           'el.textContent=pre+Math.round(t*p)+post;if(p<1)requestAnimationFrame(f);else el.textContent=pre+t+post;}'
+           'requestAnimationFrame(f);});'
+           '})();</script>')
 
-STYLE = r"""
-  *{box-sizing:border-box;margin:0;padding:0}
-  html{scroll-behavior:smooth}
-  body{background:var(--paper);color:var(--ink);font-family:var(--body);font-weight:360;line-height:1.6;-webkit-font-smoothing:antialiased;min-height:100vh;position:relative;overflow-x:clip;
-    background-image:radial-gradient(120% 80% at 50% -8%, var(--glow), transparent 55%),repeating-linear-gradient(90deg, var(--line-soft) 0 1px, transparent 1px 96px);}
-  .grain{position:fixed;inset:0;width:100%;height:100%;opacity:var(--grain-opacity);pointer-events:none;mix-blend-mode:var(--grain-blend);z-index:2}
-  .wrap{max-width:1160px;margin:0 auto;padding:0 28px;position:relative;z-index:3}
-  a{color:inherit}
-
-  /* nav */
-  .nav{display:flex;justify-content:space-between;align-items:center;padding:22px 0;border-bottom:1px solid var(--line-soft)}
-  .brand{font-family:var(--mono);font-size:13px;letter-spacing:.18em;color:var(--ink);text-decoration:none;font-weight:500}
-  .brand span{color:var(--accent)}
-  .nav-links{display:flex;gap:6px}
-  .navlink{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);text-decoration:none;padding:6px 14px;border-radius:999px;transition:all .2s}
-  .navlink:hover{color:var(--ink);background:var(--hover)}
-  .navlink.is-active{color:var(--accent);border:1px solid var(--accent-line)}
-
-  /* masthead */
-  .masthead{padding:48px 0 40px;border-bottom:1px solid var(--line)}
-  .rule-top{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--muted);margin-bottom:38px}
-  .rule-top span{display:flex;align-items:center;gap:10px}
-  .rule-top .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent-line)}
-  .title{font-family:var(--display);font-optical-sizing:auto;font-weight:560;font-size:clamp(54px,12vw,148px);line-height:.84;letter-spacing:-.02em;color:var(--ink)}
-  .title em{font-style:italic;font-weight:360;color:var(--accent)}
-  .lede{max-width:48ch;margin-top:26px;font-size:clamp(15px,1.7vw,19px);color:var(--ink-soft)}
-  .stats{display:flex;gap:30px;flex-wrap:wrap;margin-top:30px;font-family:var(--mono);font-size:12.5px;color:var(--muted);letter-spacing:.04em}
-  .stats strong{color:var(--ink);font-weight:600}
-  .stats span{display:flex;align-items:baseline;gap:7px}
-
-  /* controls */
-  .controls{position:sticky;top:0;z-index:5;padding:22px 0;background:linear-gradient(var(--paper) 74%,transparent)}
-  .search{position:relative;margin-bottom:18px}
-  .search input{width:100%;background:transparent;border:none;border-bottom:1px solid var(--line);color:var(--ink);font-family:var(--display);font-size:clamp(20px,3vw,30px);font-weight:360;padding:8px 40px 12px 0;outline:none;transition:border-color .3s}
-  .search input::placeholder{color:var(--muted);font-style:italic}
-  .search input:focus{border-color:var(--accent)}
-  .search .sigil{position:absolute;right:4px;top:50%;transform:translateY(-60%);font-family:var(--mono);color:var(--muted);font-size:18px;pointer-events:none}
-  .filters{display:flex;gap:9px;flex-wrap:wrap}
-  .chip{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);background:transparent;border:1px solid var(--line);padding:7px 13px;border-radius:999px;cursor:pointer;transition:all .22s;display:flex;gap:7px;align-items:center}
-  .chip:hover{border-color:var(--accent-soft);color:var(--ink)}
-  .chip .n{color:var(--muted);font-size:10.5px}
-  .chip.is-active{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
-  .chip.is-active .n{color:rgba(253,245,233,.72)}
-
-  /* catalog + cards */
-  main{padding:30px 0 40px}
-  .cat{margin-bottom:58px}
-  .cat-head{display:flex;align-items:baseline;gap:16px;margin-bottom:24px}
-  .cat-kicker{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.1em}
-  .cat-name{font-family:var(--display);font-weight:520;font-size:clamp(24px,3.4vw,34px);letter-spacing:-.01em;white-space:nowrap;color:var(--ink)}
-  .cat-count{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.05em}
-  .cat-rule{flex:1;height:1px;background:var(--line);transform:translateY(-4px)}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:18px}
-  .card{position:relative;border:1px solid var(--line);background:var(--card);padding:24px 24px 20px;border-radius:4px;overflow:hidden;box-shadow:18px 22px 44px -34px var(--shadow-col);transition:transform .3s cubic-bezier(.2,.8,.2,1),border-color .3s,box-shadow .3s;animation:rise .6s both;animation-delay:calc(var(--i,0) * 45ms)}
-  .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--accent);transform:scaleY(0);transform-origin:top;transition:transform .35s}
-  .card:hover{transform:translateY(-4px);border-color:var(--accent-line);box-shadow:22px 32px 58px -32px var(--shadow-col)}
-  .card:hover::before{transform:scaleY(1)}
-  .card-idx{position:absolute;top:16px;right:18px;font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.05em}
-  .card-name{font-family:var(--display);font-weight:540;font-size:21px;line-height:1.15;letter-spacing:-.01em;padding-right:34px;color:var(--ink)}
-  .card-name a{color:var(--ink);text-decoration:none;background-image:linear-gradient(var(--accent),var(--accent));background-size:0% 1px;background-repeat:no-repeat;background-position:0 100%;transition:background-size .3s,color .3s}
-  .card:hover .card-name a,a.note-card:hover .card-name{color:var(--accent)}
-  .card-name a:hover{background-size:100% 1px}
-  .card-name .arrow{font-family:var(--mono);font-size:13px;color:var(--accent);opacity:0;transform:translate(-4px,2px);display:inline-block;transition:opacity .3s,transform .3s}
-  .card:hover .card-name .arrow{opacity:1;transform:translate(0,0)}
-  .card-desc{margin-top:12px;color:var(--ink-soft);font-size:14.5px;line-height:1.62}
-  .card-desc code{font-family:var(--mono);font-size:12.5px;color:var(--accent);background:var(--code-bg);padding:1px 5px;border-radius:3px}
-  .card-meta{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-top:18px;padding-top:14px;border-top:1px solid var(--line-soft)}
-  .tags{display:flex;gap:6px;flex-wrap:wrap}
-  .tag{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);letter-spacing:.02em;border:1px solid var(--line);padding:3px 7px;border-radius:3px}
-  .added{font-family:var(--mono);font-size:10.5px;color:var(--muted);white-space:nowrap;letter-spacing:.03em}
-  a.note-card{display:block;text-decoration:none;color:inherit}
-  .empty{display:none;text-align:center;padding:80px 0;font-family:var(--display);font-style:italic;font-size:24px;color:var(--muted)}
-  .empty.show{display:block}
-
-  /* subject list (notes index) */
-  .subject-list{border-top:1px solid var(--line);max-width:900px}
-  .subject-row{display:grid;grid-template-columns:46px 1fr auto;gap:22px;align-items:start;padding:26px 6px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink);transition:background .22s,padding .22s;animation:rise .6s both;animation-delay:calc(var(--i,0) * 60ms)}
-  .subject-row:hover{background:var(--hover);padding-left:16px}
-  .sr-num{font-family:var(--mono);font-size:13px;color:var(--accent);padding-top:9px;letter-spacing:.04em}
-  .sr-title{font-family:var(--display);font-weight:540;font-size:clamp(22px,3vw,30px);letter-spacing:-.01em;color:var(--ink);display:flex;align-items:center;gap:11px;line-height:1.12}
-  .sr-arrow{font-family:var(--mono);font-size:15px;color:var(--accent);opacity:0;transform:translateX(-5px);transition:all .25s}
-  .subject-row:hover .sr-arrow{opacity:1;transform:translateX(0)}
-  .subject-row:hover .sr-title{color:var(--accent)}
-  .sr-desc{margin:9px 0 13px;color:var(--ink-soft);font-size:15px;line-height:1.6;max-width:62ch}
-  .sr-meta{font-family:var(--mono);font-size:11.5px;color:var(--muted);white-space:nowrap;padding-top:10px;letter-spacing:.03em}
-  @media (max-width:560px){.subject-row{grid-template-columns:32px 1fr;gap:14px}.sr-meta{grid-column:2;padding-top:0}}
-
-  /* subject page */
-  .back{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--accent);text-decoration:none;letter-spacing:.03em}
-  .back:hover{text-decoration:underline}
-  .subject-head{padding:30px 0;border-bottom:1px solid var(--line);margin-bottom:30px}
-  .subject-title{font-family:var(--display);font-weight:560;font-size:clamp(34px,7vw,64px);line-height:.96;letter-spacing:-.02em;color:var(--ink);margin:12px 0 14px}
-  .chapter-list{list-style:none;border-top:1px solid var(--line);max-width:900px}
-  .chapter-row a{display:flex;align-items:center;gap:20px;padding:20px 6px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink);transition:background .22s,padding .22s;animation:rise .6s both;animation-delay:calc(var(--i,0) * 40ms)}
-  .chapter-row a:hover{background:var(--hover);padding-left:14px}
-  .chapter-row .ch-num{font-family:var(--mono);font-size:13px;color:var(--accent);min-width:30px;letter-spacing:.04em}
-  .chapter-row .ch-title{font-family:var(--display);font-size:20px;font-weight:520;flex:1;line-height:1.2}
-  .chapter-row .ch-arrow{font-family:var(--mono);color:var(--muted);opacity:0;transform:translateX(-5px);transition:all .25s}
-  .chapter-row a:hover .ch-title{color:var(--accent)}
-  .chapter-row a:hover .ch-arrow{color:var(--accent);opacity:1;transform:translateX(0)}
-
-  /* chapter reader */
-  .reader{display:grid;grid-template-columns:250px 1fr;gap:48px;padding:22px 0 40px;align-items:start}
-  .sidebar{position:sticky;top:20px;max-height:calc(100vh - 40px);overflow:auto}
-  .sidebar .back{margin-bottom:18px}
-  .ch-nav{display:flex;flex-direction:column;border-left:1px solid var(--line);margin-top:14px}
-  .ch-nav a{display:flex;gap:10px;padding:7px 14px;font-size:13px;color:var(--ink-soft);text-decoration:none;border-left:2px solid transparent;margin-left:-1px;line-height:1.35;transition:all .18s}
-  .ch-nav a:hover{color:var(--ink);background:var(--hover)}
-  .ch-nav a.is-active{color:var(--accent);border-left-color:var(--accent);font-weight:500}
-  .ch-nav .ch-num{font-family:var(--mono);font-size:11px;color:var(--muted)}
-  .ch-nav a.is-active .ch-num{color:var(--accent)}
-  .content{min-width:0}
-  .ch-head{margin-bottom:30px;padding-bottom:20px;border-bottom:1px solid var(--line)}
-  .ch-head .cat-kicker{display:block;margin-bottom:10px}
-  .ch-head h1{font-family:var(--display);font-weight:560;font-size:clamp(30px,5vw,46px);line-height:1.04;letter-spacing:-.02em;color:var(--ink)}
-
-  /* rendered markdown */
-  .prose{max-width:780px;font-size:16px;line-height:1.72;color:var(--ink-soft)}
-  .prose h1,.prose h2,.prose h3,.prose h4{font-family:var(--display);color:var(--ink);line-height:1.2;margin:1.7em 0 .5em;font-weight:560;letter-spacing:-.01em}
-  .prose h1{font-size:1.85em}
-  .prose h2{font-size:1.45em;border-bottom:1px solid var(--line);padding-bottom:.22em}
-  .prose h3{font-size:1.2em}.prose h4{font-size:1.05em}
-  .prose p{margin:0 0 1em}
-  .prose a{color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-line)}
-  .prose a:hover{border-color:var(--accent)}
-  .prose ul,.prose ol{margin:0 0 1em 1.45em}.prose li{margin:.32em 0}
-  .prose code{font-family:var(--mono);font-size:.85em;background:var(--code-bg);padding:.12em .42em;border-radius:4px;color:var(--code-col)}
-  .prose pre{border-radius:8px;overflow:auto;margin:0 0 1.3em;box-shadow:14px 18px 40px -28px var(--shadow-col)}
-  .prose pre code{background:none;padding:0;font-size:13.3px;line-height:1.6;border-radius:0}
-  .prose .mermaid{margin:0 0 1.4em;padding:20px;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow-x:auto}
-  .prose .mermaid svg{max-width:100%;height:auto}
-  .prose blockquote{border-left:3px solid var(--accent);margin:0 0 1em;padding:.2em 0 .2em 1.1em;color:var(--muted);font-style:italic}
-  .prose table{border-collapse:collapse;width:100%;margin:0 0 1.4em;font-size:14px;display:block;overflow-x:auto}
-  .prose th,.prose td{border:1px solid var(--line);padding:8px 12px;text-align:left;vertical-align:top}
-  .prose th{background:var(--hover);font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink)}
-  .prose hr{border:none;border-top:1px solid var(--line);margin:2em 0}
-  .prose img{max-width:100%;border-radius:6px}
-  .prevnext{display:flex;justify-content:space-between;gap:16px;margin-top:50px;padding-top:24px;border-top:1px solid var(--line)}
-  .prevnext a{font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);text-decoration:none;max-width:46%}
-  .prevnext a:hover{color:var(--accent)}
-  .prevnext .nx{margin-left:auto;text-align:right}
-  .prevnext small{display:block;color:var(--muted);font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
-
-  /* footer */
-  footer{border-top:1px solid var(--line);padding:32px 0 60px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px;font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.04em}
-  footer a{color:var(--ink-soft);text-decoration:none;border-bottom:1px solid var(--line)}
-  footer a:hover{color:var(--accent);border-color:var(--accent)}
-
-  @keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-  @media (prefers-reduced-motion:reduce){.card{animation:none}*{transition:none!important}}
-  @media (max-width:820px){.reader{grid-template-columns:1fr;gap:18px}.sidebar{position:static;max-height:none;border:1px solid var(--line);border-radius:8px;padding:14px}.ch-nav{max-height:240px;overflow:auto}}
-  @media (max-width:560px){.masthead{padding:34px 0 32px}.rule-top{margin-bottom:26px}.grid{grid-template-columns:1fr}}
-"""
+# Minimal glue so our nav/back links sit inside their topbar/sidebar using their tokens.
+GLUE = (".topbar-actions .tnav{font-family:'Inter',sans-serif;font-weight:600;font-size:13px;"
+        "color:var(--text-muted);text-decoration:none;padding:7px 12px;border-radius:8px;transition:all .2s}"
+        ".topbar-actions .tnav:hover{color:var(--text);background:var(--bg-muted)}"
+        ".topbar-actions .tnav.active{color:var(--primary)}"
+        ".toc-back{display:inline-block;margin-bottom:14px;font-family:'JetBrains Mono',monospace;"
+        "font-size:12px;color:var(--primary);text-decoration:none}.toc-back:hover{text-decoration:underline}"
+        ".section-nav{display:flex;justify-content:center;gap:8px;padding:22px 0 4px}"
+        ".section-nav a{font-family:'Inter',sans-serif;font-weight:600;font-size:14px;color:var(--text-muted);"
+        "text-decoration:none;padding:9px 20px;border-radius:999px;border:1px solid var(--border);transition:all .2s}"
+        ".section-nav a:hover{color:var(--text);background:var(--bg-muted)}"
+        ".section-nav a.active{color:#fff;background:var(--primary);border-color:var(--primary)}"
+        # --- entrance + scroll-reveal animations (respect reduced-motion; safe without JS) ---
+        "@media(prefers-reduced-motion:no-preference){"
+        "@keyframes ail-rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}"
+        ".home-hero>*{animation:ail-rise .7s cubic-bezier(.2,.8,.2,1) both}"
+        ".home-hero>*:nth-child(2){animation-delay:.07s}.home-hero>*:nth-child(3){animation-delay:.14s}"
+        ".home-hero>*:nth-child(4){animation-delay:.21s}.home-hero>*:nth-child(5){animation-delay:.28s}"
+        "html.anim .chapter-card,html.anim .home-section-header,html.anim .home-intro-card{"
+        "opacity:0;transform:translateY(20px);transition:opacity .6s ease,transform .6s cubic-bezier(.2,.8,.2,1)}"
+        "html.anim .chapter-card.in,html.anim .home-section-header.in,html.anim .home-intro-card.in{opacity:1;transform:none}"
+        ".chapter-card{transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s,border-color .25s,opacity .6s ease}"
+        "}")
 
 
-def nav(root: str, active: str) -> str:
-    lib = " is-active" if active == "library" else ""
-    nts = " is-active" if active == "notes" else ""
-    return (f'<nav class="nav"><a class="brand" href="{root}index.html">AI<span>/</span>LIBRARY</a>'
-            f'<div class="nav-links"><a class="navlink{lib}" href="{root}index.html">Library</a>'
-            f'<a class="navlink{nts}" href="{root}notes.html">Notes</a></div></nav>')
-
-
-def footer() -> str:
-    return ('<footer><span>Curated by Claude &middot; source of truth lives in the repo</span>'
-            '<a href="https://github.com/Charikshith/AI_Library" target="_blank" rel="noopener">'
-            'github.com/Charikshith/AI_Library &#8599;</a></footer>')
-
-
-def page(title, description, body, root="", active="library", extra_head="", scripts="") -> str:
+def head(title, desc, root, extra_head=""):
     return ("".join([
-        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">",
-        '<meta name="viewport" content="width=device-width, initial-scale=1">',
-        f"<title>{h(title)}</title>",
-        f'<meta name="description" content="{h(description)}">',
-        THEME["font_link"], extra_head, "<style>", theme_root_css(), STYLE, "</style></head><body>", GRAIN,
-        '<div class="wrap">', nav(root, active), body, footer(), "</div>", scripts,
-        "</body></html>",
+        '<!doctype html><html lang="en" data-theme="light"><head><meta charset="UTF-8">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
+        f"<title>{h(title)}</title><meta name=\"description\" content=\"{h(desc)}\">",
+        FONTS, PRISM_CSS,
+        f'<link rel="stylesheet" href="{root}assets/system-design.css">',
+        f"<style>{GLUE}</style>{extra_head}</head>",
     ]))
+
+
+def topbar(root, active, menu=False, nav=True):
+    lib = " active" if active == "library" else ""
+    nts = " active" if active == "notes" else ""
+    menubtn = ('<button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">&#9776;</button>'
+               if menu else "")
+    links = ""
+    if nav:
+        links = (f'<a class="tnav{lib}" href="{root}index.html">Library</a>'
+                 f'<a class="tnav{nts}" href="{root}notes.html">Notes</a>')
+    return ("".join([
+        '<header class="topbar"><a class="brand" href="', root, 'index.html">',
+        '<span class="brand-icon">AI</span><span>AI Library</span></a><div class="topbar-actions">',
+        links,
+        '<button class="icon-btn" id="themeToggle" aria-label="Toggle theme">&#127769;</button>',
+        menubtn, '</div></header>',
+    ]))
+
+
+def section_nav(root, active):
+    lib = " active" if active == "library" else ""
+    nts = " active" if active == "notes" else ""
+    return (f'<nav class="section-nav"><a class="{lib.strip()}" href="{root}index.html">Library</a>'
+            f'<a class="{nts.strip()}" href="{root}notes.html">Notes</a></nav>')
+
+
+def page_scripts(root):
+    return PRISM_JS + f'<script src="{root}assets/system-design.js"></script>' + ANIM_JS
+
+
+def shell_page(title, desc, root, active, hero, main_html, extra_head=""):
+    # home.css holds their landing-specific styles (.home-hero/.home-stats/.chapter-card/…),
+    # which live inline in their index.html rather than in system-design.css.
+    extra_head = f'<link rel="stylesheet" href="{root}assets/home.css">' + extra_head
+    return ("".join([
+        head(title, desc, root, extra_head),
+        '<body><div class="progress-bar" id="progressBar"></div>',
+        topbar(root, active, menu=False, nav=False),
+        hero,
+        section_nav(root, active),
+        f'<main class="home-container">{main_html}</main>',
+        page_scripts(root), "</body></html>",
+    ]))
+
+
+# --------------------------------------------------------------------------- #
+# Cards
+# --------------------------------------------------------------------------- #
+def tool_card(t):
+    tags = "  ".join("#" + x for x in t["tags"])
+    ext = t["url"].startswith("http")
+    tgt = ' target="_blank" rel="noopener"' if ext else ''
+    arrow = "&#8599;" if ext else "&rarr;"
+    return ("".join([
+        f'<a class="chapter-card" href="{h(t["url"])}"{tgt}>',
+        f'<div class="chapter-card-head"><span class="chapter-num">{h(t["added"])}</span>'
+        f'<span class="chapter-icon">{arrow}</span></div>',
+        f'<h3 class="chapter-title">{h(t["name"])}</h3>',
+        f'<p class="chapter-desc">{h(t["description"])}</p>',
+        f'<div class="chapter-card-foot">{h(tags)}</div></a>',
+    ]))
+
+
+def subject_card(s):
+    entry = s["prebuilt"] or "html/index.html"
+    n = len(s["chapters"])
+    return ("".join([
+        f'<a class="chapter-card" href="notes/{h(s["slug"])}/{entry}">',
+        f'<div class="chapter-card-head"><span class="chapter-num">{n} chapters</span></div>',
+        f'<h3 class="chapter-title">{h(s["title"])}</h3>',
+        f'<p class="chapter-desc">{h(s["description"])}</p>',
+        '<div class="chapter-card-foot">Open &rarr;</div></a>',
+    ]))
+
+
+def chapter_card(c):
+    label = ("Ch " + c["num"]) if c["num"] else "Ref"
+    return ("".join([
+        f'<a class="chapter-card" href="{h(c["slug"])}.html">',
+        f'<div class="chapter-card-head"><span class="chapter-num">{h(label)}</span></div>',
+        f'<h3 class="chapter-title">{h(c["title"])}</h3>',
+        '<div class="chapter-card-foot">Read &rarr;</div></a>',
+    ]))
+
+
+def stats_block(stats):
+    return ('<div class="home-stats">' + "".join(
+        f'<div><div class="home-stat-num">{h(st["num"])}</div>'
+        f'<div class="home-stat-label">{h(st["label"])}</div></div>' for st in stats) + '</div>')
 
 
 # --------------------------------------------------------------------------- #
 # Renderers
 # --------------------------------------------------------------------------- #
-LANDING_SCRIPT = r"""<script>
-const TOOLS = /*__TOOLS_DATA__*/[];
-const esc=(s)=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-const codify=(s)=>esc(s).replace(/`([^`]+)`/g,'<code>$1</code>');
-const catalog=document.getElementById('catalog'),filters=document.getElementById('filters'),empty=document.getElementById('empty'),searchEl=document.getElementById('search');
-const categories=[...new Set(TOOLS.map(t=>t.category))].sort((a,b)=>a.localeCompare(b));
-let activeCat='all',query='';
-function matches(t){if(activeCat!=='all'&&t.category!==activeCat)return false;if(!query)return true;const hay=(t.name+' '+t.description+' '+t.category+' '+t.tags.join(' ')).toLowerCase();return query.split(/\s+/).every(term=>hay.includes(term));}
-function buildFilters(){const c={};TOOLS.forEach(t=>c[t.category]=(c[t.category]||0)+1);const mk=(cat,label,n,a)=>`<button class="chip${a?' is-active':''}" data-cat="${esc(cat)}">${esc(label)}<span class="n">${n}</span></button>`;filters.innerHTML=mk('all','All',TOOLS.length,true)+categories.map(x=>mk(x,x,c[x],false)).join('');filters.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{activeCat=b.dataset.cat;filters.querySelectorAll('.chip').forEach(o=>o.classList.toggle('is-active',o===b));render();}));}
-function render(){const shown=TOOLS.filter(matches);empty.classList.toggle('show',shown.length===0);const cats=categories.filter(c=>shown.some(t=>t.category===c));let i=0;catalog.innerHTML=cats.map((cat,ci)=>{const items=shown.filter(t=>t.category===cat);const num=String(ci+1).padStart(2,'0');const cards=items.map(t=>{const idx=String(++i).padStart(2,'0');const tags=t.tags.map(tg=>`<span class="tag">#${esc(tg)}</span>`).join('');return `<article class="card" style="--i:${i}"><span class="card-idx">${idx}</span><h3 class="card-name"><a href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.name)} <span class="arrow">&#8599;</span></a></h3><p class="card-desc">${codify(t.description)}</p><div class="card-meta"><div class="tags">${tags}</div><time class="added">${esc(t.added)}</time></div></article>`;}).join('');return `<section class="cat"><div class="cat-head"><span class="cat-kicker">&sect; ${num}</span><h2 class="cat-name">${esc(cat)}</h2><span class="cat-count">${items.length} ${items.length===1?'entry':'entries'}</span><span class="cat-rule"></span></div><div class="grid">${cards}</div></section>`;}).join('');}
-searchEl.addEventListener('input',()=>{query=searchEl.value.trim().toLowerCase();render();});
-buildFilters();render();
-</script>"""
-
-
-def render_landing(tools, subjects):
+def render_library(tools, subjects):
     cats = sorted({t["category"] for t in tools}, key=str.lower)
-    body = ("".join([
-        '<header class="masthead">',
-        '<div class="rule-top"><span><span class="dot"></span>CURATED ARCHIVE</span><span>EST. MMXXVI</span></div>',
-        '<h1 class="title">AI&nbsp;<em>Library</em></h1>',
-        '<p class="lede">A living catalogue of open-source tools &amp; resources worth remembering — '
-        'indexed, tagged, and dated, so the good ones never slip away.</p>',
-        '<div class="stats">',
-        f'<span><strong>{len(tools)}</strong> entries</span>',
-        f'<span><strong>{len(cats)}</strong> categories</span>',
-        f'<span><strong>{sum(len(s["chapters"]) for s in subjects)}</strong> note chapters</span>',
-        f'<span>updated <strong>{BUILD_DATE}</strong></span>',
-        '</div></header>',
-        '<div class="controls"><div class="search">'
-        '<input id="search" type="search" placeholder="Search the stacks — name, tag, idea…" autocomplete="off" spellcheck="false">'
-        '<span class="sigil">&#8981;</span></div><div class="filters" id="filters"></div></div>',
-        '<main id="catalog"></main><div class="empty" id="empty">Nothing in the stacks matches that.</div>',
+    note_subjects = [s for s in subjects if not s["library"]]
+    total_ch = sum(len(s["chapters"]) for s in note_subjects)
+    hero = ("".join([
+        '<section class="home-hero"><span class="home-eyebrow">Curated archive</span>',
+        '<h1>AI Library</h1>',
+        '<p class="home-tagline">A living catalogue of open-source AI tools &amp; resources worth '
+        'remembering — indexed, tagged, and dated, so the good ones never slip away.</p>',
+        stats_block([{"num": str(len(tools)), "label": "Tools"},
+                     {"num": str(len(cats)), "label": "Categories"},
+                     {"num": str(len(note_subjects)), "label": "Note Subjects"},
+                     {"num": str(total_ch), "label": "Note Chapters"}]),
+        '</section>',
     ]))
-    html = page("AI Library — a curated catalogue of open-source AI tools",
-                "A living, curated catalogue of open-source AI tools and resources. Indexed, tagged, and dated.",
-                body, root="", active="library",
-                scripts=LANDING_SCRIPT.replace("/*__TOOLS_DATA__*/[]", json.dumps(tools, ensure_ascii=False)))
+    sections = []
+    for cat in cats:
+        items = [t for t in tools if t["category"] == cat]
+        cards = "".join(tool_card(t) for t in items)
+        sections.append(
+            f'<section><div class="home-section-header"><h2>{h(cat)}</h2>'
+            f'<span class="count">{len(items)} {"tool" if len(items)==1 else "tools"}</span></div>'
+            f'<div class="chapter-list">{cards}</div></section>')
+    html = shell_page("AI Library — curated open-source AI tools",
+                      "A living, curated catalogue of open-source AI tools and resources.",
+                      "", "library", hero, "".join(sections))
     (ROOT / "index.html").write_text(html, encoding="utf-8")
 
 
 def render_notes_index(subjects):
-    total_ch = sum(len(s["chapters"]) for s in subjects)
-    if subjects:
-        rows = []
-        for i, s in enumerate(subjects):
-            tags = "".join(f'<span class="tag">#{h(t)}</span>' for t in s["tags"])
-            n = len(s["chapters"])
-            cnt = f'{n} {"chapter" if n == 1 else "chapters"}'
-            rows.append(
-                f'<a class="subject-row" href="notes/{h(s["slug"])}/html/index.html" style="--i:{i}">'
-                f'<span class="sr-num">{str(i+1).zfill(2)}</span>'
-                f'<div class="sr-body"><h3 class="sr-title">{h(s["title"])}<span class="sr-arrow">&rarr;</span></h3>'
-                f'<p class="sr-desc">{h(s["description"])}</p>'
-                f'<div class="tags">{tags}</div></div>'
-                f'<span class="sr-meta">{cnt}</span></a>')
-        inner = f'<div class="subject-list">{"".join(rows)}</div>'
-    else:
-        inner = '<div class="empty show">No notes yet — tell Claude to add some.</div>'
-    body = ("".join([
-        '<header class="masthead">',
-        '<div class="rule-top"><span><span class="dot"></span>NOTES &amp; CHEATSHEETS</span><span>EST. MMXXVI</span></div>',
-        '<h1 class="title">Field&nbsp;<em>Notes</em></h1>',
-        '<p class="lede">Long-form study notes, language references, and cheatsheets — '
+    note_subjects = [s for s in subjects if not s["library"]]
+    total_ch = sum(len(s["chapters"]) for s in note_subjects)
+    hero = ("".join([
+        '<section class="home-hero"><span class="home-eyebrow">Field notes</span>',
+        '<h1>Notes</h1>',
+        '<p class="home-tagline">Long-form study notes, language references, and cheatsheets — '
         'organised by subject and chapter, rendered for reading.</p>',
-        f'<div class="stats"><span><strong>{len(subjects)}</strong> subjects</span>'
-        f'<span><strong>{total_ch}</strong> chapters</span>'
-        f'<span>updated <strong>{BUILD_DATE}</strong></span></div></header>',
-        '<main>', inner, '</main>',
+        stats_block([{"num": str(len(note_subjects)), "label": "Subjects"},
+                     {"num": str(total_ch), "label": "Chapters"}]),
+        '</section>',
     ]))
-    html = page("Notes — AI Library", "Long-form study notes, references, and cheatsheets.",
-                body, root="", active="notes")
+    cards = "".join(subject_card(s) for s in note_subjects) or '<p>No notes yet.</p>'
+    main = (f'<section><div class="home-section-header"><h2>Subjects</h2>'
+            f'<span class="count">{len(note_subjects)} subjects</span></div>'
+            f'<div class="chapter-list">{cards}</div></section>')
+    html = shell_page("Notes — AI Library", "Long-form study notes, references, and cheatsheets.",
+                      "", "notes", hero, main)
     (ROOT / "notes.html").write_text(html, encoding="utf-8")
 
 
 def render_subject(s):
-    rows = []
-    for i, ch in enumerate(s["chapters"]):
-        num = ch["num"] or "•"
-        rows.append(
-            f'<li class="chapter-row"><a href="{h(ch["slug"])}.html" style="--i:{i}">'
-            f'<span class="ch-num">{h(num)}</span>'
-            f'<span class="ch-title">{h(ch["title"])}</span>'
-            f'<span class="ch-arrow">&rarr;</span></a></li>')
-    tags = "".join(f'<span class="tag">#{h(t)}</span>' for t in s["tags"])
-    n = len(s["chapters"])
-    body = ("".join([
-        '<header class="subject-head"><a class="back" href="../../../notes.html">&larr; All notes</a>',
-        f'<span class="cat-kicker" style="display:block;margin-top:16px">SUBJECT &middot; {n} {"chapter" if n==1 else "chapters"}</span>',
-        f'<h1 class="subject-title">{h(s["title"])}</h1>',
-        f'<p class="lede">{h(s["description"])}</p>',
-        f'<div class="tags" style="margin-top:16px">{tags}</div></header>',
-        f'<main><ol class="chapter-list">{"".join(rows)}</ol></main>',
+    root = "../../../"
+    chapters = s["chapters"]
+    first = chapters[0]["slug"] if chapters else ""
+    eyebrow = s.get("eyebrow") or f"A {len(chapters)}-chapter reference"
+    tagline = s.get("tagline") or s.get("description", "")
+    cta = f'<a class="home-btn home-btn-primary" href="{h(first)}.html">Start reading &rarr;</a>'
+    if s.get("cta_secondary"):
+        cta += (f'<a class="home-btn home-btn-secondary" href="{h(s["cta_secondary"]["slug"])}.html">'
+                f'{h(s["cta_secondary"]["label"])}</a>')
+    stats = s["stats"] or [{"num": str(len(chapters)), "label": "Chapters"}]
+    hero = ("".join([
+        f'<section class="home-hero"><span class="home-eyebrow">{h(eyebrow)}</span>',
+        f'<h1>{h(s["title"])}</h1><p class="home-tagline">{h(tagline)}</p>',
+        f'<div class="home-cta-row">{cta}</div>', stats_block(stats), '</section>',
     ]))
-    html = page(f'{s["title"]} — Notes', s["description"], body,
-                root="../../../", active="notes")
-    out_dir = NOTES_DIR / s["slug"] / "html"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "index.html").write_text(html, encoding="utf-8")
+    main = ""
+    if s["learn"]:
+        items = "".join(f"<li>{h(x)}</li>" for x in s["learn"])
+        main += ('<div class="home-intro-card"><div><h3>What you&rsquo;ll learn</h3></div>'
+                 f'<ul class="home-intro-list">{items}</ul></div>')
+    if s["phases"]:
+        for ph, items in group_phases(s):
+            if not items:
+                continue
+            cards = "".join(chapter_card(c) for c in items)
+            title = (ph.get("icon", "") + " " + ph.get("title", "")).strip()
+            rng = ph.get("range") or f'{len(items)} chapters'
+            main += (f'<section><div class="home-section-header"><h2>{h(title)}</h2>'
+                     f'<span class="count">{h(rng)}</span></div>'
+                     f'<div class="chapter-list">{cards}</div></section>')
+    else:
+        cards = "".join(chapter_card(c) for c in chapters)
+        main += (f'<section><div class="home-section-header"><h2>Chapters</h2>'
+                 f'<span class="count">{len(chapters)} chapters</span></div>'
+                 f'<div class="chapter-list">{cards}</div></section>')
+    html = shell_page(f'{s["title"]} — Notes', s["description"], root, "notes", hero, main)
+    out = NOTES_DIR / s["slug"] / "html"
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "index.html").write_text(html, encoding="utf-8")
 
 
 def render_chapter(s, idx):
-    chapters = s["chapters"]
-    ch = chapters[idx]
-    links = []
-    for c in chapters:
-        cls = " is-active" if c["slug"] == ch["slug"] else ""
-        links.append(f'<a class="{cls.strip()}" href="{h(c["slug"])}.html">'
-                     f'<span class="ch-num">{h(c["num"] or "•")}</span><span>{h(c["title"])}</span></a>')
-    prev_ch = chapters[idx - 1] if idx > 0 else None
-    next_ch = chapters[idx + 1] if idx < len(chapters) - 1 else None
-    prev_html = (f'<a href="{h(prev_ch["slug"])}.html"><small>&larr; Previous</small>{h(prev_ch["title"])}</a>'
-                 if prev_ch else "<span></span>")
-    next_html = (f'<a class="nx" href="{h(next_ch["slug"])}.html"><small>Next &rarr;</small>{h(next_ch["title"])}</a>'
-                 if next_ch else "")
-    body = ("".join([
-        '<div class="reader"><aside class="sidebar">',
-        '<a class="back" href="index.html">&larr; ', h(s["title"]), '</a>',
-        '<nav class="ch-nav">', "".join(links), '</nav></aside>',
-        '<article class="content"><div class="ch-head">',
-        f'<span class="cat-kicker">{h(s["title"])} &middot; Chapter {h(ch["num"] or "")}</span>',
-        f'<h1>{h(ch["title"])}</h1></div>',
-        '<div id="prose" class="prose"></div>',
-        f'<div class="prevnext">{prev_html}{next_html}</div></article></div>',
-    ]))
-    extra_head = f'<link rel="stylesheet" href="{THEME["hljs_css"]}">'
-    scripts = ("".join([
+    root = "../../../"
+    ch = s["chapters"][idx]
+    label = ("Chapter " + ch["num"]) if ch["num"] else s["title"]
+    sidebar = (f'<a class="toc-back" href="index.html">&larr; {h(s["title"])}</a>'
+               '<h3>On this page</h3><ul class="toc-list" id="tocList"></ul>')
+    hero = (f'<section class="hero"><span class="chapter-label">{h(label)}</span>'
+            f'<h1>{h(ch["title"])}</h1></section>')
+    # Render markdown into <main> as direct children (so their .main element styles apply),
+    # then build the TOC from the H2s. Runs before their system-design.js (Prism + TOC observer).
+    render_js = ("".join([
         '<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>',
-        '<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>',
-        '<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>',
         '<script>const MD=', embed_md(ch["text"]),
         ';marked.setOptions({gfm:true,breaks:false});',
-        "const el=document.getElementById('prose');el.innerHTML=marked.parse(MD);",
-        # turn ```mermaid fenced blocks into diagram containers
-        "el.querySelectorAll('pre code.language-mermaid').forEach(c=>{var d=document.createElement('div');"
-        "d.className='mermaid';d.textContent=c.textContent;c.closest('pre').replaceWith(d);});",
-        # syntax-highlight the remaining code blocks
-        "el.querySelectorAll('pre code:not(.language-mermaid)').forEach(b=>{try{hljs.highlightElement(b)}catch(e){}});",
-        # render diagrams in the page palette
-        "try{mermaid.initialize({startOnLoad:false,theme:" + json.dumps(THEME["mermaid_theme"]) +
-        ",themeVariables:" + json.dumps(THEME["mermaid_vars"]) + "});"
-        "mermaid.run({nodes:el.querySelectorAll('.mermaid'),suppressErrors:true});}catch(e){}",
-        "</script>",
+        'var m=document.getElementById("main");m.insertAdjacentHTML("beforeend",marked.parse(MD));',
+        'var _h=document.querySelector(".hero h1"),_c=m.querySelector(":scope > h1");'
+        'if(_h&&_c&&_c.textContent.trim().toLowerCase()===_h.textContent.trim().toLowerCase())_c.remove();',
+        'var toc=document.getElementById("tocList"),seen={};',
+        'm.querySelectorAll("h2").forEach(function(hd){',
+        'var id=hd.id||hd.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");',
+        'if(seen[id]){id=id+"-"+(++seen[id])}else{seen[id]=1}hd.id=id;',
+        'var li=document.createElement("li"),a=document.createElement("a");',
+        'a.href="#"+id;a.textContent=hd.textContent;li.appendChild(a);toc.appendChild(li);});',
+        '</script>',
     ]))
-    html = page(f'{ch["title"]} — {s["title"]}', f'{s["title"]} notes: {ch["title"]}',
-                body, root="../../../", active="notes", extra_head=extra_head, scripts=scripts)
-    out_dir = NOTES_DIR / s["slug"] / "html"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / f'{ch["slug"]}.html').write_text(html, encoding="utf-8")
+    html = ("".join([
+        head(f'{ch["title"]} — {s["title"]}', f'{s["title"]}: {ch["title"]}', root),
+        '<body><div class="progress-bar" id="progressBar"></div>',
+        topbar(root, "notes", menu=True),
+        '<div class="overlay" id="overlay"></div>',
+        f'<div class="layout"><aside class="sidebar" id="sidebar">{sidebar}</aside>',
+        f'<main class="main" id="main">{hero}</main></div>',
+        render_js, page_scripts(root), "</body></html>",
+    ]))
+    out = NOTES_DIR / s["slug"] / "html"
+    out.mkdir(parents=True, exist_ok=True)
+    (out / f'{ch["slug"]}.html').write_text(html, encoding="utf-8")
 
 
 def main():
-    global THEME
-    ap = argparse.ArgumentParser(description="Build the AI Library static site.")
-    ap.add_argument("--theme", default=os.environ.get("AI_LIBRARY_THEME", DEFAULT_THEME),
-                    help="theme name from scripts/themes.py (use '?' to list)")
-    args = ap.parse_args()
-    if args.theme not in THEMES:
-        prefix = "Available themes: " if args.theme == "?" else f"Unknown theme '{args.theme}'. Available: "
-        raise SystemExit(prefix + ", ".join(THEMES))
-    THEME = THEMES[args.theme]
-
     tools = parse_tools(README.read_text(encoding="utf-8"))
     subjects = parse_subjects()
-
-    render_landing(tools, subjects)
+    render_library(tools, subjects)
     render_notes_index(subjects)
+    gen = 0
     for s in subjects:
+        if s["prebuilt"]:
+            continue
         render_subject(s)
         for i in range(len(s["chapters"])):
             render_chapter(s, i)
-
+        gen += 1
     cats = len({t["category"] for t in tools})
     chs = sum(len(s["chapters"]) for s in subjects)
-    print(f"Theme '{args.theme}'  |  {len(tools)} tools / {cats} categories  +  "
-          f"{len(subjects)} note subjects / {chs} chapters")
+    print(f"Built (System Design theme): {len(tools)} tools / {cats} categories  +  "
+          f"{len(subjects)} subjects ({gen} generated) / {chs} chapters")
 
 
 if __name__ == "__main__":

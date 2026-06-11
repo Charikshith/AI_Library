@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chapter 24 — Collaborative Doc Editor (Google Docs)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<link rel="stylesheet" href="../assets/system-design.css">
+</head>
+<body><a href="../../../notes.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;z-index:99999;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600;background:#0f172a;color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.28)">&#8592; AI Library</a>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">
+    <span class="brand-icon">SD</span>
+    <span>Mastering System Design</span>
+  </a>
+  <div class="topbar-actions">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Chapter 24 — On This Page</h3>
+    <ul class="toc-list" id="tocList">
+      <li><a href="#learning-outcomes">Learning Outcomes</a></li>
+      <li><a href="#problem-overview">Problem Overview</a></li>
+      <li><a href="#functional-non-functional-requirements">Functional &amp; Non-Functional Requirements</a></li>
+      <li><a href="#assumptions-constraints">Assumptions &amp; Constraints</a></li>
+      <li><a href="#collaboration-challenges">Collaboration Challenges</a></li>
+      <li><a href="#scale-estimation">Scale Estimation</a></li>
+      <li><a href="#bottlenecks">Bottlenecks</a></li>
+      <li><a href="#high-level-architecture">High-Level Architecture</a></li>
+      <li><a href="#document-model-design">Document Model Design</a></li>
+      <li><a href="#real-time-sync-flow">Real-Time Sync Flow</a></li>
+      <li><a href="#communication-patterns">Communication Patterns</a></li>
+      <li><a href="#api-endpoints">API Endpoints</a></li>
+      <li><a href="#consistency-conflict-handling">Consistency &amp; Conflict Handling</a></li>
+      <li><a href="#tech-stack-infrastructure-decisions">Tech Stack &amp; Infrastructure</a></li>
+      <li><a href="#sample-code">Sample Code</a></li>
+      <li><a href="#beyond-mvp">Beyond MVP — Senior Designer</a></li>
+      <li><a href="#tips-tricks">Tips &amp; Tricks</a></li>
+      <li><a href="#conclusion">Conclusion</a></li>
+      <li><a href="#further-reading">Further Reading</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <span class="chapter-label">Chapter 24 · Case Study</span>
+      <h1>Designing a Collaborative Document Editor (Google Docs)</h1>
+      <p class="hero-subtitle">
+        Build a real-time multi-user editor like Google Docs — from <strong>OT vs CRDT</strong> conflict resolution and <strong>WebSocket fan-out</strong> to <strong>presence</strong>, <strong>offline editing</strong>, comments, and revision history. A case study in distributed concurrency under millisecond latency.
+      </p>
+      <div class="hero-author">By Charikshith</div>
+    </section>
+
+    <p>Building a collaborative document editor (think Google Docs, Microsoft Word Online, or Notion) is a classic system design challenge. It's a rich real-world problem that tests your grasp of distributed systems, real-time synchronization, concurrency, scalability, and user experience.</p>
+
+    <p>In this case study, we'll walk through a detailed design — covering CRDT/OT conflict resolution, real-time sync via WebSockets, document modeling, versioning, scaling, and practical implementation.</p>
+
+    <h2 id="learning-outcomes">🎯 Learning Outcomes</h2>
+    <p>After working through this case study, you'll be able to:</p>
+    <ol class="outcomes-list">
+      <li><span class="outcome-num">1</span><span>Explain <strong>Operational Transformation (OT)</strong> at a high level and why <strong>CRDT</strong> is increasingly preferred.</span></li>
+      <li><span class="outcome-num">2</span><span>Design <strong>presence</strong> (live cursors, who's editing now) at scale.</span></li>
+      <li><span class="outcome-num">3</span><span>Implement <strong>offline editing</strong> with sync-on-reconnect.</span></li>
+      <li><span class="outcome-num">4</span><span>Add <strong>comments, suggestions, and revision history</strong> without breaking real-time editing.</span></li>
+      <li><span class="outcome-num">5</span><span>Scale <strong>WebSocket fan-out</strong> for documents with hundreds of concurrent editors.</span></li>
+    </ol>
+
+    <h2 id="problem-overview">Problem Overview</h2>
+    <p>We want to build a <strong>web-based collaborative document editor</strong> that allows <strong>multiple users to edit the same document in real time</strong>. Core requirements:</p>
+    <ul>
+      <li><strong>Real-time collaboration</strong> with instant change reflection for all users.</li>
+      <li><strong>Conflict-free and consistent document state</strong> despite concurrent edits.</li>
+      <li><strong>Document versioning</strong> and <strong>access control</strong> (permissions).</li>
+      <li><strong>Smooth user experience</strong> with low latency and high reliability.</li>
+    </ul>
+    <p><strong>Examples:</strong> Google Docs, Microsoft Word Online, Notion.</p>
+
+    <h2 id="functional-non-functional-requirements">Functional &amp; Non-Functional Requirements</h2>
+
+    <h3>Functional Requirements (MVP)</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Create, edit, delete documents</td><td>Users can CRUD their text documents.</td></tr>
+          <tr><td>Real-time multi-user collaboration</td><td>Multiple users can edit the same doc simultaneously and see changes live.</td></tr>
+          <tr><td>Real-time syncing of edits</td><td>Edits propagate to all clients in (near) real time.</td></tr>
+          <tr><td>Document version history &amp; change track</td><td>Track changes, rollback to previous versions.</td></tr>
+          <tr><td>Permission control</td><td>Read/write access for authorized users only.</td></tr>
+          <tr><td>Invite collaborators</td><td>Via shareable link or email.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Non-Functional Requirements</h3>
+    <ul>
+      <li><strong>Performance:</strong> Real-time sync under <strong>100ms</strong> latency.</li>
+      <li><strong>Scalability:</strong> Support <strong>millions of docs/users.</strong></li>
+      <li><strong>Availability:</strong> <strong>99.9% uptime,</strong> seamless reconnects.</li>
+      <li><strong>Security:</strong> TLS encryption, strong access control, abuse protection.</li>
+      <li><strong>Reliability:</strong> Autosave, crash recovery, eventual consistency.</li>
+      <li><strong>Maintainability:</strong> Modular, clean APIs for extensibility.</li>
+      <li><strong>Testability:</strong> Must be testable under real-time load.</li>
+    </ul>
+
+    <h2 id="assumptions-constraints">Assumptions &amp; Constraints</h2>
+
+    <h3>Assumptions</h3>
+    <ul>
+      <li>Users have reliable internet connections.</li>
+      <li>Clients use modern browsers with WebSocket support.</li>
+      <li>Most docs are text-heavy (not rich media).</li>
+      <li>Collaboration groups are small–medium (2–50 users).</li>
+      <li>Heavy read-write usage (frequent edits).</li>
+    </ul>
+
+    <h3>Constraints</h3>
+    <ul>
+      <li>Real-time sync must work under high concurrency.</li>
+      <li>Document consistency must be maintained even with conflicts.</li>
+      <li>Eventual consistency across all clients.</li>
+      <li>Meet global (not just regional) latency targets.</li>
+      <li>Only basic text formatting in MVP.</li>
+    </ul>
+
+    <h2 id="collaboration-challenges">Collaboration Challenges</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Challenge</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Concurrency Control</td><td>Handling overlapping edits from multiple users in real time.</td></tr>
+          <tr><td>Conflict Resolution</td><td>Determining winners when edits conflict (e.g., two users edit same text).</td></tr>
+          <tr><td>Real-Time Synchronization</td><td>Broadcasting updates efficiently to all connected clients.</td></tr>
+          <tr><td>Consistency vs. Latency</td><td>Balancing immediate updates vs. consistent global state.</td></tr>
+          <tr><td>Failure Recovery</td><td>Seamless reconnects, autosave, handling network loss or partial updates.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="scale-estimation">Scale Estimation</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Daily Active Users (DAU)</td><td>10M+</td></tr>
+          <tr><td>Avg. Documents per User</td><td>100</td></tr>
+          <tr><td>Peak Concurrent Editors</td><td>200K+</td></tr>
+          <tr><td>Real-Time Sync Events</td><td>~10B/day</td></tr>
+          <tr><td>Events per Active User</td><td>1–2/sec</td></tr>
+          <tr><td>Ops/sec per Document</td><td>5–20 during editing</td></tr>
+          <tr><td>Avg. Document Size</td><td>100KB (100–500KB range)</td></tr>
+          <tr><td>Storage Overhead (History)</td><td>2–5x</td></tr>
+          <tr><td>Hot Storage</td><td>1–5 TB/day</td></tr>
+          <tr><td>Cold Storage (Archives)</td><td>100s of TBs</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Traffic Patterns</h3>
+    <ul>
+      <li><strong>Spikes during working hours</strong> (especially in shared orgs).</li>
+      <li><strong>Hotspot documents</strong> (meeting notes, templates).</li>
+      <li><strong>Frequent small writes</strong> (edits), <strong>bulk reads</strong> (opening docs/version history).</li>
+      <li><strong>Authentication &amp; permission checks</strong> add latency under load.</li>
+    </ul>
+
+    <h2 id="bottlenecks">Bottlenecks</h2>
+    <ol>
+      <li><strong>Operational Transformation (OT) / CRDT overhead:</strong> CPU-intensive, requires fast in-memory ops.</li>
+      <li><strong>WebSocket scaling &amp; fan-out:</strong> Persistent, low-latency connections; horizontal scaling needed.</li>
+      <li><strong>Storage write throughput:</strong> Edits and autosaves put heavy pressure on storage systems.</li>
+      <li><strong>Conflict resolution latency:</strong> Must not block editing experience.</li>
+      <li><strong>Sync propagation:</strong> Consistent state across all clients within milliseconds.</li>
+    </ol>
+
+    <h2 id="high-level-architecture">High-Level Architecture</h2>
+    <p>The core architecture splits real-time sync (WebSocket → Collab Service) from REST-driven document CRUD, fanning edits out through a messaging layer:</p>
+
+    <div class="archd" aria-label="High-level collaborative editor architecture">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client (Browser / Mobile)</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">WebSocket / REST</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway (Auth, Routing)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔁</span><span>Collab / Sync Service</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">gRPC</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">📄</span><span>Document Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🕒</span><span>Versioning Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔐</span><span>Permissions Service</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Metadata DB</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">📦</span><span>Document Storage (Hot / Cold)</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Messaging (Kafka / Redis Streams)</span></div>
+      </div>
+    </div>
+
+    <p>A more detailed view showing all internal flows:</p>
+
+    <div class="archd" aria-label="Detailed architecture view">
+      <div class="archd-node is-user"><span class="archd-icon">🖥️</span><span>Browser / Mobile Client — Rich Text Editor</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">WebSocket / REST</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway (Auth, Routing)</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">gRPC / REST</span></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔁</span><span>Collab Service (OT/CRDT, Real-Time Sync)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📄</span><span>Document Service (Save/Load, Metadata, Permissions)</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Messaging Layer (Kafka / Redis Streams)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🕒</span><span>Versioning Service (History, Snapshots)</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">📦</span><span>Storage Layer (Hot / Cold, Backup)</span></div>
+    </div>
+
+    <p>ASCII view:</p>
+<pre><code class="language-bash">+--------+       +-------------+       +------------------+
+| Client | &lt;---&gt; | API Gateway | &lt;---&gt; | Microservices    |
+|        |       | (REST/Auth) |       | (Doc, Sync, etc) |
++--------+       +-------------+       +------------------+
+     |                |                          |
+     | &lt;--- WebSocket |                          |
+     |      (Sync)    |                          |
+     v                v                          v
++--------------------------------------------------------------+
+|                Messaging Layer (Kafka)                       |
++--------------------------------------------------------------+
+     |                |                          |
+     v                v                          v
++-----------------+   +----------------+   +------------------+
+| Storage (S3/GCS)|   | PostgreSQL     |   | MongoDB          |
++-----------------+   +----------------+   +------------------+</code></pre>
+
+    <h3>Component Breakdown</h3>
+    <ul>
+      <li><strong>Client:</strong> Rich text editor, WebSocket for real-time sync.</li>
+      <li><strong>API Gateway:</strong> Handles auth, routing, rate limiting.</li>
+      <li><strong>Collab Service:</strong> Real-time sync, OT/CRDT logic.</li>
+      <li><strong>Document Service:</strong> CRUD, metadata, permissions.</li>
+      <li><strong>Versioning Service:</strong> Document history, snapshots.</li>
+      <li><strong>Storage:</strong> Hot storage (frequent access), Cold storage (archive/backups).</li>
+      <li><strong>Messaging Layer:</strong> Pub/Sub for event propagation (Kafka/Redis Streams).</li>
+      <li><strong>Microservices:</strong> Stateless APIs, real-time sync infra.</li>
+    </ul>
+
+    <h2 id="document-model-design">Document Model Design</h2>
+
+    <h3>Why CRDT/OT?</h3>
+    <p>With multiple users editing the same doc, we need to:</p>
+    <ul>
+      <li><strong>Resolve conflicts</strong> (who "wins" if edits overlap?).</li>
+      <li><strong>Achieve consistency</strong> (all users see the same doc eventually).</li>
+    </ul>
+    <p><strong>CRDT (Conflict-free Replicated Data Types)</strong> and <strong>OT (Operational Transformation)</strong> are two proven strategies.</p>
+    <ul>
+      <li><strong>CRDT (e.g., <a href="https://github.com/yjs/yjs" target="_blank">Yjs</a>, <a href="https://github.com/automerge/automerge" target="_blank">Automerge</a>):</strong> Each client can modify independently; all changes converge automatically.</li>
+      <li><strong>OT:</strong> Edits are transformed in order to maintain consistency.</li>
+    </ul>
+
+    <h3>Data Structure</h3>
+    <ul>
+      <li><strong>Operation-based updates:</strong> Send/receive granular operations (insert, delete) instead of full text blobs.</li>
+      <li><strong>Version metadata:</strong> For diff, sync, and rollback.</li>
+    </ul>
+
+    <h4>Yjs Document Example</h4>
+<pre><code class="language-javascript">const Y = require('yjs');
+const doc = new Y.Doc();
+const yText = doc.getText('content');
+
+// User 1 inserts text
+yText.insert(0, 'Hello world!');
+
+// Changes are encoded as binary ops and sent over WebSocket
+const update = Y.encodeStateAsUpdate(doc);
+socket.send(update);</code></pre>
+
+    <h4>CRDT-Style Document Structure (Pseudocode)</h4>
+<pre><code class="language-javascript">{
+  docId: "abc123",
+  type: "text",
+  content: Y.Text, // CRDT text structure
+  version: 42,
+  collaborators: [userId1, userId2],
+  metadata: {
+    owner: "userId1",
+    permissions: { userId1: "write", userId2: "read" }
+  },
+  opLog: [ /* operation history */ ]
+}</code></pre>
+
+    <h4>Operation-Based Update (JSON)</h4>
+<pre><code class="language-javascript">{
+  "op": "insert",
+  "pos": 5,
+  "chars": "hello",
+  "user": "userA",
+  "version": 42
+}</code></pre>
+
+    <p>A more detailed operation:</p>
+<pre><code class="language-javascript">{
+  "op_id": "c123:45",
+  "user_id": "user_abc",
+  "type": "insert",
+  "position": 10,
+  "value": "hello",
+  "timestamp": 1719583200
+}</code></pre>
+
+<pre><code class="language-javascript">{
+  "docId": "abc123",
+  "opId": "u1-202306121234",
+  "userId": "u1",
+  "type": "insert",
+  "position": 10,
+  "value": "hello",
+  "timestamp": 1686564872000
+}</code></pre>
+
+    <h4>Top-Level Document JSON</h4>
+<pre><code class="language-javascript">{
+  "document_id": "abc123",
+  "content": [ /* CRDT/OT operation log */ ],
+  "metadata": {
+    "created_by": "user1",
+    "permissions": { "user2": "read", "user3": "write" },
+    "version": 42,
+    "last_modified": "2024-06-01T12:34:56Z"
+  }
+}</code></pre>
+
+    <h2 id="real-time-sync-flow">Real-Time Sync Flow</h2>
+    <ol>
+      <li>✍️ User edits doc (inserts text).</li>
+      <li>📤 Client sends operation over WebSocket.</li>
+      <li>🔀 Collab service applies OT/CRDT transform.</li>
+      <li>📣 Changes broadcast to collaborators via Pub/Sub.</li>
+      <li>💾 Autosave to persistent store.</li>
+      <li>🕒 Snapshots saved periodically for recovery.</li>
+    </ol>
+
+    <h3>Sequence Diagram</h3>
+    <div class="archd-seq" aria-label="Single-user edit propagation flow">
+      <div class="archd-seq-step"><span class="num">1</span>User edits — local insert/delete</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">edit</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Client</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Send operation over WebSocket</div>
+      <div class="archd-seq-row">
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">operation (WS)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔁</span><span>Sync Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Apply OT / CRDT transform</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔁</span><span>Sync Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">transform</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔁</span><span>Sync Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Broadcast transformed op</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔁</span><span>Sync Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">broadcast</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👥</span><span>Other Clients</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">5</span>Periodic autosave + snapshot</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔁</span><span>Sync Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">autosave / every N ops</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">📦</span><span>Storage</span></div>
+      </div>
+    </div>
+
+    <h3>Two-User Sync Diagram</h3>
+    <div class="archd-seq" aria-label="Two-user sync flow">
+      <div class="archd-seq-step"><span class="num">1</span>User A sends operation</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User A</span></div>
+        <div class="archd-seq-arrow right"><span class="label">WS: insert "hello"</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔁</span><span>Collab Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Apply CRDT/OT transform</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔁</span><span>Collab Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">transform</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔁</span><span>Collab Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Publish update event</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔁</span><span>Collab Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">publish update</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Messaging Layer</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Deliver to all sessions</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Messaging Layer</span></div>
+        <div class="archd-seq-arrow right"><span class="label">deliver to subscribers</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔁</span><span>Collab Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">5</span>Broadcast to both users</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔁</span><span>Collab Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">WS: broadcast op</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User A &amp; User B</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">6</span>Persist op + periodic snapshot</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔁</span><span>Collab Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">save to op log</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📄</span><span>Document Service</span></div>
+      </div>
+    </div>
+
+    <h3>Detailed Service-Level Flow</h3>
+    <div class="archd-seq" aria-label="Detailed service-level edit flow">
+      <div class="archd-seq-step"><span class="num">1</span>User types in editor</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">types/edit</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Client</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Client → WebSocket server</div>
+      <div class="archd-seq-row">
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">send operation</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🔌</span><span>WebSocket Server</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Forward to Collab Service</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🔌</span><span>WebSocket Server</span></div>
+        <div class="archd-seq-arrow right"><span class="label">forward op</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔁</span><span>Collab Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Resolve via Sync Service</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔁</span><span>Collab Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">send op (via MQ)</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔄</span><span>Sync Service</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔄</span><span>Sync Service</span></div>
+        <div class="archd-seq-arrow left"><span class="label">conflict resolution result</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔁</span><span>Collab Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">5</span>Broadcast update back to clients</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔁</span><span>Collab Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">broadcast update</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🔌</span><span>WebSocket Server</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🔌</span><span>WebSocket Server</span></div>
+        <div class="archd-seq-arrow right"><span class="label">update doc view</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Client</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">6</span>Log op + autosave</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔁</span><span>Collab Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">log op / snapshot</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🕒</span><span>Versioning</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔁</span><span>Collab Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">autosave</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📄</span><span>Document Service</span></div>
+      </div>
+    </div>
+
+    <h2 id="communication-patterns">Communication Patterns</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Channel</th><th>Protocol</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>External</strong></td><td>REST (HTTP)</td><td>CRUD docs, versioning, auth, permissions</td></tr>
+          <tr><td><strong>Real-Time</strong></td><td>WebSocket</td><td>Real-time collaborative editing</td></tr>
+          <tr><td><strong>Internal</strong></td><td>gRPC</td><td>Fast, typed service-to-service comms</td></tr>
+          <tr><td><strong>Async Events</strong></td><td>Kafka/Redis</td><td>Fan-out, decouple, background processing</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li><strong>REST (HTTP/JSON):</strong> Document CRUD, version history (external/client-facing).</li>
+      <li><strong>WebSockets:</strong> Real-time collaboration &amp; sync (persistent, low latency).</li>
+      <li><strong>gRPC (protobuf):</strong> Fast internal service-to-service calls.</li>
+      <li><strong>Message Queues (Kafka, RabbitMQ):</strong> Event-driven workflows, background jobs.</li>
+    </ul>
+
+    <h2 id="api-endpoints">API Endpoints</h2>
+<pre><code class="language-bash">GET   /documents/:id              # Fetch document
+POST  /documents                  # Create new document
+PUT   /documents/:id/content      # Save content snapshot
+POST  /documents/:id/operations   # Send an edit operation
+GET   /documents/:id/history      # Get version history
+POST  /documents/:id/collaborators # Add/remove collaborators
+
+WebSocket: /ws/collab?doc_id=abc123&amp;token=jwt</code></pre>
+
+    <h3>Sample WebSocket Message (Edit Operation)</h3>
+<pre><code class="language-javascript">{
+  "type": "operation",
+  "docId": "abc123",
+  "userId": "u2",
+  "operation": {
+    "opType": "insert",
+    "position": 22,
+    "value": "world",
+    "version": 35
+  }
+}</code></pre>
+
+<pre><code class="language-javascript">{
+  "op": "insert",
+  "position": 10,
+  "text": "Hello, world!",
+  "user": "user42",
+  "version": 43
+}</code></pre>
+
+    <h2 id="consistency-conflict-handling">Consistency &amp; Conflict Handling</h2>
+    <ul>
+      <li><strong>CRDT/OT:</strong> Transform concurrent operations so all clients eventually converge to the same state.</li>
+      <li><strong>Operation logs:</strong> Each doc maintains a log for replay/resync.</li>
+      <li><strong>Snapshots + deltas:</strong> For syncing lagging clients.</li>
+      <li><strong>Reconnection protocol:</strong> Handle clients rejoining after network partition.</li>
+    </ul>
+
+    <h3>Applying a CRDT Update on Reconnect</h3>
+<pre><code class="language-javascript">const update = receiveUpdateFromServer();
+Y.applyUpdate(localDoc, update);</code></pre>
+
+    <h3>Conflict Resolution (Pseudocode — Lamport Timestamps)</h3>
+<pre><code class="language-python">def resolve_conflict(local_op, remote_op):
+    if local_op.timestamp < remote_op.timestamp:
+        apply(local_op)
+        apply(remote_op)
+    else:
+        apply(remote_op)
+        apply(local_op)</code></pre>
+
+<pre><code class="language-javascript">function resolveConflict(opA, opB) {
+    if (opA.timestamp < opB.timestamp) return [opA, opB];
+    else return [opB, opA];
+}</code></pre>
+
+    <h3>CRDT Merge Pseudo-code</h3>
+<pre><code class="language-javascript">function mergeOps(currentState, incomingOp) {
+    if (!currentState.hasOp(incomingOp.opId)) {
+        currentState.apply(incomingOp);
+    }
+    // Ignore duplicate ops
+}</code></pre>
+
+    <h2 id="tech-stack-infrastructure-decisions">Tech Stack &amp; Infrastructure Decisions</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Layer</th><th>Choice</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Frontend</td><td>React (Web), React Native (Mobile)</td></tr>
+          <tr><td>Backend</td><td>Node.js (WebSocket), gRPC microservices</td></tr>
+          <tr><td>APIs</td><td>REST (CRUD), WebSockets (real-time)</td></tr>
+          <tr><td>Data Storage</td><td>S3/GCS (files), Postgres (metadata), MongoDB (flexible schemas)</td></tr>
+          <tr><td>Orchestration</td><td>Kubernetes</td></tr>
+          <tr><td>Messaging</td><td>Kafka (event bus)</td></tr>
+          <tr><td>Auth</td><td>OAuth2/JWT</td></tr>
+          <tr><td>Security</td><td>TLS (in-transit), AES (at-rest)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="sample-code">Sample Code</h2>
+
+    <h3>WebSocket Real-Time Sync (Node.js + Yjs)</h3>
+    <p>A basic server:</p>
+<pre><code class="language-javascript">const WebSocket = require('ws');
+const Y = require('yjs');
+
+const wss = new WebSocket.Server({ port: 8080 });
+const docs = new Map(); // docId -> Y.Doc
+
+wss.on('connection', (ws, req) => {
+  const docId = getDocIdFromReq(req);
+  let doc = docs.get(docId);
+  if (!doc) {
+    doc = new Y.Doc();
+    docs.set(docId, doc);
+  }
+
+  ws.on('message', (msg) => {
+    const update = new Uint8Array(msg);
+    Y.applyUpdate(doc, update);
+    wss.clients.forEach(client => {
+      if (client !== ws && client.readyState === WebSocket.OPEN) {
+        client.send(update);
+      }
+    });
+  });
+
+  // Send current doc state to new client
+  const state = Y.encodeStateAsUpdate(doc);
+  ws.send(state);
+});</code></pre>
+
+    <p>A more complete handler with doc per ID:</p>
+<pre><code class="language-javascript">const Y = require('yjs');
+const ws = require('ws');
+
+const docMap = new Map(); // docId => Y.Doc
+
+function getOrCreateDoc(docId) {
+  if (!docMap.has(docId)) docMap.set(docId, new Y.Doc());
+  return docMap.get(docId);
+}
+
+const wss = new ws.Server({ port: 8080 });
+wss.on('connection', (socket, req) => {
+  const docId = req.url.split('doc_id=')[1].split('&')[0];
+  const ydoc = getOrCreateDoc(docId);
+
+  socket.on('message', (msg) => {
+    const update = new Uint8Array(JSON.parse(msg).update);
+    Y.applyUpdate(ydoc, update);
+    wss.clients.forEach(client => {
+      if (client !== socket && client.readyState === ws.OPEN) {
+        client.send(JSON.stringify({ update: Array.from(update) }));
+      }
+    });
+  });
+
+  socket.send(JSON.stringify({ update: Array.from(Y.encodeStateAsUpdate(ydoc)) }));
+});</code></pre>
+
+    <p>A simpler version (just receiving + applying):</p>
+<pre><code class="language-javascript">const Y = require('yjs');
+const doc = new Y.Doc();
+
+ws.on('message', (msg) => {
+    const update = JSON.parse(msg);
+    Y.applyUpdate(doc, update);
+
+    broadcastToCollaborators(update);
+    saveOpToLog(update);
+});</code></pre>
+
+    <h3>Client-Side WebSocket (JS)</h3>
+<pre><code class="language-javascript">const ws = new WebSocket('wss://api.yourdocs.com/ws/collab?doc_id=abc123&token=xyz');
+ws.onmessage = (event) => {
+  const op = JSON.parse(event.data);
+  applyRemoteOperation(op);
+};
+function sendLocalOperation(op) {
+  ws.send(JSON.stringify(op));
+}</code></pre>
+
+    <h3>Server-Side WebSocket Handler (Generic)</h3>
+<pre><code class="language-javascript">wsServer.on('connection', (socket, req) => {
+  const docId = getDocIdFromReq(req);
+  socket.on('message', (msg) => {
+    const op = JSON.parse(msg);
+    const transformedOp = applyOTorCRDT(op, docId);
+    broadcastToCollaborators(docId, transformedOp);
+    persistOperation(docId, transformedOp);
+  });
+});</code></pre>
+
+    <h2 id="beyond-mvp">Beyond MVP — What a Senior Designer Adds</h2>
+
+    <h3>OT vs CRDT — Which to Choose and Why</h3>
+    <p>Both achieve the same goal (concurrent edits converge to the same state). Trade-offs:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Aspect</th><th>Operational Transformation (OT)</th><th>CRDTs (Yjs, Automerge)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Architecture</td><td>Requires a central server to order ops</td><td>Peer-to-peer possible; no central authority needed</td></tr>
+          <tr><td>Convergence proof</td><td>Hard (subtle bugs even after decades)</td><td>Mathematical guarantee</td></tr>
+          <tr><td>Storage overhead</td><td>Small</td><td>Larger (metadata per character)</td></tr>
+          <tr><td>Offline editing</td><td>Possible but complex</td><td>Trivial — natural fit</td></tr>
+          <tr><td>Used by</td><td>Google Docs (originally), ShareJS</td><td>Figma, Notion (partially), Linear</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Interview Tip</div>
+        <p><strong>Google Docs uses OT</strong> for historical reasons. <strong>Modern systems often choose CRDTs</strong> because the simpler mental model and offline support outweigh the storage overhead. For an interview, mention both and explain the choice.</p>
+      </div>
+    </div>
+
+    <h3>Presence (Live Cursors, "X is editing")</h3>
+    <p>Showing 5 colored cursors live in the document is a separate problem from text sync.</p>
+    <ul>
+      <li>Each user sends cursor position updates (~30 Hz max, debounced).</li>
+      <li>Server fans out to other viewers via the same WebSocket.</li>
+      <li>Cursors aren't persisted — they're ephemeral state.</li>
+    </ul>
+    <p><strong>Implementation:</strong> separate "presence" Pub/Sub channel from "edit" channel; presence has a much higher event rate but doesn't need durability.</p>
+
+    <h3>Offline Editing</h3>
+    <p>CRDTs make this natural; OT requires careful design.</p>
+    <p><strong>Pattern:</strong></p>
+    <ol>
+      <li>Client maintains a local op log while disconnected.</li>
+      <li>UI feels real-time (apply locally + queue for server).</li>
+      <li>On reconnect: push queued ops to server.</li>
+      <li>Server merges via CRDT/OT; broadcasts to other clients.</li>
+      <li>Client may need to reconcile if its local view diverges from server.</li>
+    </ol>
+
+    <h3>Comments and Suggestions</h3>
+    <p>These are "out-of-band" content — not part of the document text, but anchored to it.</p>
+    <ul>
+      <li><strong>Anchors</strong> are tricky: if I comment on "Hello", and you delete "Hello", what happens? Either the comment becomes orphaned (still visible, marked "resolved" or "deleted") or it follows the surrounding context (semantic anchoring).</li>
+      <li>Suggestions ("track changes") are inserts/deletes that aren't applied — they show as proposed edits.</li>
+    </ul>
+    <p><strong>Implementation:</strong> separate <code>comments</code> and <code>suggestions</code> tables, each with an <code>anchor_op_id</code> referencing a position in the op log.</p>
+
+    <h3>Revision History</h3>
+    <p>Every N ops or M minutes, snapshot the doc state. UI shows a timeline; clicking a point restores or compares versions.</p>
+    <p><strong>Storage:</strong> keep recent snapshots in primary DB; archive older ones to cheap object storage.</p>
+
+    <h3>Scaling WebSocket Fan-Out for Hot Documents</h3>
+    <p>A team meeting's shared doc might have 200 editors simultaneously. Each edit goes to 200 connections.</p>
+    <p><strong>Pattern:</strong></p>
+    <ol>
+      <li>Shard WebSocket servers by <code>doc_id</code> (consistent hashing) so all editors of one doc hit the same server.</li>
+      <li>That server fans out locally — no cross-server pub/sub needed for that doc.</li>
+      <li>For <em>globally</em> shared docs (1000+ editors), use a multi-tier fan-out: edge servers handle subsets, aggregate via Pub/Sub.</li>
+    </ol>
+
+    <h3>Permissions and Sharing</h3>
+    <p>Same as cloud storage (Chapter 19), but with a twist: real-time. If Alice revokes Bob's access <em>while Bob is editing</em>, his next op must fail, and his client must immediately show "you no longer have access."</p>
+    <p><strong>Pattern:</strong> push permission changes through the same WebSocket channel; client validates on every op; server rejects ops from users no longer permitted.</p>
+
+    <h3>Export and Print</h3>
+    <p>Render the live document model to PDF, DOCX, plain text. Run async — typically takes 1-30 seconds. Results stored in object storage, link emailed/displayed.</p>
+
+    <h2 id="tips-tricks">💡 Tips &amp; Tricks</h2>
+
+    <h3>Architecture</h3>
+    <ol>
+      <li><strong>Start with OT/CRDT libraries.</strong> Don't reinvent the wheel: use mature libraries (<a href="https://docs.yjs.dev/" target="_blank">Yjs</a>, <a href="https://automerge.org/" target="_blank">Automerge</a>) for document sync and conflict resolution.</li>
+      <li><strong>WebSocket connection management.</strong> Use connection pools and horizontal scaling (sharding docs across sync nodes). Monitor for "zombie" connections; implement heartbeats/pings.</li>
+      <li><strong>Efficient fan-out.</strong> Use Pub/Sub (Redis, Kafka) to broadcast document changes with low latency.</li>
+      <li><strong>Stateless services.</strong> Make components stateless where possible for horizontal scaling.</li>
+    </ol>
+
+    <h3>Performance</h3>
+    <ol start="5">
+      <li><strong>Keep operations small.</strong> Send deltas, not full documents.</li>
+      <li><strong>Batch operations.</strong> For high-frequency edits, batch and debounce to avoid flooding the network.</li>
+      <li><strong>Optimize for hot documents.</strong> Some docs will be "hotspots" with many collaborators — use in-memory caching or partitioning.</li>
+      <li><strong>Sticky sessions or consistent hashing:</strong> Route users editing the same doc to the same backend node, minimizing fan-out.</li>
+      <li><strong>Autosave frequency.</strong> Balance between too-frequent (write pressure) and too-rare (data loss risk).</li>
+    </ol>
+
+    <h3>Storage</h3>
+    <ol start="10">
+      <li><strong>Snapshots.</strong> Save periodic document snapshots to speed up recovery and reduce replay of long operation logs.</li>
+      <li><strong>Autosave &amp; snapshots.</strong> Autosave frequently, snapshot (full doc state) less often.</li>
+    </ol>
+
+    <h3>Reliability</h3>
+    <ol start="12">
+      <li><strong>Handle disconnects gracefully.</strong> Have reconnection and catch-up protocols for clients.</li>
+      <li><strong>Backpressure handling.</strong> Monitor and throttle clients that send too many ops/sec.</li>
+      <li><strong>Optimistic UI:</strong> Apply local edits instantly, then confirm with the server.</li>
+    </ol>
+
+    <h3>Security</h3>
+    <ol start="15">
+      <li><strong>Security first.</strong> All APIs authenticated (JWT/OAuth2); all transport encrypted (TLS).</li>
+      <li><strong>Permission caching.</strong> Cache permission checks in memory for active docs to reduce DB load — but always validate on critical writes.</li>
+      <li><strong>Always validate server-side.</strong> Never trust client-supplied edit ops blindly.</li>
+    </ol>
+
+    <h3>Testing &amp; Monitoring</h3>
+    <ol start="18">
+      <li><strong>Testing real-time flows.</strong> Simulate hundreds/thousands of concurrent users in automated tests.</li>
+      <li><strong>Monitor for hotspots.</strong> Some docs will be edited much more than others — consider sharding.</li>
+      <li><strong>Track WebSocket metrics:</strong> Connection rates, event propagation latency, write queue depth.</li>
+      <li><strong>Test at scale:</strong> Simulate 100s of concurrent collaborators per doc to uncover bottlenecks.</li>
+    </ol>
+
+    <div class="callout callout-warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-content">
+        <div class="callout-title">Don't Trust the Client</div>
+        <p>Edit operations from the client should <strong>always</strong> be validated server-side. A malicious client can attempt to inject ops on behalf of other users, bypass permission checks, or replay old ops. Authentication on connect is not enough — authorize <em>each operation</em>.</p>
+      </div>
+    </div>
+
+    <h2 id="conclusion">Conclusion</h2>
+    <p>Designing a collaborative document editor is a <strong>classic, multidimensional system design challenge</strong>. With a modular, microservices-based architecture, careful real-time conflict handling, and strategic use of modern infrastructure (WebSockets, Kafka, Kubernetes, CRDT/OT), you can build a solution that's robust, fast, and scalable.</p>
+
+    <p>By leveraging modern CRDT/OT libraries, scalable WebSocket infrastructure, and modular microservices, you can deliver seamless collaboration for millions of active users.</p>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Remember</div>
+        <p>In interviews, focus on <strong>clarity, trade-offs, and rationale</strong> — not just drawing boxes.</p>
+      </div>
+    </div>
+
+    <h2 id="further-reading">📚 Further Reading</h2>
+    <ul>
+      <li><a href="https://github.com/yjs/yjs" target="_blank">Yjs (CRDT for JS)</a></li>
+      <li><a href="https://docs.yjs.dev/" target="_blank">Yjs Docs</a></li>
+      <li><a href="https://github.com/automerge/automerge" target="_blank">Automerge (CRDT for JS)</a></li>
+      <li><a href="https://automerge.org/" target="_blank">Automerge Docs</a></li>
+      <li><a href="https://github.com/share/sharedb" target="_blank">ShareDB (OT)</a></li>
+      <li><a href="https://crdt.tech/" target="_blank">CRDTs Explained</a></li>
+      <li><a href="https://martinfowler.com/articles/collaborative-editing.html" target="_blank">Martin Fowler: Collaborative Editing</a></li>
+      <li><a href="https://martin.kleppmann.com/papers/crdt-ot.pdf" target="_blank">Martin Kleppmann: CRDTs vs. OT</a></li>
+      <li><a href="https://www.oreilly.com/library/view/collaborative-editing-in/9781098108988/" target="_blank">Operational Transformation Explained</a></li>
+      <li><a href="https://www.cloudamqp.com/blog/when-to-use-rabbitmq-or-apache-kafka.html" target="_blank">Kafka vs. RabbitMQ</a></li>
+    </ul>
+
+    <nav class="chapter-nav">
+      <a class="chapter-nav-card" href="23 - Design a Taxi Hailing App (aka Uber).html">
+        <div class="chapter-nav-label">← Previous</div>
+        <div class="chapter-nav-title">Chapter 23 — Taxi App (Uber)</div>
+      </a>
+      <a class="chapter-nav-card next" href="25 - Final Prep, Mindset %26 Moving Forward.html">
+        <div class="chapter-nav-label">Next chapter →</div>
+        <div class="chapter-nav-title">Chapter 25 — Final Prep</div>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="../assets/system-design.js"></script>
+
+</body>
+</html>

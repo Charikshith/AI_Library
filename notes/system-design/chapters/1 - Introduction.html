@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chapter 1 — Mastering System Design: From Basics to Cracking Interviews</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<link rel="stylesheet" href="../assets/system-design.css">
+<style>
+/* ===== Chapter-specific: Latency Visualizer ===== */
+.latency-viz {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin: 24px 0;
+}
+.latency-toggle {
+  display: flex; gap: 8px; margin-bottom: 20px;
+  background: var(--bg-muted); padding: 4px;
+  border-radius: var(--radius-sm); width: fit-content;
+}
+.latency-toggle button {
+  background: transparent; border: none; padding: 8px 16px;
+  border-radius: 6px; cursor: pointer; font-size: 13px;
+  font-weight: 500; color: var(--text-muted);
+  transition: all var(--transition); font-family: inherit;
+}
+.latency-toggle button.active {
+  background: var(--bg); color: var(--text); box-shadow: var(--shadow-sm);
+}
+.latency-row {
+  display: grid; grid-template-columns: 1fr 1fr auto; gap: 16px;
+  align-items: center; padding: 10px 0;
+  border-bottom: 1px solid var(--border); font-size: 14px;
+}
+.latency-row:last-child { border-bottom: none; }
+.latency-label { font-weight: 500; }
+.latency-bar-container {
+  height: 8px; background: var(--bg-muted);
+  border-radius: 4px; overflow: hidden;
+}
+.latency-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  border-radius: 4px;
+  transition: width 600ms cubic-bezier(.4,0,.2,1);
+}
+.latency-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; color: var(--text-muted);
+  font-weight: 500; white-space: nowrap; text-align: right;
+}
+</style>
+</head>
+<body><a href="../../../notes.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;z-index:99999;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600;background:#0f172a;color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.28)">&#8592; AI Library</a>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">
+    <span class="brand-icon">SD</span>
+    <span>Mastering System Design</span>
+  </a>
+  <div class="topbar-actions">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Chapter 1 — On This Page</h3>
+    <ul class="toc-list" id="tocList">
+      <li><a href="#learning-outcomes">Learning Outcomes</a></li>
+      <li><a href="#prerequisites">Prerequisites</a></li>
+      <li><a href="#how-to-use">How to Use This Course</a></li>
+      <li><a href="#what-is-system-design">What is System Design?</a></li>
+      <li><a href="#why-it-matters">Why System Design Matters</a></li>
+      <li><a href="#fr-vs-nfr">Functional vs Non-Functional</a></li>
+      <li><a href="#latency-numbers">Numbers Every Programmer Should Know</a></li>
+      <li><a href="#evolution">Evolution of System Design</a></li>
+      <li><a href="#course-structure">Course Structure</a></li>
+      <li><a href="#framework">The 4-Step Design Framework</a></li>
+      <li><a href="#url-shortener">Worked Example: URL Shortener</a></li>
+      <li><a href="#patterns">Architectural Patterns Preview</a></li>
+      <li><a href="#communication">Communication & Load Balancing</a></li>
+      <li><a href="#performance">Performance Boosters</a></li>
+      <li><a href="#security">Security Essentials</a></li>
+      <li><a href="#anti-patterns">Common Anti-Patterns</a></li>
+      <li><a href="#tips">Tips and Tricks</a></li>
+      <li><a href="#further-reading">Further Reading</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <span class="chapter-label">Chapter 1</span>
+      <h1>Mastering System Design: From Basics to Cracking Interviews</h1>
+      <p class="hero-subtitle">
+        Whether you're new to system design or preparing for tough interviews, this guide builds a rock-solid foundation and gives you the tools to design robust, scalable systems — for real-world impact, not just whiteboarding.
+      </p>
+      <div class="hero-author">By Charikshith</div>
+    </section>
+
+    <p>System design is a cornerstone skill for software engineers, architects, and anyone building large-scale, robust software solutions. It is often viewed through the narrow lens of interview preparation — but its true value lies in being able to architect real-world solutions effectively. In this chapter, we'll break down what system design is, why it has become so crucial in the tech industry, how it has evolved, and practical ways to master it.</p>
+
+    <h2 id="learning-outcomes">🎯 Learning Outcomes</h2>
+    <p>After reading this chapter, you will be able to:</p>
+    <ol class="outcomes-list">
+      <li><span class="outcome-num">1</span><span>Define what system design is and explain why it matters <em>beyond</em> interviews.</span></li>
+      <li><span class="outcome-num">2</span><span>Distinguish <strong>functional</strong> from <strong>non-functional</strong> requirements and name the most common non-functional dimensions.</span></li>
+      <li><span class="outcome-num">3</span><span>Apply the <strong>4-step design framework</strong> (Requirements → Estimate → High-Level Design → Tech Decisions) to a new problem.</span></li>
+      <li><span class="outcome-num">4</span><span>Reason about latency intuitively using the <strong>"numbers every programmer should know"</strong> reference table.</span></li>
+      <li><span class="outcome-num">5</span><span>Recognize common beginner anti-patterns (premature scaling, cargo-cult architecture, distributed monolith).</span></li>
+    </ol>
+
+    <h2 id="prerequisites">📚 Prerequisites</h2>
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Before You Start</div>
+        <p>You should be comfortable with:</p>
+        <ul>
+          <li>Basic programming in any language (Python, JavaScript, Java, Go, etc.).</li>
+          <li>How a web request/response works at a high level (browser → server → response).</li>
+          <li>Basic SQL and what a database does.</li>
+          <li>Basic command-line usage.</li>
+        </ul>
+        <p style="margin-top:8px;"><strong>You don't need</strong> prior distributed-systems experience, prior cloud experience, or to have used Kubernetes/Kafka/Redis. Every term will be defined as it appears.</p>
+      </div>
+    </div>
+
+    <h2 id="how-to-use">🗺️ How to Use This Course</h2>
+    <ul>
+      <li><strong>Foundations (Chapters 1–11):</strong> Read in order. Each chapter builds on the previous.</li>
+      <li><strong>Case studies (Chapters 12–24):</strong> Read in any order after the foundations. Each is self-contained.</li>
+      <li><strong>Expect to revisit.</strong> Caching only fully clicks after you've seen it used in three different case studies. That's normal.</li>
+      <li><strong>Build a toy project alongside.</strong> A blog, a URL shortener, a chat app — anything. Reading without building is like reading swimming books on dry land.</li>
+      <li><strong>Read real post-mortems.</strong> <a href="https://danluu.com/postmortem-lessons/" target="_blank">danluu.com/postmortem-lessons</a> is the best curated list. Real failures teach more than any textbook.</li>
+      <li><strong>Pace:</strong> Each foundational chapter takes 1–2 hours to read carefully. Case studies take 30–60 minutes.</li>
+    </ul>
+
+    <h3>Tools You'll See in This Course</h3>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">📊</div>
+        <div class="card-title">Diagramming</div>
+        <div class="card-body">Mermaid, Excalidraw, draw.io</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔌</div>
+        <div class="card-title">API Testing</div>
+        <div class="card-body">Postman, <code>curl</code></div>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <div class="card-title">Load Testing</div>
+        <div class="card-body"><code>wrk</code>, <code>k6</code>, JMeter, Locust</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📈</div>
+        <div class="card-title">Observability</div>
+        <div class="card-body">Prometheus, Grafana, Jaeger, Datadog, New Relic</div>
+      </div>
+    </div>
+    <p class="muted">You don't need to install any of these now — they'll be introduced where used.</p>
+
+    <h2 id="what-is-system-design">What is System Design?</h2>
+    <blockquote>
+      <strong>System Design</strong> is the process of defining the architecture, components, modules, interfaces, and data flow for a system to meet specific requirements.
+    </blockquote>
+    <p>System design is much more than just drawing boxes and arrows on a whiteboard — it's about making critical high-level decisions that determine not only how a system works, but also how it scales, performs, and remains reliable and maintainable.</p>
+
+    <h3>Key Aspects of System Design</h3>
+    <ul>
+      <li><strong>Architecture:</strong> Overall structure — Monoliths, microservices, serverless, etc.</li>
+      <li><strong>Components / Modules:</strong> Building blocks — Databases, caches, message queues.</li>
+      <li><strong>Interfaces:</strong> How parts communicate — REST APIs, gRPC, GraphQL.</li>
+      <li><strong>Data Flow:</strong> How information travels through and between components.</li>
+      <li><strong>Scalability:</strong> Can the system handle a growing number of users?</li>
+      <li><strong>Reliability & Performance:</strong> Can it recover from failure and stay fast?</li>
+      <li><strong>Maintainability:</strong> How easy is it to update or fix?</li>
+    </ul>
+
+    <h3>A First Look: High-Level Architecture</h3>
+    <p>A classic web application architecture — hover any node to highlight it:</p>
+    <div class="archd" aria-label="High-level web architecture diagram">
+      <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">HTTPS</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">⚖️</span><span>Load Balancer</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Web Server</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Web Server</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>Web Server</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Cache</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🧩</span><span>Microservices</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">📬</span><span>Message Queue</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>Database (SQL / NoSQL)</span></div>
+    </div>
+
+    <h2 id="why-it-matters">Why System Design Matters</h2>
+
+    <h3>1. Scalability & Reliability</h3>
+    <blockquote>Modern apps handle millions, even billions of users without any problem. Good system design is crucial for such systems.</blockquote>
+
+    <h3>2. Architectural Thinking</h3>
+    <p>Beyond coding — making informed decisions and trade-offs: SQL vs. NoSQL, Microservices vs. Monolith, Consistency vs. Availability.</p>
+
+    <h3>3. Career Growth</h3>
+    <p>Required to become a senior engineer or architect. Junior engineers focus on code; senior engineers design for scalability, maintainability, and system health.</p>
+
+    <h3>4. Real-World Problem Solving</h3>
+    <p>It's about solving real engineering challenges, not just passing interviews. Memorizing patterns isn't enough — you must understand <em>why</em> certain choices are made.</p>
+
+    <h3>5. Trade-Offs & Decision Making</h3>
+    <p>There's no perfect design. Balance scalability, cost, speed, and complexity. Every choice has a trade-off.</p>
+
+    <h3>6. Future-Proofing</h3>
+    <p>Poorly designed systems become bottlenecks. Netflix and eBay both started monolithic and migrated to microservices as they scaled.</p>
+
+    <h3>7. Cost</h3>
+    <div class="callout callout-warning">
+      <span class="callout-icon">💰</span>
+      <div class="callout-content">
+        <div class="callout-title">Cost is a First-Class Design Dimension</div>
+        <p>A system that "works" but costs <strong>$50K/month</strong> when it could have cost $5K is a failed design. Cloud bills are real, and architectural choices directly drive them:</p>
+        <ul>
+          <li>Choosing a fancy database when SQLite would do.</li>
+          <li>Running 24/7 servers for workloads that could be serverless.</li>
+          <li>Storing video in hot storage when 99% of it is rarely watched.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2 id="fr-vs-nfr">Functional vs. Non-Functional Requirements</h2>
+    <p>You'll see these terms constantly. Pin them down now:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Type</th><th>Question it answers</th><th>Examples</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Functional</strong></td><td><em>What does the system do?</em></td><td>"Users can shorten a URL", "Send email on signup", "Show recommended videos"</td></tr>
+          <tr><td><strong>Non-functional</strong></td><td><em>How well does it do it?</em></td><td>"p99 latency &lt; 100ms", "99.99% uptime", "10K req/sec", "Encrypt all PII"</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout callout-tip">
+      <span class="callout-icon">🧭</span>
+      <div class="callout-content">
+        <div class="callout-title">Rule of Thumb</div>
+        <p>If removing the requirement still gives you a <em>working</em> system that's just slower, less reliable, or more expensive — it's <strong>non-functional</strong>.</p>
+      </div>
+    </div>
+
+    <h3>The Ten Common Non-Functional Requirements</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Dimension</th><th>What it measures</th><th>Common metric</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Latency</strong></td><td>How long one request takes</td><td>p50, p95, p99 in ms</td></tr>
+          <tr><td><strong>Throughput</strong></td><td>How many requests per unit time</td><td>requests/sec, QPS, MB/s</td></tr>
+          <tr><td><strong>Availability</strong></td><td>% of time the system is up</td><td>99.9% = "three nines"</td></tr>
+          <tr><td><strong>Durability</strong></td><td>Probability data is never lost</td><td>11 nines (S3-style)</td></tr>
+          <tr><td><strong>Scalability</strong></td><td>Ability to grow to handle more load</td><td>Linear vs. sub-linear cost</td></tr>
+          <tr><td><strong>Consistency</strong></td><td>All readers see the same data</td><td>Strong / eventual</td></tr>
+          <tr><td><strong>Security</strong></td><td>Protection from unauthorized access</td><td>OWASP top 10 coverage</td></tr>
+          <tr><td><strong>Maintainability</strong></td><td>How easy to change, debug, deploy</td><td>Deploy frequency, MTTR</td></tr>
+          <tr><td><strong>Observability</strong></td><td>How easy to know what the system is doing</td><td>Logs, metrics, traces</td></tr>
+          <tr><td><strong>Cost</strong></td><td>Dollars per request, user, month</td><td>$/req, $/user/mo</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout callout-danger">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-content">
+        <div class="callout-title">Trade-offs Are Inevitable</div>
+        <p><strong>You cannot maximize all of these simultaneously.</strong> Design <em>is</em> picking which ones matter most for your problem.</p>
+      </div>
+    </div>
+
+    <h2 id="latency-numbers">⚡ Numbers Every Programmer Should Know</h2>
+    <p>This is the single most important reference in this course. <strong>Memorize the orders of magnitude.</strong> They will let you reason about why caching helps, why a cross-region call is bad, why disk seek is to be avoided, and why "just put it in memory" works.</p>
+
+    <div class="latency-viz">
+      <div class="latency-toggle">
+        <button class="active" data-mode="real">Real Time</button>
+        <button data-mode="human">Human-Scale Time</button>
+      </div>
+      <div id="latencyRows"></div>
+      <p class="muted" style="margin-top:18px; font-size:13px; text-align:center;">Click "Human-Scale Time" to see what would happen if L1 cache took 1 second — the absurd reality of computer timescales.</p>
+    </div>
+
+    <h3>What This Means in Practice</h3>
+    <ul>
+      <li><strong>Memory is ~100× faster than SSD, ~100,000× faster than disk seek.</strong> That's why caches exist.</li>
+      <li><strong>Same-datacenter round trip (0.5 ms) is ~300× faster than cross-continent (150 ms).</strong> That's why CDNs and regional replicas matter.</li>
+      <li><strong>Compression often pays off:</strong> 3 µs to compress vs. saving network/disk time later.</li>
+      <li><strong>A modern API endpoint that takes &gt;100 ms has spent most of its time on something <em>other</em> than CPU.</strong> It's usually network or disk.</li>
+    </ul>
+    <div class="callout callout-tip">
+      <span class="callout-icon">🎯</span>
+      <div class="callout-content">
+        <div class="callout-title">Sanity-Check Your Designs</div>
+        <p>Whenever you propose a design, sanity-check it against this table. If your design has 5 sequential cross-region calls in a hot path, your p99 is already ≥ 750 ms — no amount of code optimization will fix that.</p>
+      </div>
+    </div>
+
+    <h2 id="evolution">The Evolution of System Design (1995–Present)</h2>
+    <p>System design is not static — it has evolved rapidly over the last 25 years:</p>
+
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="timeline-year">1995–2005</div>
+        <div class="timeline-title">Monolithic Web Apps</div>
+        <div class="timeline-body">LAMP stack (Linux, Apache, MySQL, PHP), MVC, stateless servers, single-node databases. Everything bundled together. The era of <code>guestbook.cgi</code>.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">2005–2010</div>
+        <div class="timeline-title">Distributed Systems</div>
+        <div class="timeline-body">Caching (Memcached, Redis), CDNs, database replication, load balancing. Facebook, Amazon needed to scale to millions of users.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">2010–2015</div>
+        <div class="timeline-title">Cloud Revolution</div>
+        <div class="timeline-body">AWS, Azure, GCP go mainstream. Virtualization, containers (Docker), NoSQL databases (MongoDB, Cassandra), on-demand scaling.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">2015–2020</div>
+        <div class="timeline-title">Microservices & Event-Driven</div>
+        <div class="timeline-body">Monoliths split into microservices. API gateways, event brokers (Kafka, RabbitMQ), CI/CD pipelines, service meshes.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">2020–Present</div>
+        <div class="timeline-title">Real-Time, AI-Driven, Edge</div>
+        <div class="timeline-body">Serverless, Kubernetes, streaming pipelines, edge computing, observability, AI/ML inference at scale, security & compliance focus.</div>
+      </div>
+    </div>
+
+    <h2 id="course-structure">Course Structure</h2>
+    <p>This 25-chapter course goes from beginner to confident architect, organized into <strong>foundational chapters (1–11)</strong> followed by <strong>deep-dive case studies (12–24)</strong> and <strong>interview prep (25)</strong>.</p>
+
+    <h3>Foundations</h3>
+    <ol>
+      <li><strong>Introduction</strong> — <em>You are here</em></li>
+      <li><strong>Networking & Communication</strong> — IP, DNS, proxies, load balancers, API gateways, CDNs</li>
+      <li><strong>Protocols</strong> — UDP, TCP, HTTP, REST, WebSockets, gRPC, GraphQL</li>
+      <li><strong>Architectural Patterns</strong> — Monolithic, layered, microservices, event-driven</li>
+      <li><strong>Web Concepts</strong> — Sessions, cookies, JWT, serialization formats, CORS</li>
+      <li><strong>Scalability</strong> — Horizontal vs. vertical scaling, auto-scaling, load balancing</li>
+      <li><strong>Storage</strong> — SQL vs. NoSQL, CAP theorem, sharding, replication, object storage, big data</li>
+      <li><strong>Performance</strong> — Caching, message queues, concurrency, indexing, query optimization</li>
+      <li><strong>Reliability, Availability & Disaster Recovery</strong> — Fault tolerance, redundancy, RTO/RPO, backups</li>
+      <li><strong>Security</strong> — CIA triad, authentication, authorization, encryption, threat modeling</li>
+      <li><strong>The System Design Blueprint</strong> — A 4-step methodology for any design problem</li>
+    </ol>
+
+    <h3>Case Studies</h3>
+    <ul>
+      <li>12. <strong>URL Shortener</strong> (TinyURL)</li>
+      <li>17. <strong>Auction Platform</strong> (eBay)</li>
+      <li>19. <strong>Cloud Storage</strong> (Google Drive / Dropbox)</li>
+      <li>20. <strong>Video Sharing Platform</strong> (YouTube)</li>
+      <li>21. <strong>Search Engine</strong> (Google)</li>
+      <li>22. <strong>E-Commerce Platform</strong> (Amazon)</li>
+      <li>23. <strong>Taxi Hailing App</strong> (Uber)</li>
+      <li>24. <strong>Collaborative Document Editor</strong> (Google Docs)</li>
+    </ul>
+
+    <h3>Wrap-Up</h3>
+    <p><strong>25. Final Prep, Mindset & Moving Forward</strong> — Interview strategies, frameworks, continuous learning.</p>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">📌</span>
+      <div class="callout-content">
+        <div class="callout-title">About the Gaps in Numbering</div>
+        <p>Chapters 13–16 and 18 are intentionally left empty as placeholders for additional case studies (e.g., chat/messaging, news feed, payment processing). They're not missing content — they're TBD slots.</p>
+      </div>
+    </div>
+
+    <h2 id="framework">The 4-Step Design Framework</h2>
+    <p>When approaching any system design problem — in an interview or real life — use this structured methodology. <strong>Chapter 11 expands on this in depth.</strong></p>
+
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">1</div>
+        <div class="step-title">Understand Requirements</div>
+        <div class="step-body">Clarify functional &amp; non-functional needs. What does it do? How well must it do it?</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <div class="step-title">Estimate Scale</div>
+        <div class="step-body">Back-of-the-envelope calculations: QPS, storage, bandwidth, growth. Spot bottlenecks early.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <div class="step-title">High-Level Design</div>
+        <div class="step-body">Sketch core services, data stores, communication patterns. Box-and-arrow time.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">4</div>
+        <div class="step-title">Tech Decisions</div>
+        <div class="step-body">Databases, caches, queues. Justify every choice with trade-offs.</div>
+      </div>
+    </div>
+
+    <blockquote>
+      <strong>Pro Tip:</strong> Start by clarifying requirements and constraints. Ask questions, state assumptions, and <em>then</em> move to architecture. This mirrors how real-world engineering happens.
+    </blockquote>
+
+    <h2 id="url-shortener">Worked Example: A URL Shortener</h2>
+    <p>Let's apply the framework to a simplified example — designing a URL shortener like bit.ly. (<strong>Chapter 12</strong> covers this case study in full detail.)</p>
+
+    <h3>Requirements</h3>
+    <ul>
+      <li>Shorten long URLs</li>
+      <li>Redirect users from short URLs to the originals</li>
+      <li>Handle high read/write traffic</li>
+      <li>Optional: analytics</li>
+    </ul>
+
+    <h3>Request Flow</h3>
+    <div class="archd-seq" aria-label="URL Shortener request flow">
+      <div class="archd-seq-step"><span class="num">1</span>Shorten a URL</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">POST long URL</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>API Server</span></div>
+        <div class="archd-seq-arrow right"><span class="label">save (code → URL)</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>KV Store</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Receive the short URL</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow left"><span class="label">short URL</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>API Server</span></div>
+        <div class="archd-seq-arrow left"><span class="label">ok</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>KV Store</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Visit the short URL — redirect</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow right"><span class="label">GET /code</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>API Server</span></div>
+        <div class="archd-seq-arrow right"><span class="label">lookup code</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>KV Store</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>302 redirect back</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User</span></div>
+        <div class="archd-seq-arrow left"><span class="label">302 → long URL</span></div>
+        <div class="archd-node"><span class="archd-icon">🖥️</span><span>API Server</span></div>
+        <div class="archd-seq-arrow left"><span class="label">long URL</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🗄️</span><span>KV Store</span></div>
+      </div>
+    </div>
+
+    <h3>Simple Pseudocode</h3>
+<pre><code class="language-python">import hashlib
+
+def shorten_url(long_url):
+    # Generate a short code using hash
+    code = hashlib.md5(long_url.encode()).hexdigest()[:6]
+    db.save(code, long_url)
+    return f"https://sho.rt/{code}"
+
+def redirect(code):
+    long_url = db.get(code)
+    if long_url:
+        return redirect_to(long_url)
+    else:
+        return 404</code></pre>
+
+    <h3>Trade-Offs to Consider</h3>
+    <ul>
+      <li><strong>Database choice:</strong> Key-value store (Redis, DynamoDB) for high throughput; SQL for transactional needs.</li>
+      <li><strong>Cache:</strong> Add caching for popular short URLs to reduce DB reads.</li>
+      <li><strong>Partition strategy:</strong> Partition the database based on code prefix for scalability.</li>
+      <li><strong>High availability:</strong> Run multiple API servers behind a load balancer.</li>
+    </ul>
+    <div class="callout callout-warning">
+      <span class="callout-icon">🧪</span>
+      <div class="callout-content">
+        <div class="callout-title">MD5-Truncate is a Naive Baseline</div>
+        <p>Using the first 6 characters of an MD5 hash is fine as a teaching example, but it's <strong>collision-prone</strong> — two different long URLs can map to the same short code. Production-grade URL shorteners use <strong>base62 encoding of a monotonically increasing counter</strong> (often coordinated via Zookeeper). We cover this in Chapter 12.</p>
+      </div>
+    </div>
+
+    <h2 id="patterns">Architectural Patterns: A Preview</h2>
+    <p>A glimpse of what's to come in Chapter 4 — <strong>Monolith vs. Microservices</strong>:</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Aspect</th><th>Monolith</th><th>Microservices</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Codebase</td><td>Single, tightly coupled</td><td>Decomposed, independent</td></tr>
+          <tr><td>Scaling</td><td>Whole app scales together</td><td>Each service scales separately</td></tr>
+          <tr><td>Tech stack</td><td>Unified</td><td>Polyglot (mixed stacks)</td></tr>
+          <tr><td>Best for</td><td>Small teams, MVPs</td><td>Large-scale, independent teams</td></tr>
+          <tr><td>Operational cost</td><td>Low</td><td>High (DevOps, observability needed)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="communication">Communication & Load Balancing: A Preview</h2>
+    <p>A preview of <strong>Chapter 2</strong> (Networking) and <strong>Chapter 6</strong> (Scalability).</p>
+
+    <h3>A Round-Robin Load Balancer in Python</h3>
+<pre><code class="language-python">class LoadBalancer:
+    def __init__(self, servers):
+        self.servers = servers
+        self.index = 0
+
+    def get_server(self):
+        server = self.servers[self.index]
+        self.index = (self.index + 1) % len(self.servers)
+        return server
+
+# Usage
+lb = LoadBalancer(['AppServer1', 'AppServer2', 'AppServer3'])
+for _ in range(6):
+    print(lb.get_server())
+# Output: AppServer1, AppServer2, AppServer3, AppServer1, AppServer2, AppServer3</code></pre>
+
+    <h2 id="performance">Performance Boosters</h2>
+    <p>A preview of <strong>Chapter 8</strong>:</p>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <div class="card-title">Caching</div>
+        <div class="card-body">Redis / Memcached to speed up repeated requests. Reduces DB load by 90%+ for hot data.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📬</div>
+        <div class="card-title">Message Queues</div>
+        <div class="card-body">Kafka, RabbitMQ. Offload heavy processing; decouple producers from consumers.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🗂️</div>
+        <div class="card-title">Database Sharding</div>
+        <div class="card-body">Split big databases by user ID or geography for higher throughput.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🌍</div>
+        <div class="card-title">CDNs</div>
+        <div class="card-body">Serve static assets close to users — lower latency, less origin load.</div>
+      </div>
+    </div>
+
+    <h2 id="security">Security Essentials</h2>
+    <p>A preview of <strong>Chapter 10</strong>. Security is <strong>never</strong> an afterthought.</p>
+    <ul>
+      <li><strong>Authentication &amp; Authorization:</strong> OAuth, JWT, role-based access control.</li>
+      <li><strong>Encryption:</strong> HTTPS in transit, data-at-rest encryption.</li>
+      <li><strong>Firewalls &amp; API Gateways:</strong> Control access, mitigate attacks (rate limiting, IP filtering).</li>
+    </ul>
+
+    <h2 id="anti-patterns">⚠️ Common Beginner Anti-Patterns</h2>
+    <p>Before you absorb the patterns, learn the <strong>anti-patterns</strong> — the predictable mistakes that turn good intentions into bad systems. <strong>Click each card</strong> to reveal the rule of thumb.</p>
+
+    <div class="flip-grid">
+      <div class="flip-card"><div class="flip-inner">
+        <div class="flip-front">
+          <div class="ap-icon">🚀</div>
+          <div class="ap-title">Premature Scaling</div>
+          <div class="ap-desc">Designing for 1 billion users when you have 100. Sharding a database that fits on a laptop.</div>
+          <div class="flip-hint">Click to flip →</div>
+        </div>
+        <div class="flip-back">
+          <div class="ap-title">Rule of Thumb</div>
+          <div class="ap-rule">Don't optimize for a scale you haven't reached. Reaching that scale will teach you what your real bottlenecks are — they're almost never what you predicted.</div>
+        </div>
+      </div></div>
+
+      <div class="flip-card"><div class="flip-inner">
+        <div class="flip-front">
+          <div class="ap-icon">📦</div>
+          <div class="ap-title">Cargo-Cult Architecture</div>
+          <div class="ap-desc">"Netflix uses microservices, so we will too." But you have 4 engineers, not 4,000.</div>
+          <div class="flip-hint">Click to flip →</div>
+        </div>
+        <div class="flip-back">
+          <div class="ap-title">Rule of Thumb</div>
+          <div class="ap-rule">Choose architecture for <em>your</em> constraints. The right answer for a 5-person startup is rarely the same as for FAANG.</div>
+        </div>
+      </div></div>
+
+      <div class="flip-card"><div class="flip-inner">
+        <div class="flip-front">
+          <div class="ap-icon">🐉</div>
+          <div class="ap-title">Distributed Monolith</div>
+          <div class="ap-desc">20 microservices sharing one database, deploying together, breaking together. Worst of both worlds.</div>
+          <div class="flip-hint">Click to flip →</div>
+        </div>
+        <div class="flip-back">
+          <div class="ap-title">Rule of Thumb</div>
+          <div class="ap-rule">Microservices need <em>independent deploys</em> and <em>independent data ownership</em>. Without both, you have a distributed monolith.</div>
+        </div>
+      </div></div>
+
+      <div class="flip-card"><div class="flip-inner">
+        <div class="flip-front">
+          <div class="ap-icon">🎰</div>
+          <div class="ap-title">Over-Rotating on Tech</div>
+          <div class="ap-desc">Spending 3 weeks debating Postgres vs MySQL. Both would work.</div>
+          <div class="flip-hint">Click to flip →</div>
+        </div>
+        <div class="flip-back">
+          <div class="ap-title">Rule of Thumb</div>
+          <div class="ap-rule">Your data model matters 10× more than which DB you pick from the same category. Use Postgres unless you have a specific reason not to.</div>
+        </div>
+      </div></div>
+
+      <div class="flip-card"><div class="flip-inner">
+        <div class="flip-front">
+          <div class="ap-icon">🚨</div>
+          <div class="ap-title">Ignoring Day-2 Ops</div>
+          <div class="ap-desc">Beautiful happy path. No backups, monitoring, runbooks. 3 AM on-call: no clue what's wrong.</div>
+          <div class="flip-hint">Click to flip →</div>
+        </div>
+        <div class="flip-back">
+          <div class="ap-title">Rule of Thumb</div>
+          <div class="ap-rule">A system that's hard to operate is a system that will fail. Operations is a design concern, not a deployment concern.</div>
+        </div>
+      </div></div>
+
+      <div class="flip-card"><div class="flip-inner">
+        <div class="flip-front">
+          <div class="ap-icon">🏗️</div>
+          <div class="ap-title">Big Up-Front Design</div>
+          <div class="ap-desc">6 months designing the perfect architecture before writing a line of code.</div>
+          <div class="flip-hint">Click to flip →</div>
+        </div>
+        <div class="flip-back">
+          <div class="ap-title">Rule of Thumb</div>
+          <div class="ap-rule">Design enough to get unstuck, then build, then design more. Iterate. Real requirements are discovered by using the system.</div>
+        </div>
+      </div></div>
+    </div>
+
+    <h2 id="tips">💡 Tips and Tricks for Mastering System Design</h2>
+
+    <h3>Approach &amp; Mindset</h3>
+    <ul>
+      <li><strong>Build from fundamentals.</strong> Don't just memorize patterns — understand <em>why</em> they exist.</li>
+      <li><strong>Don't memorize — understand.</strong> Focus on underlying principles.</li>
+      <li><strong>Ask "Why?" often.</strong> Every decision has a trade-off.</li>
+      <li><strong>Stay curious.</strong> The field evolves — keep learning.</li>
+    </ul>
+
+    <h3>Practice &amp; Frameworks</h3>
+    <ul>
+      <li><strong>Use the 4-step design framework</strong> consistently.</li>
+      <li><strong>Practice real-world case studies</strong> — Netflix, WhatsApp, Uber, Airbnb.</li>
+      <li><strong>Simulate interview discussions.</strong> Talk through your design out loud.</li>
+    </ul>
+
+    <h3>Trade-offs &amp; Detail</h3>
+    <ul>
+      <li><strong>Think in trade-offs.</strong> Justify every choice (latency vs. consistency, cost vs. reliability).</li>
+      <li><strong>Don't skip the details.</strong> Indexing, consistency, sharding, replication, failover.</li>
+      <li><strong>Connect the dots.</strong> Caching, load balancing, sharding all interrelate.</li>
+    </ul>
+
+    <h3>Visualization &amp; Communication</h3>
+    <ul>
+      <li><strong>Draw diagrams.</strong> Visuals communicate architecture better than words.</li>
+      <li><strong>Diagram first, details later.</strong> Big picture before specifics.</li>
+    </ul>
+
+    <h3>Learning Discipline</h3>
+    <ul>
+      <li><strong>Pause and research.</strong> If you hit an unfamiliar term (like <em>TF-IDF</em>), read up before continuing.</li>
+      <li><strong>Revisit &amp; iterate.</strong> Do the course twice — the second pass fills gaps.</li>
+    </ul>
+
+    <h2 id="further-reading">📚 Further Reading</h2>
+    <ul>
+      <li><a href="https://github.com/donnemartin/system-design-primer" target="_blank">System Design Primer (GitHub)</a></li>
+      <li><a href="https://dataintensive.net/" target="_blank">Designing Data-Intensive Applications by Martin Kleppmann</a></li>
+      <li><a href="https://danluu.com/postmortem-lessons/" target="_blank">danluu.com — Postmortem Lessons</a></li>
+    </ul>
+
+    <h2>Conclusion</h2>
+    <p>Mastering system design is not just about cracking interviews — it's about building scalable, reliable, and maintainable software that powers the world's largest applications. By mastering it, you'll be equipped to build scalable, efficient, and future-proof systems while naturally excelling in interviews.</p>
+
+    <p>System design isn't about memorizing buzzwords — it's about understanding the <em>why</em> behind every architectural choice. Start with the fundamentals, embrace the interconnections, and design one thoughtful step at a time.</p>
+
+    <p><strong>Ready to dive in? Let's start this journey together!</strong></p>
+
+    <nav class="chapter-nav">
+      <div class="chapter-nav-card" style="visibility:hidden;"></div>
+      <a class="chapter-nav-card next" href="2 - Networking %26 Communication.html">
+        <div class="chapter-nav-label">Next chapter →</div>
+        <div class="chapter-nav-title">Chapter 2 — Networking &amp; Communication</div>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="../assets/system-design.js"></script>
+
+<script>
+// Chapter-specific: Latency Visualizer
+const latencyData = [
+  { name: 'L1 cache reference', ns: 0.5 },
+  { name: 'Branch mispredict', ns: 5 },
+  { name: 'L2 cache reference', ns: 7 },
+  { name: 'Mutex lock/unlock', ns: 25 },
+  { name: 'Main memory reference', ns: 100 },
+  { name: 'Compress 1 KB with Snappy', ns: 3000 },
+  { name: 'Send 2 KB over network', ns: 1000 },
+  { name: 'Read 1 MB from memory', ns: 250000 },
+  { name: 'Round trip in datacenter', ns: 500000 },
+  { name: 'Read 4 KB randomly from SSD', ns: 150000 },
+  { name: 'Read 1 MB sequentially from SSD', ns: 1000000 },
+  { name: 'Disk seek', ns: 10000000 },
+  { name: 'Read 1 MB sequentially from disk', ns: 20000000 },
+  { name: 'Round trip CA → Netherlands → CA', ns: 150000000 },
+];
+
+function formatRealTime(ns) {
+  if (ns < 1000) return ns + ' ns';
+  if (ns < 1e6) return (ns / 1000).toFixed(ns < 10000 ? 1 : 0) + ' µs';
+  if (ns < 1e9) return (ns / 1e6).toFixed(ns < 1e7 ? 1 : 0) + ' ms';
+  return (ns / 1e9).toFixed(1) + ' s';
+}
+function formatHumanTime(ns) {
+  const seconds = ns * 2;
+  if (seconds < 60) return seconds.toFixed(1) + ' sec';
+  if (seconds < 3600) return (seconds / 60).toFixed(1) + ' min';
+  if (seconds < 86400) return (seconds / 3600).toFixed(1) + ' hours';
+  if (seconds < 86400 * 30) return (seconds / 86400).toFixed(1) + ' days';
+  if (seconds < 86400 * 365) return (seconds / (86400 * 30)).toFixed(1) + ' months';
+  return (seconds / (86400 * 365)).toFixed(1) + ' years';
+}
+function renderLatency(mode) {
+  const container = document.getElementById('latencyRows');
+  container.innerHTML = '';
+  const maxLog = Math.log10(Math.max(...latencyData.map(d => d.ns)));
+  const minLog = Math.log10(Math.min(...latencyData.map(d => d.ns)));
+  latencyData.forEach((d, i) => {
+    const row = document.createElement('div');
+    row.className = 'latency-row';
+    const log = Math.log10(d.ns);
+    const pct = ((log - minLog) / (maxLog - minLog)) * 100;
+    const value = mode === 'real' ? formatRealTime(d.ns) : formatHumanTime(d.ns);
+    row.innerHTML = `
+      <div class="latency-label">${d.name}</div>
+      <div class="latency-bar-container"><div class="latency-bar" style="width:0%"></div></div>
+      <div class="latency-value">${value}</div>
+    `;
+    container.appendChild(row);
+    setTimeout(() => { row.querySelector('.latency-bar').style.width = pct + '%'; }, 80 + i * 30);
+  });
+}
+renderLatency('real');
+document.querySelectorAll('.latency-toggle button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.latency-toggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderLatency(btn.dataset.mode);
+  });
+});
+</script>
+
+</body>
+</html>

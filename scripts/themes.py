@@ -117,6 +117,37 @@ THEMES = {
             "--grain-opacity": ".10", "--grain-blend": "multiply",
         },
     },
+
+    # --- the "System Design" site's design language: Inter + JetBrains Mono, white bg,
+    #     slate text, blue primary. This is the project default. -----------------------
+    "sysdesign": {
+        "display": "'Inter', system-ui, -apple-system, sans-serif",
+        "body": "'Inter', system-ui, -apple-system, sans-serif",
+        "mono": "'JetBrains Mono', ui-monospace, monospace",
+        "font_link": (
+            '<link rel="preconnect" href="https://fonts.googleapis.com">'
+            '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+            '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900'
+            '&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">'
+        ),
+        "hljs_css": _HLJS_ATOM_DARK,
+        "mermaid_theme": "base",
+        "mermaid_vars": {
+            "fontFamily": "JetBrains Mono, monospace", "fontSize": "13px",
+            "primaryColor": "#eff4ff", "primaryBorderColor": "#2563eb",
+            "primaryTextColor": "#0f172a", "lineColor": "#94a3b8",
+            "secondaryColor": "#f5f6f8", "tertiaryColor": "#ffffff",
+        },
+        "vars": {
+            "--paper": "#ffffff", "--ink": "#0f172a", "--ink-soft": "#475569", "--muted": "#94a3b8",
+            "--accent": "#2563eb", "--accent-soft": "#3b82f6", "--gold": "#f59e0b",
+            "--line": "#e2e8f0", "--line-soft": "#eef2f7", "--card": "#fafbfc",
+            "--glow": "rgba(37,99,235,.06)", "--shadow-col": "rgba(15,23,42,.13)",
+            "--code-bg": "#eef2ff", "--code-col": "#1d4ed8", "--on-accent": "#ffffff",
+            "--accent-line": "rgba(37,99,235,.4)", "--hover": "rgba(15,23,42,.04)",
+            "--grain-opacity": "0", "--grain-blend": "multiply",
+        },
+    },
 }
 
-DEFAULT_THEME = "paper"
+DEFAULT_THEME = "sysdesign"

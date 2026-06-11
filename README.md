@@ -16,7 +16,7 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 
 | Tool | Description | Tags | Added |
 |------|-------------|------|-------|
-| [Claude Agent Skills](https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview) | Modular, portable capabilities that extend Claude — a `SKILL.md` folder of instructions, scripts, and resources Claude loads automatically when a task is relevant. Works across Claude.ai, Claude Code, the Agent SDK, and the API. | `#claude` `#agents` `#anthropic` `#extensibility` | 2026-06-09 |
+| [Building Claude Skills — The Complete Guide](notes/building-claude-skills/html/index.html) | Anthropic's complete guide to building Skills for Claude — `SKILL.md` structure & YAML frontmatter, planning, testing, distribution, and proven patterns. Converted in full from the official PDF and readable in-library. | `#claude` `#skills` `#anthropic` `#guide` | 2026-06-11 |
 
 <!-- TOOLS:END -->
 

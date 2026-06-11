@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chapter 19 — Cloud Storage (Drive)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<link rel="stylesheet" href="../assets/system-design.css">
+</head>
+<body><a href="../../../notes.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;z-index:99999;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600;background:#0f172a;color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.28)">&#8592; AI Library</a>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="topbar">
+  <a class="brand" href="../index.html">
+    <span class="brand-icon">SD</span>
+    <span>Mastering System Design</span>
+  </a>
+  <div class="topbar-actions">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <h3>Chapter 19 — On This Page</h3>
+    <ul class="toc-list" id="tocList">
+      <li><a href="#learning-outcomes">Learning Outcomes</a></li>
+      <li><a href="#problem-definition-requirements">Problem Definition &amp; Requirements</a></li>
+      <li><a href="#estimating-scale-access-patterns">Estimating Scale &amp; Access Patterns</a></li>
+      <li><a href="#identifying-bottlenecks">Identifying Bottlenecks</a></li>
+      <li><a href="#high-level-system-architecture">High-Level System Architecture</a></li>
+      <li><a href="#core-services-responsibilities">Core Services &amp; Responsibilities</a></li>
+      <li><a href="#api-design">API Design</a></li>
+      <li><a href="#service-communication-patterns">Service Communication Patterns</a></li>
+      <li><a href="#chunked-uploads-large-file-handling">Chunked Uploads &amp; Large File Handling</a></li>
+      <li><a href="#file-versioning-restore">File Versioning &amp; Restore</a></li>
+      <li><a href="#storage-database-strategies">Storage &amp; Database Strategies</a></li>
+      <li><a href="#caching-performance">Caching &amp; Performance</a></li>
+      <li><a href="#critical-user-flow">Critical User Flow: Upload &amp; Sync</a></li>
+      <li><a href="#tech-infrastructure-stack">Tech &amp; Infrastructure Stack</a></li>
+      <li><a href="#beyond-mvp">Beyond MVP — Senior Designer</a></li>
+      <li><a href="#tips-tricks">Tips &amp; Tricks</a></li>
+      <li><a href="#conclusion">Conclusion</a></li>
+      <li><a href="#further-reading">Further Reading</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <span class="chapter-label">Chapter 19 · Case Study</span>
+      <h1>Designing a Cloud Storage System (Google Drive / Dropbox)</h1>
+      <p class="hero-subtitle">
+        Build a Drive- or Dropbox-class platform: chunked resumable uploads, block-level deduplication, real-time multi-device sync, fine-grained sharing, and conflict resolution at petabyte scale.
+      </p>
+      <div class="hero-author">By Charikshith</div>
+    </section>
+
+    <p>Cloud storage services such as <strong>Google Drive</strong> and <strong>Dropbox</strong> support billions of files, real-time sync, complex permissions, and must deliver blazing performance at massive scale. This case study walks through a practical system design approach — highlighting requirements, architecture, API design, chunked uploads, deduplication, versioning, and optimization strategies.</p>
+
+    <h2 id="learning-outcomes">🎯 Learning Outcomes</h2>
+    <p>After working through this case study, you'll be able to:</p>
+    <ol class="outcomes-list">
+      <li><span class="outcome-num">1</span><span>Design <strong>chunked, resumable uploads</strong> that survive network interruptions.</span></li>
+      <li><span class="outcome-num">2</span><span>Build <strong>block-level deduplication</strong> to dramatically reduce storage costs.</span></li>
+      <li><span class="outcome-num">3</span><span>Sync files across devices using <strong>vector clocks or version vectors</strong> to handle conflicts.</span></li>
+      <li><span class="outcome-num">4</span><span>Choose <strong>last-writer-wins vs three-way merge</strong> for conflict resolution.</span></li>
+      <li><span class="outcome-num">5</span><span>Support <strong>offline editing</strong> with sync-on-reconnect semantics.</span></li>
+    </ol>
+
+    <h2 id="problem-definition-requirements">Problem Definition &amp; Requirements</h2>
+
+    <h3>What Are We Building?</h3>
+    <p>A distributed, cloud-based file storage platform with:</p>
+    <ul>
+      <li><strong>File upload and storage</strong> (all types, securely).</li>
+      <li><strong>Cross-device sync</strong> (real-time updates).</li>
+      <li><strong>Secure sharing and collaboration</strong> (fine-grained access).</li>
+      <li><strong>Massive scalability</strong> (millions of users, petabytes of data).</li>
+      <li><strong>File versioning and recovery.</strong></li>
+    </ul>
+
+    <h3>Functional Requirements</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>File Upload/Download</td><td>Any file type, fast, resumable uploads</td></tr>
+          <tr><td>Multi-Device Sync</td><td>Instant reflection of updates across desktop, mobile, web (&lt;5s latency)</td></tr>
+          <tr><td>File Organization</td><td>Folders, nested directories, tags</td></tr>
+          <tr><td>Sharing &amp; Collaboration</td><td>Public/private links, permissions (view/edit/comment), shared folders</td></tr>
+          <tr><td>File Versioning</td><td>Maintain and restore previous versions</td></tr>
+          <tr><td>Soft Delete &amp; Restore</td><td>Trash bin, restore before permanent deletion</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Non-Functional Requirements</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Quality</th><th>Why It Matters</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Scalability</td><td>Must support millions of users, billions of files</td></tr>
+          <tr><td>High Availability</td><td>Files should never disappear (11 nines durability)</td></tr>
+          <tr><td>Low Latency</td><td>Instant uploads, downloads, and sync</td></tr>
+          <tr><td>Security</td><td>End-to-end encryption, strict access control</td></tr>
+          <tr><td>Cost Efficiency</td><td>Deduplication, storage lifecycle management</td></tr>
+          <tr><td>Observability/Monitoring</td><td>Track usage, errors, delays, API failures</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-content">
+        <div class="callout-title">Trade-offs</div>
+        <p>Improving one quality (e.g., durability) can affect others (cost, latency). <strong>Design is about balancing these.</strong></p>
+      </div>
+    </div>
+
+    <h3>Key Assumptions &amp; Constraints</h3>
+    <ul>
+      <li>Files can be large (up to 5GB) → need chunked, resumable uploads.</li>
+      <li>Users access files from multiple devices → real-time sync.</li>
+      <li>Use cloud object storage (e.g., AWS S3) → metadata/content separation.</li>
+      <li>Auth handled externally → focus on storage &amp; permissions.</li>
+      <li>Uploads are resumable (session &amp; chunk tracking).</li>
+      <li>File sync latency &lt; 5s (push/event-driven updates).</li>
+      <li>Storage must be cost-efficient (deduplication/lifecycle policies).</li>
+      <li>Fine-grained access control (robust permission/ACL model).</li>
+    </ul>
+
+    <h2 id="estimating-scale-access-patterns">Estimating Scale &amp; Access Patterns</h2>
+
+    <h3>Key Metrics</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Active Users</td><td>10 million</td></tr>
+          <tr><td>Average Files per User</td><td>500</td></tr>
+          <tr><td>Total Files</td><td>~5 billion</td></tr>
+          <tr><td>Average File Size</td><td>2 MB</td></tr>
+          <tr><td>Total Data Stored</td><td>~10 PB</td></tr>
+          <tr><td>Peak Upload Rate</td><td>~2,000 uploads/sec</td></tr>
+          <tr><td>Peak Sync Events</td><td>~10,000 updates/sec</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Implication</div>
+        <p>Requires horizontally scalable object storage, distributed metadata service, and horizontally scalable sync/notification pipelines.</p>
+      </div>
+    </div>
+
+    <h3>Access Patterns</h3>
+    <ul>
+      <li><strong>Write-heavy:</strong> Chunked uploads (large payloads), frequent sync events upon file changes, versioning (multiple writes per file).</li>
+      <li><strong>Read-heavy:</strong> Downloads from many device types, folder listings and metadata lookups, shared link/file previews.</li>
+    </ul>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <div class="callout-title">Optimization Focus</div>
+        <p>Efficient upload flow (chunking, retries), low-latency metadata access (caching), fast permission checks.</p>
+      </div>
+    </div>
+
+    <h2 id="identifying-bottlenecks">Identifying Bottlenecks</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Bottleneck</th><th>Why It's Painful</th><th>Solution Direction</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Single Metadata DB</td><td>Hotspot, limits throughput and scalability</td><td>Partition by user/folder; hybrid DBs</td></tr>
+          <tr><td>Large File Uploads</td><td>Timeouts, failures, especially on mobile</td><td>Chunked, resumable uploads</td></tr>
+          <tr><td>Real-Time Sync</td><td>Risk of stale data, race conditions</td><td>Pub/Sub sync, event sourcing</td></tr>
+          <tr><td>Permission Checks</td><td>Can slow down access on shared content</td><td>Caching, precomputed ACLs</td></tr>
+          <tr><td>High-Volume Shared Links</td><td>Spike in unauthenticated traffic</td><td>CDN caching, rate limiting</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="high-level-system-architecture">High-Level System Architecture</h2>
+
+    <p>The client talks to an API Gateway which fans out to a microservice mesh; chunks land in object storage while metadata and versioning live in hybrid SQL/NoSQL stores, with a CDN at the edge.</p>
+
+    <div class="archd" aria-label="High-level cloud storage architecture">
+      <div class="archd-node is-user"><span class="archd-icon">💻</span><span>Web / Mobile / Desktop Client</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">REST / gRPC</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📇</span><span>Metadata Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔐</span><span>Auth Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔄</span><span>Sync Service</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Storage Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">♻️</span><span>Deduplication Service</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🕰️</span><span>Versioning Service</span></div>
+      </div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-data"><span class="archd-icon">🪣</span><span>Object Storage (S3 / MinIO)</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🐘</span><span>SQL DB (Postgres)</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🍃</span><span>NoSQL DB (MongoDB)</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">⚡</span><span>Redis Cache</span></div>
+        <div class="archd-node is-external"><span class="archd-icon">🌍</span><span>CDN</span></div>
+      </div>
+    </div>
+
+    <h3>ASCII View</h3>
+<pre><code class="language-bash">+------------------+     +-----------------+     +-------------------+
+|  Client Devices  +&lt;---&gt;+  API Gateway    +&lt;---&gt;+  Auth Service     |
+| (Web/Mobile/Desktop)   +-----------------+     +-------------------+
+        |                         |
+        |                         v
+        |                 +--------------------+
+        |                 |  Upload Service    |
+        |                 +--------------------+
+        |                         |
+        |                         v
+        |                 +--------------------+
+        |                 |  Metadata Service  |&lt;----+
+        |                 +--------------------+     |
+        |                         |                  |
+        v                         v                  |
++-------------------+     +-------------------+      |
+|  Sync Service     |&lt;---&gt;+  Storage Service  +&lt;-----+
++-------------------+     +-------------------+
+        |
+        v
++-------------------+
+| Notification/Push |
++-------------------+</code></pre>
+
+    <h2 id="core-services-responsibilities">Core Services &amp; Responsibilities</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Service</th><th>Responsibility</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>API Gateway</strong></td><td>Entry point, routes all requests, authentication, rate limiting.</td></tr>
+          <tr><td><strong>Upload Service</strong></td><td>Handles chunked, resumable file uploads, manages upload sessions.</td></tr>
+          <tr><td><strong>Storage Service</strong></td><td>Stores/retrieves file chunks from object storage.</td></tr>
+          <tr><td><strong>Metadata Service</strong></td><td>Stores file/folder structure, ownership, permissions, chunk &amp; version info.</td></tr>
+          <tr><td><strong>Auth Service</strong></td><td>Validates user identity, checks permissions (read/write/share).</td></tr>
+          <tr><td><strong>Sync Service</strong></td><td>Pushes real-time changes to clients via WebSocket/push.</td></tr>
+          <tr><td><strong>Deduplication Service</strong></td><td>Eliminates redundant file chunks (saves cost/bandwidth).</td></tr>
+          <tr><td><strong>Versioning Service</strong></td><td>Maintains file version history, supports rollback and restore.</td></tr>
+          <tr><td><strong>Caches</strong></td><td>Metadata and chunk caches for fast access (Redis).</td></tr>
+          <tr><td><strong>Databases</strong></td><td>SQL (structured: users, file structure, perms) + NoSQL (chunk tracking, versioning, logs).</td></tr>
+          <tr><td><strong>CDN</strong></td><td>Edge caching for low-latency downloads worldwide.</td></tr>
+          <tr><td><strong>Message Queues</strong></td><td>Decouples upload, sync, deduplication, versioning flows (Kafka, RabbitMQ).</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="api-design">API Design</h2>
+    <p>All APIs are <strong>RESTful</strong>, secure, and idempotent. Uploads are resumable and support chunking.</p>
+
+    <h3>Chunked File Upload</h3>
+<pre><code class="language-bash"># 1. Initiate upload session
+POST /upload/initiate
+Content-Type: application/json
+
+{
+  "fileName": "report.pdf",
+  "fileSize": 10485760,
+  "mimeType": "application/pdf"
+}
+# Response: { "uploadId": "abc123" }
+
+# 2. Upload chunks (parallelizable)
+PUT /upload/abc123/chunk
+Content-Type: application/octet-stream
+Headers: { "Chunk-Index": 0, "Checksum": "..." }
+# Body: &lt;binary chunk data&gt;
+
+# 3. Complete upload
+POST /upload/abc123/complete</code></pre>
+
+    <p>A more complete initiation example:</p>
+
+<pre><code class="language-bash">POST /upload/initiate
+Content-Type: application/json
+Authorization: Bearer &lt;token&gt;
+
+{
+  "filename": "myphoto.jpg",
+  "size": 5000000,
+  "folderId": "abc123"
+}</code></pre>
+
+    <p><strong>Response:</strong></p>
+
+<pre><code class="language-javascript">{
+  "uploadId": "xyz789",
+  "chunkSize": 5242880
+}</code></pre>
+
+    <h3>File Retrieval &amp; Metadata</h3>
+<pre><code class="language-bash"># Download file (with access control)
+GET /files/{fileId}
+
+# Fetch metadata, version history, permissions
+GET /files/{fileId}/metadata</code></pre>
+
+    <h3>Sharing &amp; Collaboration</h3>
+<pre><code class="language-bash"># Create a shareable link
+POST /files/{fileId}/share
+Body: { "access": "view", "expiresIn": 604800 }
+
+# Access file via shared link (token-based)
+GET /files/shared/{token}</code></pre>
+
+    <h3>Sync &amp; Change Tracking</h3>
+<pre><code class="language-bash"># Real-time updates for client sync
+GET /sync/updates?since=timestamp
+# Returns: stream or array of changes (new/updated/deleted files)</code></pre>
+
+    <h3>Versioning</h3>
+<pre><code class="language-bash"># List all versions for a file
+GET /files/{fileId}/versions
+
+# Restore specific version
+POST /files/{fileId}/restore
+Body: { "versionId": "v2" }</code></pre>
+
+    <h2 id="service-communication-patterns">Service Communication Patterns</h2>
+    <ul>
+      <li><strong>REST/gRPC:</strong> Synchronous service-to-service calls (fast, low latency).</li>
+      <li><strong>Pub/Sub queues:</strong> For asynchronous processing (sync events, post-upload tasks).</li>
+      <li><strong>WebSockets:</strong> Real-time push notifications to clients for file/folder changes.</li>
+      <li><strong>Event sourcing:</strong> For triggering sync and versioning updates.</li>
+    </ul>
+
+    <h3>Example: Async Event Publish (Node.js + RabbitMQ)</h3>
+<pre><code class="language-javascript">// Publish a sync update event
+channel.assertQueue('sync-events');
+const event = { userId, fileId, eventType: 'UPDATED', timestamp: Date.now() };
+channel.sendToQueue('sync-events', Buffer.from(JSON.stringify(event)));</code></pre>
+
+    <h3>Pseudocode: Pub/Sub Publish</h3>
+<pre><code class="language-python">event = {
+    "type": "FILE_UPDATED",
+    "file_id": "file789",
+    "user_id": 42,
+    "timestamp": 1710000000
+}
+pubsub.publish("sync_updates", event)</code></pre>
+
+    <h2 id="chunked-uploads-large-file-handling">Chunked Uploads &amp; Large File Handling</h2>
+
+    <h3>Why Chunking?</h3>
+    <ul>
+      <li>Efficient for large files (e.g., up to 5GB).</li>
+      <li>Enables resumability (network interruptions don't restart whole upload).</li>
+      <li>Allows parallel uploads for speed.</li>
+    </ul>
+
+    <h3>Upload Workflow</h3>
+    <ol>
+      <li><strong>Split file</strong> into fixed-size chunks (e.g., 5MB).</li>
+      <li><strong>Upload each chunk</strong> individually (with checksum).</li>
+      <li><strong>Track upload progress</strong> in Metadata Service.</li>
+      <li><strong>On completion, assemble</strong> chunks into file in Storage Service.</li>
+    </ol>
+
+    <div class="archd" aria-label="Chunked upload data flow">
+      <div class="archd-node is-user"><span class="archd-icon">📄</span><span>Large File (up to 5 GB)</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">split into 5MB blocks</span></div>
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">🧱</span><span>chunk 0</span></div>
+        <div class="archd-node"><span class="archd-icon">🧱</span><span>chunk 1</span></div>
+        <div class="archd-node"><span class="archd-icon">🧱</span><span>chunk 2</span></div>
+        <div class="archd-node"><span class="archd-icon">🧱</span><span>chunk N</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">parallel PUT + checksum</span></div>
+      <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service (tracks progress)</span></div>
+      <div class="archd-arrow"></div>
+      <div class="archd-row">
+        <div class="archd-node is-service"><span class="archd-icon">♻️</span><span>Dedup check</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🪣</span><span>Object Storage</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">📇</span><span>Chunk metadata (NoSQL)</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">on all chunks complete</span></div>
+      <div class="archd-node is-infra"><span class="archd-icon">🧩</span><span>Assemble &amp; finalize file</span></div>
+    </div>
+
+    <h3>Chunk Tracking (Python pseudocode)</h3>
+<pre><code class="language-python">upload_progress = {}
+
+def upload_chunk(upload_id, chunk_idx, data):
+    store_chunk(upload_id, chunk_idx, data)
+    upload_progress.setdefault(upload_id, set()).add(chunk_idx)
+
+def is_upload_complete(upload_id, total_chunks):
+    return len(upload_progress.get(upload_id, set())) == total_chunks</code></pre>
+
+    <h3>Chunk Upload Endpoint (Python/Flask)</h3>
+<pre><code class="language-python">@app.route('/upload/&lt;upload_id&gt;/chunk', methods=['PUT'])
+def upload_chunk(upload_id):
+    chunk_data = request.files['file'].read()
+    chunk_idx = int(request.form['chunk_idx'])
+    checksum = request.form['checksum']
+
+    # Verify checksum
+    if md5(chunk_data) != checksum:
+        return {'error': 'Checksum mismatch'}, 400
+
+    # Store chunk in object storage
+    object_storage.put(f"{upload_id}/chunk_{chunk_idx}", chunk_data)
+    # Update metadata service
+    metadata_service.update_chunk_status(upload_id, chunk_idx, 'uploaded')
+
+    return {'status': 'ok'}</code></pre>
+
+    <h3>Chunk Metadata (NoSQL)</h3>
+<pre><code class="language-javascript">{
+  "uploadId": "abc123",
+  "userId": 42,
+  "fileId": "file789",
+  "chunks": [
+    { "index": 0, "status": "complete", "checksum": "..." },
+    { "index": 1, "status": "pending" }
+  ],
+  "status": "in_progress"
+}</code></pre>
+
+    <h3>Retry / Resumable Logic</h3>
+    <ul>
+      <li>If a chunk fails, client retries upload.</li>
+      <li>On session resume, server returns missing chunks so client uploads only those.</li>
+    </ul>
+
+    <h3>Pseudocode Chunked Upload</h3>
+<pre><code class="language-python">for chunk in file.chunks():
+    upload_chunk_to_s3(chunk_id, chunk)
+    record_chunk_metadata(upload_id, chunk_id, status='uploaded')
+if all_chunks_uploaded(upload_id):
+    assemble_chunks(upload_id)</code></pre>
+
+    <h2 id="file-versioning-restore">File Versioning &amp; Restore</h2>
+
+    <h3>Why?</h3>
+    <ul>
+      <li>Rollback to previous states.</li>
+      <li>Track history for collaboration.</li>
+    </ul>
+
+    <h3>Versioning Flow</h3>
+    <ol>
+      <li>Each update creates a new version (if content changes).</li>
+      <li>Store metadata: version ID, timestamp, checksum.</li>
+      <li>Allow users to restore any version.</li>
+    </ol>
+
+    <h3>Change Detection (Hash Comparison)</h3>
+<pre><code class="language-python">def is_new_version(file_id, new_chunks):
+    old_chunks = get_file_chunks(file_id)
+    return hash(new_chunks) != hash(old_chunks)</code></pre>
+
+    <h3>Versioning APIs</h3>
+<pre><code class="language-bash"># List all versions for a file
+GET /files/{fileId}/versions
+
+# Restore a previous version
+POST /files/{fileId}/restore
+Content-Type: application/json
+{
+  "versionId": "ver123"
+}</code></pre>
+
+    <h2 id="storage-database-strategies">Storage &amp; Database Strategies</h2>
+
+    <h3>Object Storage</h3>
+    <ul>
+      <li>Stores file chunks as objects (S3, MinIO, GCS).</li>
+      <li>Enables parallel/chunked uploads.</li>
+      <li>High durability via replication (11 nines).</li>
+    </ul>
+
+    <h3>SQL vs NoSQL</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Data</th><th>DB Type</th><th>Why</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Users</td><td>SQL</td><td>Strong relationships</td></tr>
+          <tr><td>File Metadata</td><td>SQL/NoSQL</td><td>Structured, scalable</td></tr>
+          <tr><td>Chunk Info</td><td>NoSQL</td><td>High write throughput</td></tr>
+          <tr><td>Permissions</td><td>SQL</td><td>Relational integrity</td></tr>
+          <tr><td>Audit Logs</td><td>NoSQL</td><td>High volume</td></tr>
+          <tr><td>Versioning Metadata</td><td>NoSQL</td><td>Large, flexible structures</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Sample SQL: File Metadata</h3>
+<pre><code class="language-sql">CREATE TABLE files (
+  file_id UUID PRIMARY KEY,
+  owner_id UUID,
+  name TEXT,
+  size BIGINT,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP,
+  current_version_id UUID
+);
+
+CREATE TABLE file_versions (
+  version_id UUID PRIMARY KEY,
+  file_id UUID REFERENCES files(file_id),
+  created_at TIMESTAMP,
+  chunk_ids TEXT[], -- Array of chunk IDs
+  checksum TEXT
+);</code></pre>
+
+    <p>A simpler form with permissions JSONB:</p>
+
+<pre><code class="language-sql">CREATE TABLE files (
+    file_id UUID PRIMARY KEY,
+    user_id UUID REFERENCES users(user_id),
+    name TEXT,
+    size BIGINT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    permissions JSONB
+);</code></pre>
+
+    <h3>Partitioning Example</h3>
+<pre><code class="language-sql">-- Postgres: Partition file metadata by user_id
+CREATE TABLE file_metadata (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    file_name TEXT,
+    -- ...
+) PARTITION BY HASH (user_id);</code></pre>
+
+    <h3>Sample NoSQL: Chunk Metadata Document</h3>
+<pre><code class="language-javascript">{
+  "upload_id": "abc-123",
+  "chunk_idx": 5,
+  "status": "uploaded",
+  "location": "s3://bucket/abc-123/chunk_5",
+  "checksum": "md5hash"
+}</code></pre>
+
+<pre><code class="language-javascript">{
+  "upload_id": "abc123",
+  "chunk_id": 1,
+  "status": "uploaded",
+  "checksum": "sha256:abcd...",
+  "timestamp": "2024-06-01T12:34:56Z"
+}</code></pre>
+
+    <h2 id="caching-performance">Caching &amp; Performance</h2>
+    <ul>
+      <li><strong>Metadata Cache:</strong> In-memory (Redis) for file/folder info, frequently accessed metadata, permissions ACLs.</li>
+      <li><strong>File Content Cache:</strong> CDN (e.g., CloudFront) for frequently accessed files/shared links.</li>
+      <li><strong>Sync &amp; consistency:</strong> Event queues (Kafka) for updates, cache invalidation.</li>
+    </ul>
+
+    <h3>Metadata Caching Example</h3>
+<pre><code class="language-python">redis.set(f"file_meta:{file_id}", json.dumps(metadata), ex=300)  # 5-min expiry</code></pre>
+
+    <h2 id="critical-user-flow">Critical User Flow: File Upload &amp; Sync</h2>
+    <ol>
+      <li><strong>Client → API Gateway:</strong> Initiates file upload.</li>
+      <li><strong>API Gateway → Upload Service:</strong> Begins upload session, returns Upload ID.</li>
+      <li><strong>Client → Upload Service:</strong> Uploads file in parallel chunks (resumable, each chunk has checksum).</li>
+      <li><strong>Upload Service:</strong>
+        <ul>
+          <li>Validates/authenticates via Auth Service.</li>
+          <li>Splits file, tracks chunk progress.</li>
+          <li>Sends chunks to Storage Service (which stores in Object Storage).</li>
+          <li>Publishes chunk tasks to Upload Queue.</li>
+        </ul>
+      </li>
+      <li><strong>Deduplication Service:</strong> Checks for redundant chunks before storage.</li>
+      <li><strong>Upload Service → Metadata Service:</strong> Updates file metadata in SQL DB.</li>
+      <li><strong>Upload Service → Versioning Service:</strong> Updates file version info in NoSQL DB.</li>
+      <li><strong>Caches:</strong> Metadata and chunk caches updated.</li>
+      <li><strong>Sync Service:</strong> Publishes change event to Sync Queue. Pushes updates via WebSocket to all devices.</li>
+      <li><strong>Client:</strong> Receives confirmation after upload, deduplication, metadata, and sync complete.</li>
+    </ol>
+
+    <h3>Sequence Diagram</h3>
+
+    <div class="archd-seq" aria-label="Upload sequence">
+      <div class="archd-seq-step"><span class="num">1</span>Client initiates upload session</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">POST /upload/initiate</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Start session</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Create upload metadata</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📇</span><span>Metadata Service</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Return uploadId</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>For each chunk (loop)</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">PUT /upload/{id}/chunk</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Stream chunk</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Store chunk</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Storage Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Update progress</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📇</span><span>Metadata Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Finalize upload</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">POST /upload/{id}/complete</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Assemble chunks</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Storage Service</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Mark upload complete</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📇</span><span>Metadata Service</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">4</span>Client downloads the file</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">GET /files/{fileId}</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Check perms / metadata</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📇</span><span>Metadata Service</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Retrieve file</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Storage Service</span></div>
+        <div class="archd-seq-arrow left"><span class="label">File content</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+        <div class="archd-seq-arrow left"><span class="label">File download</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+      </div>
+    </div>
+
+    <p>A more detailed flow with dedup, versioning, and sync:</p>
+
+    <div class="archd-seq" aria-label="Detailed upload + dedup + sync sequence">
+      <div class="archd-seq-step"><span class="num">1</span>Initiate upload</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">POST /upload/initiate</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Start session</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Upload ID</span></div>
+        <div class="archd-node is-infra"><span class="archd-icon">🚪</span><span>API Gateway</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Upload ID</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">2</span>Per-chunk: dedup check + store</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">PUT /upload/{id}/chunk</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Check duplicate</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">♻️</span><span>Deduplication</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">♻️</span><span>Deduplication</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Result</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Store chunk</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📦</span><span>Storage Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Save chunk</span></div>
+        <div class="archd-node is-data"><span class="archd-icon">🪣</span><span>Object Storage</span></div>
+      </div>
+      <div class="archd-seq-step"><span class="num">3</span>Finalize: metadata, versioning, sync</div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+        <div class="archd-seq-arrow right"><span class="label">POST /upload/{id}/complete</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Update metadata</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">📇</span><span>Metadata Service</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Update versioning</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🕰️</span><span>Versioning</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">Notify sync</span></div>
+        <div class="archd-node is-service"><span class="archd-icon">🔄</span><span>Sync Service</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">🔄</span><span>Sync Service</span></div>
+        <div class="archd-seq-arrow right"><span class="label">WebSocket update</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+      </div>
+      <div class="archd-seq-row">
+        <div class="archd-node is-service"><span class="archd-icon">⬆️</span><span>Upload Service</span></div>
+        <div class="archd-seq-arrow left"><span class="label">Upload complete</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>Client</span></div>
+      </div>
+    </div>
+
+    <h2 id="tech-infrastructure-stack">Tech &amp; Infrastructure Stack</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Layer</th><th>Technology</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Architecture</td><td>Microservices, Containers (Docker/K8s)</td></tr>
+          <tr><td>Storage</td><td>AWS S3, MinIO</td></tr>
+          <tr><td>DB</td><td>PostgreSQL, MongoDB</td></tr>
+          <tr><td>Caching</td><td>Redis, CDN</td></tr>
+          <tr><td>API Gateway</td><td>Kong, NGINX</td></tr>
+          <tr><td>Scaling</td><td>Auto-scaling groups, Kubernetes HPA</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Example: Kubernetes Deployment</h3>
+<pre><code class="language-bash">apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: upload-service
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: upload-service
+  template:
+    metadata:
+      labels:
+        app: upload-service
+    spec:
+      containers:
+      - name: upload-service
+        image: myrepo/upload-service:latest
+        ports:
+        - containerPort: 8080</code></pre>
+
+    <h3>Example: Kubernetes HPA</h3>
+<pre><code class="language-bash">apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: upload-service-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: upload-service
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70</code></pre>
+
+    <h2 id="beyond-mvp">Beyond MVP — What a Senior Designer Adds</h2>
+
+    <h3>Block-Level Deduplication (Massive Cost Savings)</h3>
+    <p>Naive: store each user's copy of "Annual_Report.pdf" separately. 1M users × 5MB = 5TB.</p>
+    <p><strong>Block-level dedup:</strong> hash every chunk (e.g., 4 MB block); store unique hashes once; map (user, file) → list of hashes.</p>
+    <p>If users share documents, copies, or even similar files (templates), storage can drop by <strong>5-10×</strong>. Dropbox famously used this to operate cheaper than S3 for years.</p>
+
+    <div class="archd" aria-label="Block-level deduplication">
+      <div class="archd-row">
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User A: Report.pdf</span></div>
+        <div class="archd-node is-user"><span class="archd-icon">👤</span><span>User B: Report.pdf</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">hash each 4 MB block</span></div>
+      <div class="archd-row">
+        <div class="archd-node"><span class="archd-icon">#️⃣</span><span>h1</span></div>
+        <div class="archd-node"><span class="archd-icon">#️⃣</span><span>h2</span></div>
+        <div class="archd-node"><span class="archd-icon">#️⃣</span><span>h3</span></div>
+      </div>
+      <div class="archd-arrow"><span class="archd-arrow-label">store unique hashes once</span></div>
+      <div class="archd-node is-data"><span class="archd-icon">🪣</span><span>Content-addressed block store</span></div>
+      <div class="archd-arrow"><span class="archd-arrow-label">map (user, file) → [h1, h2, h3]</span></div>
+      <div class="archd-node is-data"><span class="archd-icon">📇</span><span>Metadata: per-user manifest</span></div>
+    </div>
+
+    <div class="callout callout-warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-content">
+        <div class="callout-title">Pitfall: Cross-User Dedup Is a Privacy Risk</div>
+        <p>Dedup across users is a privacy concern (one user can probe whether another user has a specific file). Most modern systems dedup <em>per user</em> only.</p>
+      </div>
+    </div>
+
+    <h3>Conflict Resolution: LWW vs Three-Way Merge</h3>
+    <p>When two devices edit the same file offline, you have a conflict. Two strategies:</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Strategy</th><th>Behavior</th><th>Used by</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Last-Writer-Wins (LWW)</strong></td><td>Whichever sync arrives last wins; the loser becomes a "conflicted copy"</td><td>Dropbox (default)</td></tr>
+          <tr><td><strong>Three-Way Merge</strong></td><td>If file is text, attempt automated merge with common ancestor</td><td>Google Docs (uses CRDTs)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>For binary files, <strong>LWW is the only realistic option</strong> — there's no meaningful way to merge two divergent PowerPoints. Save both as "Annual_Report.pptx" and "Annual_Report (alice's conflicted copy 2024-06-15).pptx".</p>
+
+    <h3>Offline Editing</h3>
+    <p>The client maintains a <strong>local journal</strong> of edits made while offline. On reconnect:</p>
+    <ol>
+      <li>Push local changes to server.</li>
+      <li>Pull server changes since last sync.</li>
+      <li>Apply merge or conflict resolution.</li>
+    </ol>
+    <p>This is where vector clocks / version vectors earn their keep: comparing "what does each side know?" rather than just timestamps.</p>
+
+    <h3>Full-Text Search Across Documents</h3>
+    <p>Asynchronously index document text into Elasticsearch. PDF/DOCX extraction is a separate pipeline.</p>
+    <div class="callout callout-warning">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-content">
+        <div class="callout-title">Pitfall: Search Must Respect ACLs</div>
+        <p>Search must respect access control — Alice should never see Bob's documents in her results, even if they match.</p>
+      </div>
+    </div>
+
+    <h3>Thumbnails and Previews</h3>
+    <p>For images, videos, and documents: generate thumbnails asynchronously (image-magick, ffmpeg, libreoffice headless). Store at multiple sizes. Served from CDN with long TTLs (content is immutable).</p>
+
+    <h3>Trash and Soft Delete</h3>
+    <p>Never hard-delete on user request. Move to "trash"; purge after 30 days. This is essential because users <em>will</em> delete things by mistake.</p>
+    <p>Implementation: <code>deleted_at</code> column. Trash view = <code>WHERE deleted_at IS NOT NULL</code>. Background job hard-deletes after retention period.</p>
+
+    <h3>Sharing and Permissions Model</h3>
+    <p>Real sharing is complex:</p>
+    <ul>
+      <li><strong>Public link:</strong> anyone with the URL.</li>
+      <li><strong>Domain-restricted:</strong> anyone in @company.com.</li>
+      <li><strong>Specific people:</strong> ACL of user IDs.</li>
+      <li><strong>Roles:</strong> viewer, commenter, editor, owner.</li>
+      <li><strong>Inheritance:</strong> a folder share applies to children.</li>
+    </ul>
+    <p>Modeling this needs more than a <code>permissions</code> JSON field. Most production systems use a <strong>graph-based authorization service</strong> (Google Zanzibar is the canonical paper; Spicedb and OpenFGA are OSS implementations).</p>
+
+    <h2 id="tips-tricks">💡 Tips &amp; Tricks</h2>
+
+    <h3>Architecture &amp; Scaling</h3>
+    <ul>
+      <li><strong>Think in microservices:</strong> Decompose by domain (upload, metadata, versioning, sync). Each service should scale independently and be stateless where possible.</li>
+      <li><strong>Design for scale from day 1:</strong> Plan for sharding/partitioning of metadata DBs. Use object storage for infinite file scalability.</li>
+      <li><strong>Partition by user/folder:</strong> Distributes load and eases scaling.</li>
+    </ul>
+
+    <h3>Uploads</h3>
+    <ul>
+      <li><strong>Chunk everything:</strong> Not just uploads, but also downloads for large files.</li>
+      <li><strong>Make uploads resumable:</strong> Track chunk progress and implement retry logic. Tune chunk size between 5–10MB.</li>
+      <li><strong>Chunk resumability:</strong> Always track chunk upload progress and allow clients to retry failed chunks without restarting the whole upload.</li>
+    </ul>
+
+    <h3>Performance</h3>
+    <ul>
+      <li><strong>Cache aggressively:</strong> Metadata caching (Redis) for low-latency file listings and access. Permission checks should hit Redis, not DB.</li>
+      <li><strong>Metadata hotspots:</strong> Use in-memory caching for folder listings and shared link lookups.</li>
+      <li><strong>Permission checks:</strong> Cache ACLs in Redis to speed up frequent validations.</li>
+      <li><strong>Use pub/sub for sync:</strong> Event-driven updates scale better than polling.</li>
+    </ul>
+
+    <h3>Storage Optimization</h3>
+    <ul>
+      <li><strong>Separate metadata and file content:</strong> Use object storage for files, databases for metadata.</li>
+      <li><strong>Deduplicate early:</strong> Run deduplication on chunks before storage to cut costs. Check chunk hashes; maintain reference counts for garbage collection.</li>
+      <li><strong>Version only on change:</strong> Only create new file versions when content actually changes (hash comparison).</li>
+      <li><strong>Cost control:</strong> Apply storage lifecycle policies to delete old versions or trash after a retention period.</li>
+    </ul>
+
+    <h3>Reliability</h3>
+    <ul>
+      <li><strong>Design for failure:</strong> Assume network and storage failures; design for resumable/retryable uploads.</li>
+      <li><strong>Enforce idempotency:</strong> All APIs, especially for uploads and sync, must be idempotent to handle client retries safely.</li>
+    </ul>
+
+    <h3>Security &amp; Observability</h3>
+    <ul>
+      <li><strong>Secure by default:</strong> Enforce strict access controls, encrypt data at rest and in transit, audit all access.</li>
+      <li><strong>Monitor everything:</strong> Track uploads, download times, errors, API performance. Use Prometheus, ELK, distributed tracing.</li>
+      <li><strong>Automate scaling:</strong> Use Kubernetes or equivalent for auto-scaling services.</li>
+    </ul>
+
+    <h2 id="conclusion">Conclusion</h2>
+    <p>Designing a cloud storage backend is a challenging, rewarding system design exercise. By combining a microservices architecture, robust object storage, hybrid SQL/NoSQL databases, aggressive caching, and dynamic scaling, we meet both the functional and non-functional requirements of a modern cloud storage system.</p>
+
+    <p><strong>Key design decisions:</strong></p>
+    <ul>
+      <li>Separation of metadata and content (SQL for structured, NoSQL for dynamic, S3 for chunks).</li>
+      <li>Chunked, resumable uploads for large files.</li>
+      <li>Event-driven sync via Pub/Sub for real-time updates.</li>
+      <li>Caching (Redis + CDN) for hot paths.</li>
+      <li>Deduplication to save storage costs.</li>
+      <li>Versioning with hash comparison to avoid redundant versions.</li>
+    </ul>
+
+    <h2 id="further-reading">📚 Further Reading</h2>
+    <ul>
+      <li><a href="https://dropbox.tech/infrastructure/magic-pocket-architecture" target="_blank">Dropbox Tech Blog: Magic Pocket Architecture</a></li>
+      <li><a href="https://dropbox.tech/infrastructure/magic-pocket-part-1" target="_blank">Dropbox Tech Blog: Magic Pocket Part 1</a></li>
+      <li><a href="https://cloud.google.com/storage/docs/architecture" target="_blank">Google Cloud Storage System Design</a></li>
+      <li><a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/best-practices.html" target="_blank">AWS S3 Best Practices</a></li>
+      <li><a href="https://ai.googleblog.com/2012/02/building-google-drive.html" target="_blank">Google Drive Engineering</a></li>
+    </ul>
+
+    <nav class="chapter-nav">
+      <a class="chapter-nav-card" href="17 - Design an Auction Platform (aka eBay).html">
+        <div class="chapter-nav-label">← Previous</div>
+        <div class="chapter-nav-title">Chapter 17 — Auction Platform (eBay)</div>
+      </a>
+      <a class="chapter-nav-card next" href="20 - Design a Video Sharing Platform (aka YouTube).html">
+        <div class="chapter-nav-label">Next chapter →</div>
+        <div class="chapter-nav-title">Chapter 20 — Video Sharing (YouTube)</div>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+<script src="../assets/system-design.js"></script>
+
+</body>
+</html>
