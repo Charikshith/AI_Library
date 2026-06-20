@@ -9,5 +9,6 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Local reference material (not part of the published site)
+# Design mockups (not part of the published site)
+mockups/
 The-Complete-Guide-to-Building-Skill-for-Claude.pdf

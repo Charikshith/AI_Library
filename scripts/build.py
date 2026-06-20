@@ -194,7 +194,7 @@ ANIM_JS = ('<script>(function(){'
            'var io=new IntersectionObserver(function(es){es.forEach(function(e){'
            'if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target);}});},'
            '{rootMargin:"0px 0px -6% 0px",threshold:.08});'
-           'document.querySelectorAll(".chapter-card,.home-section-header,.home-intro-card")'
+           'document.querySelectorAll(".chapter-card,.feed-card,.home-section-header,.home-intro-card")'
            '.forEach(function(el,i){el.style.transitionDelay=((i%6)*45)+"ms";io.observe(el);});'
            'document.querySelectorAll(".home-stat-num").forEach(function(el){'
            'var m=el.textContent.trim().match(/^(\\D*)(\\d+)(.*)$/);if(!m)return;'
@@ -235,10 +235,10 @@ GLUE = (".topbar-actions .tnav{font-family:'Inter',sans-serif;font-weight:600;fo
         ".home-hero>*{animation:ail-rise .7s cubic-bezier(.2,.8,.2,1) both}"
         ".home-hero>*:nth-child(2){animation-delay:.07s}.home-hero>*:nth-child(3){animation-delay:.14s}"
         ".home-hero>*:nth-child(4){animation-delay:.21s}.home-hero>*:nth-child(5){animation-delay:.28s}"
-        "html.anim .chapter-card,html.anim .home-section-header,html.anim .home-intro-card{"
+        "html.anim .chapter-card,html.anim .feed-card,html.anim .home-section-header,html.anim .home-intro-card{"
         "opacity:0;transform:translateY(20px);transition:opacity .6s ease,transform .6s cubic-bezier(.2,.8,.2,1)}"
         "html.anim .chapter-card.in,html.anim .home-section-header.in,html.anim .home-intro-card.in{opacity:1;transform:none}"
-        ".chapter-card{transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s,border-color .25s,opacity .6s ease}"
+        ".chapter-card,.feed-card{transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s,border-color .25s,opacity .6s ease}"
         "}")
 
 
@@ -323,19 +323,20 @@ def head_marker(url):
 
 
 def tool_card(t):
-    tags = "".join(f'<span class="card-tag">#{h(x)}</span>' for x in t["tags"])
+    """Single-column feed card — purpose, audience, and a clear deep-dive CTA."""
+    tags = "".join(f'<span class="feed-tag">#{h(x)}</span>' for x in t["tags"])
     tgt = ' target="_blank" rel="noopener"' if t["url"].startswith("http") else ''
     is_github = "github.com" in t["url"]
-    gh_link = f'<span class="card-gh-link"><span class="repo-badge">{GH_SVG} View on GitHub</span></span>' if is_github else ''
+    badge = (f'<span class="feed-gh"><svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg> View on GitHub</span>' if is_github
+         else '<span class="feed-gh" style="opacity:.6">Read in-library &rarr;</span>')
     return ("".join([
-        f'<a class="chapter-card tool-card" href="{h(t["url"])}"{tgt}>',
-        f'<div class="chapter-card-head"><span class="chapter-num">{h(t["added"])}</span>'
-        f'{head_marker(t["url"])}</div>',
-        f'<h3 class="chapter-title">{h(t["name"])}</h3>',
-        f'<p class="chapter-desc card-purpose-label">{h(t["description"])}</p>',
-        f'<div class="card-tags">{tags}</div>',
-        gh_link,
-        '</a>',
+        f'<a class="feed-card" href="{h(t["url"])}"{tgt}>',
+        f'<div class="feed-top"><span class="feed-title">{h(t["name"])}</span>',
+        f'<span class="feed-meta"><span class="feed-date">{h(t["added"])}</span></span></div>',
+        f'<div class="feed-desc">{h(t["description"])}</div>',
+        f'<div class="feed-bottom"><div class="feed-tags">{tags}</div>',
+        badge,
+        '</div></a>',
     ]))
 
 
@@ -405,7 +406,7 @@ def render_library(tools, subjects, projects):
         sections.append(
             f'<section><div class="home-section-header"><h2>{h(cat)}</h2>'
             f'<span class="count">{len(items)} {"tool" if len(items)==1 else "tools"}</span></div>'
-            f'<div class="chapter-list">{cards}</div></section>')
+            f'<div class="feed-list">{cards}</div></section>')
     html = shell_page("AI Library — curated open-source AI tools",
                       "A living, curated catalogue of open-source AI tools and resources.",
                       "", "library", hero, "".join(sections))
