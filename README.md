@@ -17,7 +17,6 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 
 | Tool | Description | Tags | Added |
 |------|-------------|------|-------|
-| [Fable Mode](https://github.com/Poorna-Repos/opus-fable-mode) | A behavioral governor and re-injection hook that makes Claude Opus 4.8 behave like the suspended Claude Fable 5 in Claude Code. Includes a leak-test harness measured from real logs. | `#fable-emulation` `#behavioral-governor` `#opus` `#claude-code` | 2026-06-20 |
 | [Ponytail](https://github.com/DietrichGebert/ponytail) | Makes your AI agent think like the laziest senior dev in the room. ~54% less code, ~20% cheaper, ~27% faster — 100% safety. Plugs into 14 agents (Claude Code, Codex, Cursor, Copilot, and more). | `#yagni` `#code-reduction` `#lazy-dev` `#agent-plugin` | 2026-06-20 |
 
 ## AI Guides
