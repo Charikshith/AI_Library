@@ -237,7 +237,7 @@ GLUE = (".topbar-actions .tnav{font-family:'Inter',sans-serif;font-weight:600;fo
         ".home-hero>*:nth-child(4){animation-delay:.21s}.home-hero>*:nth-child(5){animation-delay:.28s}"
         "html.anim .chapter-card,html.anim .feed-card,html.anim .home-section-header,html.anim .home-intro-card{"
         "opacity:0;transform:translateY(20px);transition:opacity .6s ease,transform .6s cubic-bezier(.2,.8,.2,1)}"
-        "html.anim .chapter-card.in,html.anim .home-section-header.in,html.anim .home-intro-card.in{opacity:1;transform:none}"
+        "html.anim .chapter-card.in,html.anim .feed-card.in,html.anim .home-section-header.in,html.anim .home-intro-card.in{opacity:1;transform:none}"
         ".chapter-card,.feed-card{transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s,border-color .25s,opacity .6s ease}"
         "}")
 
