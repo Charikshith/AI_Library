@@ -323,15 +323,19 @@ def head_marker(url):
 
 
 def tool_card(t):
-    tags = "  ".join("#" + x for x in t["tags"])
+    tags = "".join(f'<span class="card-tag">#{h(x)}</span>' for x in t["tags"])
     tgt = ' target="_blank" rel="noopener"' if t["url"].startswith("http") else ''
+    is_github = "github.com" in t["url"]
+    gh_link = f'<span class="card-gh-link"><span class="repo-badge">{GH_SVG} View on GitHub</span></span>' if is_github else ''
     return ("".join([
-        f'<a class="chapter-card" href="{h(t["url"])}"{tgt}>',
+        f'<a class="chapter-card tool-card" href="{h(t["url"])}"{tgt}>',
         f'<div class="chapter-card-head"><span class="chapter-num">{h(t["added"])}</span>'
         f'{head_marker(t["url"])}</div>',
         f'<h3 class="chapter-title">{h(t["name"])}</h3>',
-        f'<p class="chapter-desc">{h(t["description"])}</p>',
-        f'<div class="chapter-card-foot">{h(tags)}</div></a>',
+        f'<p class="chapter-desc card-purpose-label">{h(t["description"])}</p>',
+        f'<div class="card-tags">{tags}</div>',
+        gh_link,
+        '</a>',
     ]))
 
 
