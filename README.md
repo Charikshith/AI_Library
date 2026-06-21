@@ -19,6 +19,7 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 
 | Tool | Description | Tags | Added |
 |------|-------------|------|-------|
+| [Pi](https://github.com/earendil-works/pi) | AI agent toolkit: unified LLM API, agent loop, TUI, and coding agent CLI. 64k stars. | `#agent-toolkit` `#llm-api` `#agent-loop` `#cli` | 2026-06-21 |
 | [Paperclip](https://github.com/paperclipai/paperclip) | An open-source app for managing a team of AI agents at work. Bring your own agents, assign goals, and track work and costs from one dashboard. 71k stars. | `#agent-orchestration` `#dashboard` `#management` `#open-source` | 2026-06-21 |
 | [Goose](https://github.com/aaif-goose/goose) | An open-source, extensible AI agent that goes beyond code suggestions — install, execute, edit, and test with any LLM. Works with 15+ providers. 50k stars. | `#agent-platform` `#extensible` `#multi-llm` `#open-source` | 2026-06-21 |
 
