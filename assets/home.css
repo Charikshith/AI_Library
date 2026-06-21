@@ -148,13 +148,15 @@
   font-weight: 500;
 }
 .subcat-header {
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--text);
-  margin: 32px 0 12px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid var(--border-strong);
-  letter-spacing: -0.01em;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-faint);
+  margin: 28px 0 10px;
+  padding: 0;
+  border: none;
 }
 
 /* Chapter cards */
@@ -316,7 +318,7 @@
   font-weight: 600;
   color: var(--primary);
   background: var(--primary-faint);
-  padding: 4px 10px;
+  padding: 4px 11px;
   border-radius: 999px;
   letter-spacing: 0.02em;
   line-height: 1.3;
