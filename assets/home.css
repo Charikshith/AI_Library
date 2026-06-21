@@ -313,7 +313,7 @@ h3.subcat-header {
 .feed-tag {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--primary);
   background: var(--bg-muted);
   border: 1px solid var(--border);
