@@ -15,12 +15,25 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 
 ## AI SDE Skills
 
+### Agent Platforms
+
 | Tool | Description | Tags | Added |
 |------|-------------|------|-------|
 | [Paperclip](https://github.com/paperclipai/paperclip) | An open-source app for managing a team of AI agents at work. Bring your own agents, assign goals, and track work and costs from one dashboard. 71k stars. | `#agent-orchestration` `#dashboard` `#management` `#open-source` | 2026-06-21 |
+| [Goose](https://github.com/aaif-goose/goose) | An open-source, extensible AI agent that goes beyond code suggestions — install, execute, edit, and test with any LLM. Works with 15+ providers. 50k stars. | `#agent-platform` `#extensible` `#multi-llm` `#open-source` | 2026-06-21 |
+
+### Agent Configs
+
+| Tool | Description | Tags | Added |
+|------|-------------|------|-------|
 | [gstack](https://github.com/garrytan/gstack) | Garry Tan's exact Claude Code setup — 23 opinionated tools that serve as CEO, Designer, Eng Manager, Release Manager, Doc Engineer, and QA. 112k stars. | `#agent-framework` `#workflow` `#opinionated` `#claude-code` | 2026-06-21 |
 | [Superpowers](https://github.com/obra/superpowers) | An agentic skills framework and software development methodology for Claude Code. Structured skills, planning, and execution flow. | `#skills-framework` `#methodology` `#planning` `#claude-code` | 2026-06-21 |
 | [ECC](https://github.com/affaan-m/ecc) | An agent harness performance optimization system — skills, instincts, memory, security, and research-first development for Claude Code, Codex, Opencode, Cursor, and beyond. | `#agent-harness` `#performance` `#security` `#claude-code` | 2026-06-21 |
+
+### Agent Utilities
+
+| Tool | Description | Tags | Added |
+|------|-------------|------|-------|
 | [Headroom](https://github.com/chopratejas/headroom) | Compress tool outputs, logs, files, and RAG chunks before they reach the LLM. 60-95% fewer tokens, same answers. Library, proxy, MCP server. | `#context-compression` `#token-optimization` `#proxy` `#agent-plugin` | 2026-06-21 |
 | [Ponytail](https://github.com/DietrichGebert/ponytail) | Makes your AI agent think like the laziest senior dev in the room. ~54% less code, ~20% cheaper, ~27% faster — 100% safety. Plugs into 14 agents (Claude Code, Codex, Cursor, Copilot, and more). | `#yagni` `#code-reduction` `#lazy-dev` `#agent-plugin` | 2026-06-20 |
 
