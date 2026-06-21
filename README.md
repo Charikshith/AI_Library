@@ -24,6 +24,7 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 
 | Tool | Description | Tags | Added |
 |------|-------------|------|-------|
+| [AI Engineering from Scratch](https://github.com/rohitg00/ai-engineering-from-scratch) | A project-based curriculum covering the full stack of AI engineering — from environment setup and tooling through to shipping production systems. 388 skills and 99 prompts across phased modules. | `#ai-engineering` `#full-stack` `#curriculum` `#hands-on` | 2026-06-21 |
 | [Learn Harness Engineering](https://github.com/walkinglabs/learn-harness-engineering) | A project-based open-source course on building the environment, state management, verification, and control that make AI coding agents work reliably — 12 lectures + 6 hands-on projects. | `#harness-engineering` `#agent-training` `#course` `#hands-on` | 2026-06-11 |
 | [Building Claude Skills — The Complete Guide](notes/building-claude-skills/html/index.html) | Anthropic's complete guide to building Skills for Claude — `SKILL.md` structure & YAML frontmatter, planning, testing, distribution, and proven patterns. Converted in full from the official PDF and readable in-library. | `#skill-authoring` `#anthropic` `#official-guide` `#claude` | 2026-06-11 |
 
