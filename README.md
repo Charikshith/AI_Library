@@ -17,6 +17,7 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 
 | Tool | Description | Tags | Added |
 |------|-------------|------|-------|
+| [Headroom](https://github.com/chopratejas/headroom) | Compress tool outputs, logs, files, and RAG chunks before they reach the LLM. 60-95% fewer tokens, same answers. Library, proxy, MCP server. | `#context-compression` `#token-optimization` `#proxy` `#agent-plugin` | 2026-06-21 |
 | [Ponytail](https://github.com/DietrichGebert/ponytail) | Makes your AI agent think like the laziest senior dev in the room. ~54% less code, ~20% cheaper, ~27% faster — 100% safety. Plugs into 14 agents (Claude Code, Codex, Cursor, Copilot, and more). | `#yagni` `#code-reduction` `#lazy-dev` `#agent-plugin` | 2026-06-20 |
 
 ## AI Guides
