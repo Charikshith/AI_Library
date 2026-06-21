@@ -147,7 +147,7 @@
   color: var(--text-faint);
   font-weight: 500;
 }
-.subcat-header {
+h3.subcat-header {
   display: inline-flex;
   align-items: center;
   font-family: 'JetBrains Mono', monospace;
@@ -161,6 +161,7 @@
   margin: 28px 0 14px;
   letter-spacing: 0.02em;
   white-space: nowrap;
+  text-transform: none;
 }
 
 /* Chapter cards */
