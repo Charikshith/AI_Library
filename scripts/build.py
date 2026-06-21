@@ -76,12 +76,17 @@ def parse_tools(md: str):
     if START not in md or END not in md:
         raise SystemExit("Could not find TOOLS markers in README.md")
     section = md.split(START, 1)[1].split(END, 1)[0]
-    tools, current = [], None
+    tools, current, subcat = [], None, None
     for raw in section.splitlines():
         line = raw.strip()
         heading = re.match(r"^##\s+(.*)$", line)
         if heading:
             current = heading.group(1).strip()
+            subcat = None
+            continue
+        sub = re.match(r"^###\s+(.*)$", line)
+        if sub:
+            subcat = sub.group(1).strip()
             continue
         if not (line.startswith("|") and current):
             continue
@@ -93,7 +98,8 @@ def parse_tools(md: str):
             continue
         tags = [t.lstrip("#").strip() for t in TAG_RE.findall(cells[2]) if t.strip()]
         tools.append({
-            "category": current, "name": link.group("name").strip(),
+            "category": current, "subcategory": subcat,
+            "name": link.group("name").strip(),
             "url": link.group("url").strip(), "description": cells[1].strip(),
             "tags": tags, "added": cells[3].strip(),
         })
@@ -194,7 +200,7 @@ ANIM_JS = ('<script>(function(){'
            'var io=new IntersectionObserver(function(es){es.forEach(function(e){'
            'if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target);}});},'
            '{rootMargin:"0px 0px -6% 0px",threshold:.08});'
-           'document.querySelectorAll(".chapter-card,.feed-card,.home-section-header,.home-intro-card")'
+           'document.querySelectorAll(".chapter-card,.feed-card,.subcat-header,.home-section-header,.home-intro-card")'
            '.forEach(function(el,i){el.style.transitionDelay=((i%6)*45)+"ms";io.observe(el);});'
            'document.querySelectorAll(".home-stat-num").forEach(function(el){'
            'var m=el.textContent.trim().match(/^(\\D*)(\\d+)(.*)$/);if(!m)return;'
@@ -235,9 +241,9 @@ GLUE = (".topbar-actions .tnav{font-family:'Inter',sans-serif;font-weight:600;fo
         ".home-hero>*{animation:ail-rise .7s cubic-bezier(.2,.8,.2,1) both}"
         ".home-hero>*:nth-child(2){animation-delay:.07s}.home-hero>*:nth-child(3){animation-delay:.14s}"
         ".home-hero>*:nth-child(4){animation-delay:.21s}.home-hero>*:nth-child(5){animation-delay:.28s}"
-        "html.anim .chapter-card,html.anim .feed-card,html.anim .home-section-header,html.anim .home-intro-card{"
+        "html.anim .subcat-header,html.anim .chapter-card,html.anim .feed-card,html.anim .home-section-header,html.anim .home-intro-card{"
         "opacity:0;transform:translateY(20px);transition:opacity .6s ease,transform .6s cubic-bezier(.2,.8,.2,1)}"
-        "html.anim .chapter-card.in,html.anim .feed-card.in,html.anim .home-section-header.in,html.anim .home-intro-card.in{opacity:1;transform:none}"
+        "html.anim .chapter-card.in,html.anim .feed-card.in,html.anim .subcat-header.in,html.anim .home-section-header.in,html.anim .home-intro-card.in{opacity:1;transform:none}"
         ".chapter-card,.feed-card{transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s,border-color .25s,opacity .6s ease}"
         "}")
 
@@ -402,11 +408,36 @@ def render_library(tools, subjects, projects):
     sections = []
     for cat in cats:
         items = [t for t in tools if t["category"] == cat]
-        cards = "".join(tool_card(t) for t in items)
-        sections.append(
-            f'<section><div class="home-section-header"><h2>{h(cat)}</h2>'
-            f'<span class="count">{len(items)} {"tool" if len(items)==1 else "tools"}</span></div>'
-            f'<div class="feed-list">{cards}</div></section>')
+        # Group by subcategory, preserving order of first appearance
+        subcats = []
+        seen = set()
+        for t in items:
+            s = t.get("subcategory") or ""
+            if s not in seen:
+                seen.add(s)
+                subcats.append(s)
+        if subcats == [""]:
+            # No sub-headings — render as flat list
+            cards = "".join(tool_card(t) for t in items)
+            sections.append(
+                f'<section><div class="home-section-header"><h2>{h(cat)}</h2>'
+                f'<span class="count">{len(items)} {"tool" if len(items)==1 else "tools"}</span></div>'
+                f'<div class="feed-list">{cards}</div></section>')
+        else:
+            parts = []
+            for sc in subcats:
+                sc_items = [t for t in items if (t.get("subcategory") or "") == sc]
+                cards = "".join(tool_card(t) for t in sc_items)
+                if sc:
+                    parts.append(
+                        f'<h3 class="subcat-header">{h(sc)}</h3>'
+                        f'<div class="feed-list">{cards}</div>')
+                else:
+                    parts.append(f'<div class="feed-list">{cards}</div>')
+            sections.append(
+                f'<section><div class="home-section-header"><h2>{h(cat)}</h2>'
+                f'<span class="count">{len(items)} {"tool" if len(items)==1 else "tools"}</span></div>'
+                + "".join(parts) + '</section>')
     html = shell_page("AI Library — curated open-source AI tools",
                       "A living, curated catalogue of open-source AI tools and resources.",
                       "", "library", hero, "".join(sections))

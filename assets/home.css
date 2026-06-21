@@ -147,6 +147,15 @@
   color: var(--text-faint);
   font-weight: 500;
 }
+.subcat-header {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin: 28px 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  letter-spacing: 0.02em;
+}
 
 /* Chapter cards */
 .chapter-list {
