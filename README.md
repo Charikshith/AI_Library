@@ -35,8 +35,15 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 
 | Tool | Description | Tags | Added |
 |------|-------------|------|-------|
+| [claude-mem](https://github.com/thedotmack/claude-mem) | Persistent context across sessions for every agent — captures everything your agent does, compresses it with AI, and injects relevant context back into future sessions. Works with Claude Code, Codex, Gemini, Copilot, and more. | `#persistent-memory` `#context-injection` `#session-compression` `#agent-plugin` | 2026-07-04 |
 | [Headroom](https://github.com/chopratejas/headroom) | Compress tool outputs, logs, files, and RAG chunks before they reach the LLM. 60-95% fewer tokens, same answers. Library, proxy, MCP server. | `#context-compression` `#token-optimization` `#proxy` `#agent-plugin` | 2026-06-21 |
 | [Ponytail](https://github.com/DietrichGebert/ponytail) | Makes your AI agent think like the laziest senior dev in the room. ~54% less code, ~20% cheaper, ~27% faster — 100% safety. Plugs into 14 agents (Claude Code, Codex, Cursor, Copilot, and more). | `#yagni` `#code-reduction` `#lazy-dev` `#agent-plugin` | 2026-06-20 |
+
+### Security Skills
+
+| Tool | Description | Tags | Added |
+|------|-------------|------|-------|
+| [VibeSec-Skill](https://github.com/BehiSecc/VibeSec-Skill) | A Claude Code skill that helps Claude write secure code and prevent common vulnerabilities. Covers 60-70% of common vulnerability classes. | `#security` `#vulnerable-code` `#claude-code` `#skill` | 2026-07-04 |
 
 ## AI Guides
 
