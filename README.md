@@ -36,6 +36,7 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 
 | Tool | Description | Tags | Added |
 |------|-------------|------|-------|
+| [code-review-graph](https://github.com/tirth8205/code-review-graph) | Local-first code intelligence graph for MCP and CLI — builds a persistent map of your codebase so AI coding tools read only what matters, with benchmarked context reductions on reviews and large-repo workflows. | `#code-intelligence` `#knowledge-graph` `#mcp` `#context-reduction` | 2026-08-01 |
 | [pi-intercom](https://github.com/nicobailon/pi-intercom) | Inter-session communication extension for the pi coding agent — lets sessions talk to each other so context carries across. | `#inter-session` `#persistent-memory` `#agent-plugin` `#pi` | 2026-08-01 |
 | [claude-mem](https://github.com/thedotmack/claude-mem) | Persistent context across sessions for every agent — captures everything your agent does, compresses it with AI, and injects relevant context back into future sessions. Works with Claude Code, Codex, Gemini, Copilot, and more. | `#persistent-memory` `#context-injection` `#session-compression` `#agent-plugin` | 2026-07-04 |
 | [Headroom](https://github.com/chopratejas/headroom) | Compress tool outputs, logs, files, and RAG chunks before they reach the LLM. 60-95% fewer tokens, same answers. Library, proxy, MCP server. | `#context-compression` `#token-optimization` `#proxy` `#agent-plugin` | 2026-06-21 |
