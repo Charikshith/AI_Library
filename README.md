@@ -61,6 +61,7 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 
 | Tool | Description | Tags | Added |
 |------|-------------|------|-------|
+| [Graphify](https://github.com/Graphify-Labs/graphify) | Turns any codebase — docs, SQL schemas, configs, PDFs included — into a queryable knowledge graph via a `/graphify` skill for Claude Code, Cursor, Codex, and Gemini CLI. Local deterministic AST parsing, every edge explained, no vector store. | `#knowledge-graph` `#code-intelligence` `#skill` `#rag` | 2026-08-01 |
 | [code-review-graph](https://github.com/tirth8205/code-review-graph) | Local-first code intelligence graph for MCP and CLI — builds a persistent map of your codebase so AI coding tools read only what matters, with benchmarked context reductions on reviews and large-repo workflows. | `#code-intelligence` `#knowledge-graph` `#mcp` `#context-reduction` | 2026-08-01 |
 
 ## Text to Speech
