@@ -22,64 +22,65 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 
 
 
+
 ## AI SDE Skills
 
 ### Agent Platforms
 
 | Tool | Description | Tags | Added |
 |------|-------------|------|-------|
-| [pi_agent_rust](https://github.com/Dicklesworthstone/pi_agent_rust)<br>⭐ 1,469 | High-performance AI coding agent CLI written in Rust with zero unsafe code. | `#agent-platform` `#cli` `#rust` `#performance` | 2026-08-01 |
-| [Pi](https://github.com/earendil-works/pi)<br>⭐ 81,824 | AI agent toolkit: unified LLM API, agent loop, TUI, and coding agent CLI. 64k stars. | `#agent-toolkit` `#llm-api` `#agent-loop` `#cli` | 2026-06-21 |
-| [Paperclip](https://github.com/paperclipai/paperclip)<br>⭐ 75,322 | An open-source app for managing a team of AI agents at work. Bring your own agents, assign goals, and track work and costs from one dashboard. 71k stars. | `#agent-orchestration` `#dashboard` `#management` `#open-source` | 2026-06-21 |
-| [Goose](https://github.com/aaif-goose/goose)<br>⭐ 52,056 | An open-source, extensible AI agent that goes beyond code suggestions — install, execute, edit, and test with any LLM. Works with 15+ providers. 50k stars. | `#agent-platform` `#extensible` `#multi-llm` `#open-source` | 2026-06-21 |
 
+| [Goose](https://github.com/aaif-goose/goose)<br>⭐ 52,056 | An open-source, extensible AI agent that goes beyond code suggestions — install, execute, edit, and test with any LLM. Works with 15+ providers. 50k stars. | `#agent-platform` `#extensible` `#multi-llm` `#open-source` | 2026-06-21 |
+| [Paperclip](https://github.com/paperclipai/paperclip)<br>⭐ 75,322 | An open-source app for managing a team of AI agents at work. Bring your own agents, assign goals, and track work and costs from one dashboard. 71k stars. | `#agent-orchestration` `#dashboard` `#management` `#open-source` | 2026-06-21 |
+| [Pi](https://github.com/earendil-works/pi)<br>⭐ 81,824 | AI agent toolkit: unified LLM API, agent loop, TUI, and coding agent CLI. 64k stars. | `#agent-toolkit` `#llm-api` `#agent-loop` `#cli` | 2026-06-21 |
+| [pi_agent_rust](https://github.com/Dicklesworthstone/pi_agent_rust)<br>⭐ 1,469 | High-performance AI coding agent CLI written in Rust with zero unsafe code. | `#agent-platform` `#cli` `#rust` `#performance` | 2026-08-01 |
 ### Agent Configs
 
 | Tool | Description | Tags | Added |
 |------|-------------|------|-------|
+
+| [ECC](https://github.com/affaan-m/ecc)<br>⭐ 236,766 | An agent harness performance optimization system — skills, instincts, memory, security, and research-first development for Claude Code, Codex, Opencode, Cursor, and beyond. | `#agent-harness` `#performance` `#security` `#claude-code` | 2026-06-21 |
 | [gstack](https://github.com/garrytan/gstack)<br>⭐ 125,685 | Garry Tan's exact Claude Code setup — 23 opinionated tools that serve as CEO, Designer, Eng Manager, Release Manager, Doc Engineer, and QA. 112k stars. | `#agent-framework` `#workflow` `#opinionated` `#claude-code` | 2026-06-21 |
 | [Superpowers](https://github.com/obra/superpowers)<br>⭐ 264,692 | An agentic skills framework and software development methodology for Claude Code. Structured skills, planning, and execution flow. | `#skills-framework` `#methodology` `#planning` `#claude-code` | 2026-06-21 |
-| [ECC](https://github.com/affaan-m/ecc)<br>⭐ 236,766 | An agent harness performance optimization system — skills, instincts, memory, security, and research-first development for Claude Code, Codex, Opencode, Cursor, and beyond. | `#agent-harness` `#performance` `#security` `#claude-code` | 2026-06-21 |
-
 ### Agent Utilities
 
 | Tool | Description | Tags | Added |
 |------|-------------|------|-------|
-| [pi-intercom](https://github.com/nicobailon/pi-intercom)<br>⭐ 274 | Inter-session communication extension for the pi coding agent — lets sessions talk to each other so context carries across. | `#inter-session` `#persistent-memory` `#agent-plugin` `#pi` | 2026-08-01 |
+
 | [claude-mem](https://github.com/thedotmack/claude-mem)<br>⭐ 89,229 | Persistent context across sessions for every agent — captures everything your agent does, compresses it with AI, and injects relevant context back into future sessions. Works with Claude Code, Codex, Gemini, Copilot, and more. | `#persistent-memory` `#context-injection` `#session-compression` `#agent-plugin` | 2026-07-04 |
 | [Headroom](https://github.com/chopratejas/headroom)<br>⭐ 63,793 | Compress tool outputs, logs, files, and RAG chunks before they reach the LLM. 60-95% fewer tokens, same answers. Library, proxy, MCP server. | `#context-compression` `#token-optimization` `#proxy` `#agent-plugin` | 2026-06-21 |
+| [pi-intercom](https://github.com/nicobailon/pi-intercom)<br>⭐ 274 | Inter-session communication extension for the pi coding agent — lets sessions talk to each other so context carries across. | `#inter-session` `#persistent-memory` `#agent-plugin` `#pi` | 2026-08-01 |
 | [Ponytail](https://github.com/DietrichGebert/ponytail)<br>⭐ 93,376 | Makes your AI agent think like the laziest senior dev in the room. ~54% less code, ~20% cheaper, ~27% faster — 100% safety. Plugs into 14 agents (Claude Code, Codex, Cursor, Copilot, and more). | `#yagni` `#code-reduction` `#lazy-dev` `#agent-plugin` | 2026-06-20 |
-
 ### Security Skills
 
 | Tool | Description | Tags | Added |
 |------|-------------|------|-------|
-| [VibeSec-Skill](https://github.com/BehiSecc/VibeSec-Skill)<br>⭐ 1,120 | A Claude Code skill that helps Claude write secure code and prevent common vulnerabilities. Covers 60-70% of common vulnerability classes. | `#security` `#vulnerable-code` `#claude-code` `#skill` | 2026-07-04 |
 
+| [VibeSec-Skill](https://github.com/BehiSecc/VibeSec-Skill)<br>⭐ 1,120 | A Claude Code skill that helps Claude write secure code and prevent common vulnerabilities. Covers 60-70% of common vulnerability classes. | `#security` `#vulnerable-code` `#claude-code` `#skill` | 2026-07-04 |
 ## AI Guides
 
 | Tool | Description | Tags | Added |
 |------|-------------|------|-------|
-| [AI Engineering from Scratch](https://github.com/rohitg00/ai-engineering-from-scratch)<br>⭐ 45,393 | A project-based curriculum covering the full stack of AI engineering — from environment setup and tooling through to shipping production systems. 388 skills and 99 prompts across phased modules. | `#ai-engineering` `#full-stack` `#curriculum` `#hands-on` | 2026-06-21 |
-| [Learn Harness Engineering](https://github.com/walkinglabs/learn-harness-engineering)<br>⭐ 10,902 | A project-based open-source course on building the environment, state management, verification, and control that make AI coding agents work reliably — 12 lectures + 6 hands-on projects. | `#harness-engineering` `#agent-training` `#course` `#hands-on` | 2026-06-11 |
-| [Building Claude Skills — The Complete Guide](notes/building-claude-skills/html/index.html) | Anthropic's complete guide to building Skills for Claude — `SKILL.md` structure & YAML frontmatter, planning, testing, distribution, and proven patterns. Converted in full from the official PDF and readable in-library. | `#skill-authoring` `#anthropic` `#official-guide` `#claude` | 2026-06-11 |
 
+| [AI Engineering from Scratch](https://github.com/rohitg00/ai-engineering-from-scratch)<br>⭐ 45,393 | A project-based curriculum covering the full stack of AI engineering — from environment setup and tooling through to shipping production systems. 388 skills and 99 prompts across phased modules. | `#ai-engineering` `#full-stack` `#curriculum` `#hands-on` | 2026-06-21 |
+| [Building Claude Skills — The Complete Guide](notes/building-claude-skills/html/index.html) | Anthropic's complete guide to building Skills for Claude — `SKILL.md` structure & YAML frontmatter, planning, testing, distribution, and proven patterns. Converted in full from the official PDF and readable in-library. | `#skill-authoring` `#anthropic` `#official-guide` `#claude` | 2026-06-11 |
+| [Learn Harness Engineering](https://github.com/walkinglabs/learn-harness-engineering)<br>⭐ 10,902 | A project-based open-source course on building the environment, state management, verification, and control that make AI coding agents work reliably — 12 lectures + 6 hands-on projects. | `#harness-engineering` `#agent-training` `#course` `#hands-on` | 2026-06-11 |
 ## Graphs
 
 | Tool | Description | Tags | Added |
 |------|-------------|------|-------|
+
+| [code-review-graph](https://github.com/tirth8205/code-review-graph)<br>⭐ 27,952 | Local-first code intelligence graph for MCP and CLI — builds a persistent map of your codebase so AI coding tools read only what matters, with benchmarked context reductions on reviews and large-repo workflows. | `#code-intelligence` `#knowledge-graph` `#mcp` `#context-reduction` | 2026-08-01 |
 | [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)<br>⭐ 36,929 | High-performance code intelligence MCP server in C — indexes codebases into a persistent knowledge graph (average repo in milliseconds), 158 languages, sub-ms queries, 99% fewer tokens, single static binary with zero dependencies. | `#knowledge-graph` `#mcp` `#code-intelligence` `#performance` `#c` | 2026-08-01 |
 | [Graphify](https://github.com/Graphify-Labs/graphify)<br>⭐ 100,066 | Turns any codebase — docs, SQL schemas, configs, PDFs included — into a queryable knowledge graph via a `/graphify` skill for Claude Code, Cursor, Codex, and Gemini CLI. Local deterministic AST parsing, every edge explained, no vector store. | `#knowledge-graph` `#code-intelligence` `#skill` `#rag` | 2026-08-01 |
-| [code-review-graph](https://github.com/tirth8205/code-review-graph)<br>⭐ 27,952 | Local-first code intelligence graph for MCP and CLI — builds a persistent map of your codebase so AI coding tools read only what matters, with benchmarked context reductions on reviews and large-repo workflows. | `#code-intelligence` `#knowledge-graph` `#mcp` `#context-reduction` | 2026-08-01 |
-
 ## Text to Speech
 
 | Tool | Description | Tags | Added |
 |------|-------------|------|-------|
+
+| [Audio8_TTS](https://github.com/Audio8-AI/Audio8_TTS)<br>⭐ 230 | State-of-the-art-class text-to-speech at compact scale — a small-footprint TTS model with strong quality. | `#tts` `#audio` `#speech-synthesis` `#open-source` | 2026-08-01 |
 | [Kokoro](https://github.com/hexgrad/kokoro)<br>⭐ 8,221 | Inference library for Kokoro-82M, an open-weight 82M-parameter TTS model with quality comparable to far larger models — Apache-licensed, fast and cheap to deploy. | `#tts` `#speech-synthesis` `#open-source` `#lightweight` | 2026-08-01 |
 | [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS)<br>⭐ 12,725 | Open-source TTS model series from the Qwen team — stable, expressive, streaming speech generation, free-form voice design, and voice cloning. | `#tts` `#speech-synthesis` `#voice-cloning` `#open-source` | 2026-08-01 |
-| [Audio8_TTS](https://github.com/Audio8-AI/Audio8_TTS)<br>⭐ 230 | State-of-the-art-class text-to-speech at compact scale — a small-footprint TTS model with strong quality. | `#tts` `#audio` `#speech-synthesis` `#open-source` | 2026-08-01 |
-
 <!-- TOOLS:END -->
 
 ## Maintenance

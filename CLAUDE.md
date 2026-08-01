@@ -36,8 +36,8 @@ markdown source and rebuild.
 5. **Tags:** 2–5 lowercase tags, no `#` inside the backticks is fine but render them as
    `` `#tag` ``. Reuse existing tags before inventing new ones (check the README first).
 6. **Date:** stamp with today's date in `YYYY-MM-DD` format.
-7. **Insert newest-first:** add the new row directly under the table's header/separator
-   (top of its category), so recent finds surface first.
+7. **Insert alphabetically:** add the new row in the right alphabetical position
+   (by tool name) within its category's table.
 8. **Maintain the Table of Contents:** if you created a category, add a link to it,
    keeping the ToC ordered **alphabetically**. The anchor is the heading lowercased with
    spaces → `-` and `&`/punctuation removed (e.g. `## AI Agents & Skills` → `#ai-agents--skills`).
@@ -58,7 +58,7 @@ The `⭐` under the tool name is the current GitHub star count (fetched at add t
 ## Categories
 
 - Headings are `## Title Case`, ordered alphabetically in the Table of Contents.
-- Within a category table, rows are ordered newest-first (by date added).
+- Within a category table, rows are ordered alphabetically (by tool name).
 - Keep category names broad enough to grow (e.g. "AI Agents & Skills", not "Claude Skills").
 
 ## Notes — subjects & chapters
