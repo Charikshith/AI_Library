@@ -61,6 +61,7 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 
 | Tool | Description | Tags | Added |
 |------|-------------|------|-------|
+| [Kokoro](https://github.com/hexgrad/kokoro) | Inference library for Kokoro-82M, an open-weight 82M-parameter TTS model with quality comparable to far larger models — Apache-licensed, fast and cheap to deploy. | `#tts` `#speech-synthesis` `#open-source` `#lightweight` | 2026-08-01 |
 | [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS) | Open-source TTS model series from the Qwen team — stable, expressive, streaming speech generation, free-form voice design, and voice cloning. | `#tts` `#speech-synthesis` `#voice-cloning` `#open-source` | 2026-08-01 |
 | [Audio8_TTS](https://github.com/Audio8-AI/Audio8_TTS) | State-of-the-art-class text-to-speech at compact scale — a small-footprint TTS model with strong quality. | `#tts` `#audio` `#speech-synthesis` `#open-source` | 2026-08-01 |
 
