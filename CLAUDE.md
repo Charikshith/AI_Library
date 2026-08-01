@@ -50,10 +50,10 @@ markdown source and rebuild.
 ## Row format
 
 ```markdown
-| [Tool Name](https://link) | One-line description. | `#tag1` `#tag2` | YYYY-MM-DD | 12345 |
+| [Tool Name](https://link)<br>&#9733; 12,345 | One-line description. | `#tag1` `#tag2` | YYYY-MM-DD |
 ```
 
-The `Stars` column is the current GitHub star count (fetched at add time); leave it empty for in-library entries with no repo.
+The `★` under the tool name is the current GitHub star count (fetched at add time, comma-formatted); omit the `<br>&#9733; ...` part for in-library entries with no repo.
 
 ## Categories
 

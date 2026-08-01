@@ -295,6 +295,7 @@
   font-size: 11px;
   font-weight: 600;
   color: var(--primary);
+  margin: -2px 0 4px;
 }
 .feed-date {
   font-family: 'JetBrains Mono', monospace;
