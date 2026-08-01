@@ -4,6 +4,7 @@ __pycache__/
 
 # AI agent artifacts
 .commandcode/
+.pi/
 
 # OS / editor cruft
 .DS_Store
