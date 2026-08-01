@@ -24,7 +24,7 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 
 ### Agent Platforms
 
-| Tool | Description | Tags | Added | Stars |
+| Tool | Description | Tags | Added | ⭐ |
 |------|-------------|------|-------|-------|
 | [pi_agent_rust](https://github.com/Dicklesworthstone/pi_agent_rust) | High-performance AI coding agent CLI written in Rust with zero unsafe code. | `#agent-platform` `#cli` `#rust` `#performance` | 2026-08-01 | 1469 |
 | [Pi](https://github.com/earendil-works/pi) | AI agent toolkit: unified LLM API, agent loop, TUI, and coding agent CLI. 64k stars. | `#agent-toolkit` `#llm-api` `#agent-loop` `#cli` | 2026-06-21 | 81824 |
@@ -33,7 +33,7 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 
 ### Agent Configs
 
-| Tool | Description | Tags | Added | Stars |
+| Tool | Description | Tags | Added | ⭐ |
 |------|-------------|------|-------|-------|
 | [gstack](https://github.com/garrytan/gstack) | Garry Tan's exact Claude Code setup — 23 opinionated tools that serve as CEO, Designer, Eng Manager, Release Manager, Doc Engineer, and QA. 112k stars. | `#agent-framework` `#workflow` `#opinionated` `#claude-code` | 2026-06-21 | 125685 |
 | [Superpowers](https://github.com/obra/superpowers) | An agentic skills framework and software development methodology for Claude Code. Structured skills, planning, and execution flow. | `#skills-framework` `#methodology` `#planning` `#claude-code` | 2026-06-21 | 264692 |
@@ -41,7 +41,7 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 
 ### Agent Utilities
 
-| Tool | Description | Tags | Added | Stars |
+| Tool | Description | Tags | Added | ⭐ |
 |------|-------------|------|-------|-------|
 | [pi-intercom](https://github.com/nicobailon/pi-intercom) | Inter-session communication extension for the pi coding agent — lets sessions talk to each other so context carries across. | `#inter-session` `#persistent-memory` `#agent-plugin` `#pi` | 2026-08-01 | 274 |
 | [claude-mem](https://github.com/thedotmack/claude-mem) | Persistent context across sessions for every agent — captures everything your agent does, compresses it with AI, and injects relevant context back into future sessions. Works with Claude Code, Codex, Gemini, Copilot, and more. | `#persistent-memory` `#context-injection` `#session-compression` `#agent-plugin` | 2026-07-04 | 89229 |
@@ -50,13 +50,13 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 
 ### Security Skills
 
-| Tool | Description | Tags | Added | Stars |
+| Tool | Description | Tags | Added | ⭐ |
 |------|-------------|------|-------|-------|
 | [VibeSec-Skill](https://github.com/BehiSecc/VibeSec-Skill) | A Claude Code skill that helps Claude write secure code and prevent common vulnerabilities. Covers 60-70% of common vulnerability classes. | `#security` `#vulnerable-code` `#claude-code` `#skill` | 2026-07-04 | 1120 |
 
 ## AI Guides
 
-| Tool | Description | Tags | Added | Stars |
+| Tool | Description | Tags | Added | ⭐ |
 |------|-------------|------|-------|-------|
 | [AI Engineering from Scratch](https://github.com/rohitg00/ai-engineering-from-scratch) | A project-based curriculum covering the full stack of AI engineering — from environment setup and tooling through to shipping production systems. 388 skills and 99 prompts across phased modules. | `#ai-engineering` `#full-stack` `#curriculum` `#hands-on` | 2026-06-21 | 45393 |
 | [Learn Harness Engineering](https://github.com/walkinglabs/learn-harness-engineering) | A project-based open-source course on building the environment, state management, verification, and control that make AI coding agents work reliably — 12 lectures + 6 hands-on projects. | `#harness-engineering` `#agent-training` `#course` `#hands-on` | 2026-06-11 | 10902 |
@@ -64,7 +64,7 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 
 ## Graphs
 
-| Tool | Description | Tags | Added | Stars |
+| Tool | Description | Tags | Added | ⭐ |
 |------|-------------|------|-------|-------|
 | [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) | High-performance code intelligence MCP server in C — indexes codebases into a persistent knowledge graph (average repo in milliseconds), 158 languages, sub-ms queries, 99% fewer tokens, single static binary with zero dependencies. | `#knowledge-graph` `#mcp` `#code-intelligence` `#performance` `#c` | 2026-08-01 | 36929 |
 | [Graphify](https://github.com/Graphify-Labs/graphify) | Turns any codebase — docs, SQL schemas, configs, PDFs included — into a queryable knowledge graph via a `/graphify` skill for Claude Code, Cursor, Codex, and Gemini CLI. Local deterministic AST parsing, every edge explained, no vector store. | `#knowledge-graph` `#code-intelligence` `#skill` `#rag` | 2026-08-01 | 100066 |
@@ -72,7 +72,7 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 
 ## Text to Speech
 
-| Tool | Description | Tags | Added | Stars |
+| Tool | Description | Tags | Added | ⭐ |
 |------|-------------|------|-------|-------|
 | [Kokoro](https://github.com/hexgrad/kokoro) | Inference library for Kokoro-82M, an open-weight 82M-parameter TTS model with quality comparable to far larger models — Apache-licensed, fast and cheap to deploy. | `#tts` `#speech-synthesis` `#open-source` `#lightweight` | 2026-08-01 | 8221 |
 | [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS) | Open-source TTS model series from the Qwen team — stable, expressive, streaming speech generation, free-form voice design, and voice cloning. | `#tts` `#speech-synthesis` `#voice-cloning` `#open-source` | 2026-08-01 | 12725 |
