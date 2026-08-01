@@ -35,6 +35,7 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 
 | Tool | Description | Tags | Added |
 |------|-------------|------|-------|
+| [pi-intercom](https://github.com/nicobailon/pi-intercom) | Inter-session communication extension for the pi coding agent — lets sessions talk to each other so context carries across. | `#inter-session` `#persistent-memory` `#agent-plugin` `#pi` | 2026-08-01 |
 | [claude-mem](https://github.com/thedotmack/claude-mem) | Persistent context across sessions for every agent — captures everything your agent does, compresses it with AI, and injects relevant context back into future sessions. Works with Claude Code, Codex, Gemini, Copilot, and more. | `#persistent-memory` `#context-injection` `#session-compression` `#agent-plugin` | 2026-07-04 |
 | [Headroom](https://github.com/chopratejas/headroom) | Compress tool outputs, logs, files, and RAG chunks before they reach the LLM. 60-95% fewer tokens, same answers. Library, proxy, MCP server. | `#context-compression` `#token-optimization` `#proxy` `#agent-plugin` | 2026-06-21 |
 | [Ponytail](https://github.com/DietrichGebert/ponytail) | Makes your AI agent think like the laziest senior dev in the room. ~54% less code, ~20% cheaper, ~27% faster — 100% safety. Plugs into 14 agents (Claude Code, Codex, Cursor, Copilot, and more). | `#yagni` `#code-reduction` `#lazy-dev` `#agent-plugin` | 2026-06-20 |
