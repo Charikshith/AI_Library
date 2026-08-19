@@ -577,26 +577,25 @@
     <span class="sidebar-progress-text" id="sidebarProgress">0%</span>
   </div>
 
-  <div class="sidebar-part">Part A · Packages &amp; Crates</div>
-  <a href="#s01" class="sidebar-link" data-section="s01"><span class="num">01</span> Crates — Compilation Units</a>
-  <a href="#s02" class="sidebar-link" data-section="s02"><span class="num">02</span> Binary vs Library Crates</a>
-  <a href="#s03" class="sidebar-link" data-section="s03"><span class="num">03</span> The Package — Cargo's Container</a>
-  <a href="#s04" class="sidebar-link" data-section="s04"><span class="num">04</span> Cargo File Conventions</a>
+  <div class="sidebar-part">Part A · The Big Picture (7.1)</div>
+  <a href="#s01" class="sidebar-link" data-section="s01"><span class="num">01</span> The Mental Model</a>
+  <a href="#s02" class="sidebar-link" data-section="s02"><span class="num">02</span> Crates — What Gets Compiled</a>
+  <a href="#s03" class="sidebar-link" data-section="s03"><span class="num">03</span> Packages &amp; Cargo's Conventions</a>
 
-  <div class="sidebar-part">Part B · Organizing with Modules</div>
-  <a href="#s05" class="sidebar-link" data-section="s05"><span class="num">05</span> Modules — Privacy &amp; Structure</a>
-  <a href="#s06" class="sidebar-link" data-section="s06"><span class="num">06</span> Paths — Navigating the Tree</a>
-  <a href="#s07" class="sidebar-link" data-section="s07"><span class="num">07</span> Exposing Code with pub</a>
-  <a href="#s08" class="sidebar-link" data-section="s08"><span class="num">08</span> Going Up with super</a>
-  <a href="#s09" class="sidebar-link" data-section="s09"><span class="num">09</span> Struct &amp; Enum Visibility</a>
+  <div class="sidebar-part">Part B · The Module Tree (7.2–7.3)</div>
+  <a href="#s04" class="sidebar-link" data-section="s04"><span class="num">04</span> Declaring Modules</a>
+  <a href="#s05" class="sidebar-link" data-section="s05"><span class="num">05</span> One Module per File</a>
+  <a href="#s06" class="sidebar-link" data-section="s06"><span class="num">06</span> Paths — Naming Things</a>
+  <a href="#s07" class="sidebar-link" data-section="s07"><span class="num">07</span> Privacy &amp; pub — The Wall</a>
+  <a href="#s08" class="sidebar-link" data-section="s08"><span class="num">08</span> Struct &amp; Enum Visibility</a>
 
-  <div class="sidebar-part">Part C · Importing with use</div>
-  <a href="#s10" class="sidebar-link" data-section="s10"><span class="num">10</span> Shortcuts with use</a>
-  <a href="#s11" class="sidebar-link" data-section="s11"><span class="num">11</span> Idiomatic use Patterns</a>
-  <a href="#s12" class="sidebar-link" data-section="s12"><span class="num">12</span> Aliases with as</a>
-  <a href="#s13" class="sidebar-link" data-section="s13"><span class="num">13</span> Re-exporting with pub use</a>
-  <a href="#s14" class="sidebar-link" data-section="s14"><span class="num">14</span> External Packages</a>
-  <a href="#s15" class="sidebar-link" data-section="s15"><span class="num">15</span> Nested Paths &amp; Glob</a>
+  <div class="sidebar-part">Part C · Importing (7.4)</div>
+  <a href="#s09" class="sidebar-link" data-section="s09"><span class="num">09</span> use — Local Shortcuts</a>
+  <a href="#s10" class="sidebar-link" data-section="s10"><span class="num">10</span> Idiomatic use</a>
+  <a href="#s11" class="sidebar-link" data-section="s11"><span class="num">11</span> Aliases with as</a>
+  <a href="#s12" class="sidebar-link" data-section="s12"><span class="num">12</span> pub use — Re-exporting</a>
+  <a href="#s13" class="sidebar-link" data-section="s13"><span class="num">13</span> External Packages</a>
+  <a href="#s14" class="sidebar-link" data-section="s14"><span class="num">14</span> Nested Paths &amp; Glob</a>
 </nav>
 
 <!-- Sidebar Overlay (mobile) -->
@@ -638,10 +637,10 @@
     <div class="chapter-label">The Rust Book · Chapter 7</div>
     <h1 class="chapter-title">Packages, Crates, and Modules</h1>
     <p class="chapter-summary">
-      Chapters 4–6 built types inside a single file. Real projects don't fit in one file — you
-      need to split code across files, control who can see what, and pull in external libraries.
-      This chapter is Rust's answer to Python's packages, <code>import</code>, and <code>__all__</code>,
-      but enforced by the compiler instead of by convention.
+      Python never had to teach you this: the filesystem <em>is</em> your module system, privacy is a naming
+      convention, and <code>import</code> just runs more code. Rust takes the same ideas and hands them to the
+      compiler. This chapter is about three questions — <strong>where does my code live, how do I name it,
+      and who can see it</strong> — answered in a way you can rely on.
     </p>
   </header>
 
@@ -649,751 +648,661 @@
   <nav class="agenda">
     <div class="agenda-title">What we'll cover</div>
     <ol>
-      <div class="agenda-part">Part A — Packages &amp; Crates (7.1)</div>
-      <li><strong>Crates</strong> — the unit the compiler actually builds</li>
-      <li><strong>Binary vs library crates</strong> — executables vs reusable code</li>
-      <li><strong>The package</strong> — what Cargo.toml describes</li>
-      <li><strong>File conventions</strong> — how Cargo discovers crates without configuration</li>
-      <div class="agenda-part">Part B — Organizing with Modules (7.2 – 7.3)</div>
-      <li><strong>Modules</strong> — grouping code and controlling privacy</li>
-      <li><strong>Paths</strong> — navigating the module tree with <code>::</code></li>
-      <li><strong><code>pub</code></strong> — opening the privacy doors, layer by layer</li>
-      <li><strong><code>super</code></strong> — going up to the parent module</li>
-      <li><strong>Struct &amp; enum visibility</strong> — why fields and variants have different defaults</li>
-      <div class="agenda-part">Part C — Importing with use (7.4 – 7.5)</div>
-      <li><strong><code>use</code></strong> — creating local shortcuts for long paths</li>
-      <li><strong>Idiomatic patterns</strong> — when to import the module vs the item</li>
-      <li><strong><code>as</code></strong> — renaming imports to dodge name collisions</li>
-      <li><strong><code>pub use</code></strong> — re-exporting to reshape your public API</li>
-      <li><strong>External packages</strong> — <code>crates.io</code> and <code>Cargo.toml</code></li>
-      <li><strong>Nested paths &amp; glob</strong> — cleaning up long import lists</li>
+      <div class="agenda-part">Part A — The Big Picture (7.1)</div>
+      <li><strong>The mental model</strong> — Rust's module system is Python's, enforced</li>
+      <li><strong>Crates</strong> — what the compiler actually builds</li>
+      <li><strong>Packages</strong> — Cargo's container and its file conventions</li>
+      <div class="agenda-part">Part B — The Module Tree (7.2–7.3)</div>
+      <li><strong>Declaring modules</strong> — the tree exists only where you say it does</li>
+      <li><strong>One module per file</strong> — splitting code without losing the tree</li>
+      <li><strong>Paths</strong> — naming anything in the tree</li>
+      <li><strong>Privacy &amp; <code>pub</code></strong> — the wall, and its two keys</li>
+      <li><strong>Struct &amp; enum visibility</strong> — why fields and variants differ</li>
+      <div class="agenda-part">Part C — Importing (7.4)</div>
+      <li><strong><code>use</code></strong> — local shortcuts that cost nothing</li>
+      <li><strong>Idiomatic <code>use</code></strong> — functions vs types</li>
+      <li><strong><code>as</code></strong> — renaming to dodge collisions</li>
+      <li><strong><code>pub use</code></strong> — the <code>__init__.py</code> story</li>
+      <li><strong>External packages</strong> — crates.io &amp; Cargo.toml</li>
+      <li><strong>Nested paths &amp; glob</strong> — cleaning up import lists</li>
     </ol>
   </nav>
 
 
   <!-- ═══════════════════════════════════════════════════════════
-       PART A — PACKAGES & CRATES
+       PART A — THE BIG PICTURE
        ═══════════════════════════════════════════════════════════ -->
 
   <div class="part-divider" id="partA">
     <div class="part-label">Part A · Chapter 7.1</div>
-    <h2 class="part-title">Packages and Crates</h2>
-    <p class="part-subtitle">The outermost containers — what Cargo builds and what you distribute</p>
+    <h2 class="part-title">The Big Picture</h2>
+    <p class="part-subtitle">What Cargo builds, and the mental model that makes the rest obvious</p>
   </div>
 
   <!-- 01 -->
   <section class="lesson-section" id="s01">
     <div class="section-number">01</div>
-    <h2 class="section-title">Crates — Compilation Units</h2>
-    <p class="section-subtitle">The boundary the compiler draws around a chunk of code</p>
-    <p>Up to now, everything lived in one <code>.rs</code> file. That works for learning, but real projects grow. Before you can split code across files, you need to understand what the compiler treats as "one thing."</p>
-    <p>That unit is the <strong>crate</strong>. When you run <code>cargo build</code>, the compiler starts at one file — the <strong>crate root</strong> — and follows every <code>mod</code> declaration outward to gather all the code that belongs together. Everything it collects is one crate. Everything outside that crate is invisible unless explicitly marked <code>pub</code>.</p>
-    <p>A crate comes in two flavours:</p>
+    <h2 class="section-title">The Mental Model</h2>
+    <p class="section-subtitle">Rust's module system is Python's — but the compiler enforces it</p>
+    <p>Here's the framing that makes this whole chapter click. In Python, code organization is really just <em>files and folders</em>. <code>my_package/utils.py</code> is a module because it's a file. <code>my_package/</code> is a package because it has an <code>__init__.py</code>. <code>_helper</code> is private because we all agreed to ignore it. None of this is enforced — it's convention, and you can break every piece of it without the interpreter batting an eye.</p>
+    <p>Rust takes the same three ideas and makes them <strong>rules the compiler checks</strong>:</p>
     <table>
-      <tr><th></th><th>Binary crate</th><th>Library crate</th></tr>
-      <tr><td>Has <code>main</code>?</td><td>Yes</td><td>No</td></tr>
-      <tr><td>Compiles to</td><td>An executable</td><td>Reusable code (no <code>.exe</code>)</td></tr>
-      <tr><td>Example</td><td>Your CLI tool</td><td>The <code>rand</code> crate from Chapter 2</td></tr>
+      <tr><th>Question</th><th>Python's answer</th><th>Rust's answer</th></tr>
+      <tr><td>Where does code live?</td><td>Filesystem: folders = packages, files = modules</td><td><strong>Crates</strong> (what compiles) + <strong>modules</strong> (what you declare)</td></tr>
+      <tr><td>How do I name things?</td><td><code>import</code> paths, <code>sys.path</code></td><td><strong>Paths</strong> with <code>::</code>, starting at <code>crate::</code></td></tr>
+      <tr><td>Who can see what?</td><td><code>_underscore</code> + <code>__all__</code> conventions</td><td><strong><code>pub</code></strong>, enforced by the compiler</td></tr>
+      <tr><td>Dependencies?</td><td>pip + <code>requirements.txt</code></td><td><code>Cargo.toml</code> + crates.io</td></tr>
+      <tr><td>Re-exports?</td><td><code>__init__.py</code></td><td><code>pub use</code></td></tr>
     </table>
-    <p>When Rustaceans say "crate" without qualification, they almost always mean <em>library crate</em> — it's their word for "library."</p>
+    <p>Every section in this chapter answers one of those three questions. If you hold onto the mapping table above, the details stop being random syntax.</p>
     <details class="python">
-      <summary>🐍 The Python parallel</summary>
+      <summary>🐍 Why Python never taught you this</summary>
       <div class="dropdown-body">
-        <pre><span class="cm"># Python — no single "crate" concept</span>
-my_project/
-├── __init__.py      <span class="cm"># makes it a package</span>
-├── utils.py         <span class="cm"># a module</span>
-└── main.py          <span class="cm"># the entry point</span>
+        <pre><span class="cm"># A typical Python package — all convention, none enforced</span>
+my_package/
+├── __init__.py          <span class="cm"># curates the public API</span>
+├── _internal.py         <span class="cm"># "private" — but importable by anyone</span>
+└── utils.py
 
-<span class="cm"># Any file can import any other — no enforced boundary.</span>
-<span class="cm"># `__all__` in __init__.py is a suggestion, not a wall.</span>
-<span class="kw">from</span> my_project.utils <span class="kw">import</span> helper  <span class="cm"># always works, even if you didn't intend it</span></pre>
-        <p>Python has <em>packages</em> and <em>modules</em>, but nothing that maps to a "crate." A Python package is a directory; a module is a <code>.py</code> file. There's no compiler enforcing what's public — <code>_private</code> names are a gentleman's agreement, not a wall. A Rust crate is more like a compiled <code>.so</code>/<code>.dll</code> with a strict public API surface that the compiler checks. If it compiles, the access is legitimate. If it doesn't, you've hit a real boundary.</p>
+<span class="cm"># Nothing stops you:</span>
+<span class="kw">from</span> my_package._internal <span class="kw">import</span> _secret   <span class="cm"># works, every time</span>
+
+<span class="cm"># __all__ only affects `import *`, not direct imports</span>
+__all__ = [<span class="str">"public_api"</span>]</pre>
+        <p>In Python you can break every rule and nothing happens. In Rust, breaking a rule is a compile error. That sounds like restriction — but it's the compiler being on your side. Conventions get violated by accident; rules don't. Python trusts you, Rust verifies you.</p>
       </div>
     </details>
     <div class="takeaway">
       <div class="takeaway-label">Key takeaway</div>
-      A crate is what the compiler builds: one root file, one privacy boundary. Binary crates have <code>main</code>; library crates don't and are meant to be shared.
+      Rust organizes code with the same ideas as Python — packages, modules, imports, visibility — but the compiler enforces them. Nothing is convention; everything is a rule you can rely on.
     </div>
   </section>
 
   <!-- 02 -->
   <section class="lesson-section" id="s02">
     <div class="section-number">02</div>
-    <h2 class="section-title">Binary vs Library Crates</h2>
-    <p class="section-subtitle">One runs, the other is imported — and the same package can have both</p>
-    <p>A <strong>binary crate</strong> is a program you can run — <code>cargo run</code> executes its <code>main</code>. A <strong>library crate</strong> is code you import — it has no <code>main</code>, it just defines things for others to use.</p>
-    <p>Most real projects have both. The binary crate is thin — just enough to start the program — and it calls into the library crate for the actual logic. This pattern exists because:</p>
-    <ul>
-      <li>The library crate can be shared: other projects (and your own tests) can depend on it.</li>
-      <li>The binary crate is a <em>client</em> of your library, which forces you to design a clean API.</li>
-    </ul>
-    <pre><span class="cm">// src/lib.rs — the library crate (reusable logic)</span>
-<span class="kw">pub fn</span> <span class="fn">run</span>(config: <span class="ty">Config</span>) {
-    <span class="cm">// ... all the real work ...</span>
-}
-
-<span class="cm">// src/main.rs — the binary crate (thin wrapper)</span>
-<span class="kw">use</span> my_app::<span class="fn">run</span>;
-<span class="kw">use</span> my_app::<span class="ty">Config</span>;
-
-<span class="kw">fn</span> <span class="fn">main</span>() {
-    <span class="kw">let</span> config = <span class="ty">Config</span>::<span class="fn">from_args</span>();
-    <span class="fn">run</span>(config);
-}</pre>
+    <h2 class="section-title">Crates — What Gets Compiled</h2>
+    <p class="section-subtitle">The unit of compilation, and the unit of privacy</p>
+    <p>A <strong>crate</strong> is what the compiler actually builds: one root file — the <strong>crate root</strong> — plus everything that root declares, and nothing else. It's the boundary of a whole program or library.</p>
+    <p>There are two kinds, and the difference is one question: <strong>does it have a <code>main</code>?</strong></p>
+    <table>
+      <tr><th></th><th>Binary crate</th><th>Library crate</th></tr>
+      <tr><td><code>main</code>?</td><td>Yes</td><td>No</td></tr>
+      <tr><td>Compiles to</td><td>An executable you can run</td><td>Code others can <code>use</code></td></tr>
+      <tr><td>Sounds like</td><td>A program</td><td>A library</td></tr>
+    </table>
+    <p>One subtle thing: a crate is also a <strong>privacy boundary</strong>. Items are private to their crate unless marked <code>pub</code> — so even when another crate depends on yours, it can only see the surface you exposed. There is no "just reach in and grab it."</p>
+    <p>And a vocabulary note: when a Rustacean says "crate" without qualification, they almost always mean <em>library crate</em>. "Add this crate" = "add this library."</p>
     <details class="python">
-      <summary>🐍 Python comparison</summary>
+      <summary>🐍 The Python parallel</summary>
       <div class="dropdown-body">
-        <pre><span class="cm"># Python has the same pattern, but it's a convention, not enforced</span>
-my_app/
-├── __init__.py      <span class="cm"># exports: from .core import run, Config</span>
-├── core.py          <span class="cm"># the real logic</span>
-└── __main__.py      <span class="cm"># python -m my_app → thin entry point</span>
-
-<span class="cm"># __main__.py</span>
-<span class="kw">from</span> .core <span class="kw">import</span> run, Config
-config = Config.from_args()
-run(config)</pre>
-        <p>Python's <code>__main__.py</code> is the binary crate; the package itself is the library. The difference: Python won't stop you from importing internals (<code>from my_app.core import _helper</code>), while Rust's compiler will. Also, Python's <code>__init__.py</code> has to manually re-export what you want public; Rust's <code>pub</code> on the item itself handles that.</p>
+        <p>Python has no equivalent unit. Your program is just files importing each other; the distribution unit is a wheel, the import unit is a module, and there's no enforced boundary anywhere. A Rust crate is closer to a compiled shared library (<code>.so</code>/<code>.dll</code>): a bundle of code with a strictly enforced public interface. Python's "public API" is a hope; Rust's is a compiled fact.</p>
       </div>
     </details>
     <div class="takeaway">
       <div class="takeaway-label">Key takeaway</div>
-      A single package can have both a library and a binary crate. Keep the real logic in the library; make the binary a thin wrapper that calls into it.
+      A crate is the unit of compilation <em>and</em> the unit of privacy: one root file, one boundary. Binary crates run, library crates are shared — and nothing outside a crate sees past its <code>pub</code> surface.
     </div>
   </section>
 
   <!-- 03 -->
   <section class="lesson-section" id="s03">
     <div class="section-number">03</div>
-    <h2 class="section-title">The Package — Cargo's Container</h2>
-    <p class="section-subtitle">One <code>Cargo.toml</code>, one or more crates</p>
-    <p>A <strong>package</strong> is the thing <code>cargo build</code> actually builds. It's described by <code>Cargo.toml</code> and bundles one or more crates. The rules are minimal:</p>
+    <h2 class="section-title">Packages &amp; Cargo's Conventions</h2>
+    <p class="section-subtitle">One Cargo.toml, up to one library, any number of binaries</p>
+    <p>A <strong>package</strong> is what Cargo builds: one <code>Cargo.toml</code> plus the crates it describes. The rules are few:</p>
     <ul>
-      <li>At most <strong>one library crate</strong>.</li>
-      <li>As many <strong>binary crates</strong> as you like.</li>
+      <li>At most <strong>one library crate</strong> — it carries the package's public name on crates.io.</li>
+      <li>As many <strong>binary crates</strong> as you want.</li>
       <li>At least <strong>one crate</strong> of either kind.</li>
     </ul>
-    <p>Cargo itself is a package — it has a binary crate (<code>cargo</code> the command) and a library crate (the logic the binary calls).</p>
-    <details class="python">
-      <summary>🐍 Python comparison</summary>
-      <div class="dropdown-body">
-        <p>A Python package is a directory with <code>__init__.py</code>. There's no concept of "at most one library" — you can have as many modules as you want, all at the same level. Rust's restriction exists because the library crate name becomes the package's public identity on <code>crates.io</code>. One name, one library. Binaries are internal.</p>
-      </div>
-    </details>
-    <div class="takeaway">
-      <div class="takeaway-label">Key takeaway</div>
-      A package = one <code>Cargo.toml</code> + one library crate (at most) + binary crates (unlimited) + at least one of either.
-    </div>
-  </section>
-
-  <!-- 04 -->
-  <section class="lesson-section" id="s04">
-    <div class="section-number">04</div>
-    <h2 class="section-title">Cargo File Conventions</h2>
-    <p class="section-subtitle">How Cargo discovers crates without any configuration</p>
-    <p>Cargo uses <strong>file names</strong> to decide what crates exist. You don't tell it in <code>Cargo.toml</code> — it just knows:</p>
-    <pre><span class="cm">$ cargo new my-project</span>
-     Created binary (application) `my-project` package
-<span class="cm">$ ls my-project/src</span>
-main.rs</pre>
+    <p>Cargo doesn't ask you to declare what crates exist — it <strong>infers them from filenames</strong>:</p>
+    <pre><span class="cm">$ cargo new bookcrate</span>
+     Created binary (application) `bookcrate` package
+<span class="cm">$ tree src</span>
+src
+└── main.rs          <span class="cm">← binary crate named `bookcrate`</span></pre>
     <div class="rules-box">
       <div class="rules-title">Cargo's discovery rules</div>
       <ol>
-        <li><code>src/main.rs</code> → binary crate named after the package</li>
-        <li><code>src/lib.rs</code> → library crate named after the package</li>
-        <li><code>src/bin/*.rs</code> → each file is a separate binary crate</li>
+        <li><code>src/main.rs</code> → a binary crate named after the package</li>
+        <li><code>src/lib.rs</code> → a library crate named after the package</li>
+        <li><code>src/bin/*.rs</code> → each file becomes its own binary crate</li>
       </ol>
     </div>
-    <p>So a package with both <code>src/main.rs</code> and <code>src/lib.rs</code> has two crates with the same name — a binary and a library. The binary can use the library just like any external dependency would.</p>
+    <p>That gives you the classic project shape: all real logic in <code>src/lib.rs</code>, and a <code>src/main.rs</code> so thin it's almost embarrassing — it parses args, calls the library, and exits. The library is testable and shareable; the binary is just a front door.</p>
     <details class="python">
-      <summary>🐍 Python comparison</summary>
+      <summary>🐍 Python comparison — entry points</summary>
       <div class="dropdown-body">
-        <pre><span class="cm"># Python has no equivalent discovery — you define entry points explicitly</span>
-<span class="cm"># pyproject.toml</span>
+        <pre><span class="cm"># Python declares its entry points explicitly, in pyproject.toml</span>
 [project.scripts]
-my-tool = <span class="str">"my_package.cli:main"</span>  <span class="cm"># you must declare this</span>
+bookcrate = <span class="str">"bookcrate.cli:main"</span>
 
-<span class="cm"># Rust: just put the file in the right place. Cargo finds it.</span></pre>
-        <p>Python's <code>pyproject.toml</code> requires you to declare entry points explicitly. Cargo's convention-over-configuration approach means you just place files in the right location — no <code>Cargo.toml</code> edits needed for the basic binary/library split.</p>
+<span class="cm"># Rust just... puts a file in the right place</span>
+<span class="cm"># src/main.rs → done, Cargo found it.</span></pre>
+        <p>Python makes you <em>declare</em> entry points; Rust makes you <em>place</em> files. Convention over configuration — fewer things to forget, fewer typos that fail silently at install time.</p>
       </div>
     </details>
     <div class="takeaway">
       <div class="takeaway-label">Key takeaway</div>
-      <code>src/main.rs</code> = binary, <code>src/lib.rs</code> = library, <code>src/bin/*.rs</code> = extra binaries. Cargo discovers all of these by filename convention.
+      A package = one <code>Cargo.toml</code> + ≤1 library crate + any number of binaries. Cargo discovers crates by filename, not config. Keep logic in the library, keep the binary thin.
     </div>
   </section>
 
 
   <!-- ═══════════════════════════════════════════════════════════
-       PART B — ORGANIZING WITH MODULES
+       PART B — THE MODULE TREE
        ═══════════════════════════════════════════════════════════ -->
 
   <div class="part-divider" id="partB">
-    <div class="part-label">Part B · Chapter 7.2 – 7.3</div>
-    <h2 class="part-title">Organizing with Modules</h2>
-    <p class="part-subtitle">Splitting code within a crate and controlling who can see what</p>
+    <div class="part-label">Part B · Chapter 7.2–7.3</div>
+    <h2 class="part-title">The Module Tree</h2>
+    <p class="part-subtitle">Namespaces you declare, paths you write, walls the compiler enforces</p>
   </div>
+
+  <!-- 04 -->
+  <section class="lesson-section" id="s04">
+    <div class="section-number">04</div>
+    <h2 class="section-title">Declaring Modules</h2>
+    <p class="section-subtitle">The tree exists only where you say it does</p>
+    <p>Inside a crate, a <strong>module</strong> is a named group of items — functions, structs, other modules. Declare one with <code>mod</code>, and nest them to mirror your domain. Say we're building <code>bookcrate</code>, a library catalogue:</p>
+    <pre><span class="kw">mod</span> inventory {
+    <span class="kw">mod</span> search {
+        <span class="kw">fn</span> <span class="fn">by_author</span>() {}
+        <span class="kw">fn</span> <span class="fn">by_title</span>() {}
+    }
+
+    <span class="kw">mod</span> register {
+        <span class="kw">fn</span> <span class="fn">add_book</span>() {}
+        <span class="kw">fn</span> <span class="fn">remove_book</span>() {}
+    }
+}
+
+<span class="kw">mod</span> lending {
+    <span class="kw">fn</span> <span class="fn">check_out</span>() {}
+    <span class="kw">fn</span> <span class="fn">return_book</span>() {}
+}</pre>
+    <p>This creates a <strong>module tree</strong> — the compiler's map of your crate:</p>
+    <div class="diagram">
+      <div class="diagram-label">The module tree — think folders, but declared in code</div>
+      <pre>crate                     ← the root (src/lib.rs or src/main.rs)
+ ├── inventory
+ │   ├── search
+ │   │   ├── by_author
+ │   │   └── by_title
+ │   └── register
+ │       ├── add_book
+ │       └── remove_book
+ └── lending
+     ├── check_out
+     └── return_book</pre>
+    </div>
+    <p>The vocabulary is the same as folders: <code>inventory</code> is the <strong>parent</strong> of <code>search</code>; <code>search</code> and <code>register</code> are <strong>siblings</strong>; <code>by_author</code> is a <strong>child</strong> of <code>search</code>.</p>
+    <p>But here's the crucial difference from Python: <strong>the tree exists only where you declare it.</strong> In Python, <code>hosting/waitlist.py</code> exists because it's on disk. In Rust, a file on disk is nothing until some <code>mod</code> declaration pulls it in. And the flip side: Rust modules don't need files at all — several small modules can share one file, which Python can't do.</p>
+    <details class="mistake">
+      <summary>⚠️ Common mistake — the orphan file</summary>
+      <div class="dropdown-body">
+        <pre><span class="cm">// You created src/hosting.rs, filled it with working code...</span>
+<span class="cm">// ...and src/main.rs never got `mod hosting;`.</span>
+<span class="cm">//</span>
+<span class="cm">// Result: NO error. The compiler simply ignores the file.</span>
+<span class="cm">// Your function "exists" on disk and nowhere else.</span>
+
+<span class="cm">// Fix: declare it in the crate root:</span>
+<span class="kw">mod</span> hosting;   <span class="cm">// ← in src/main.rs or src/lib.rs</span></pre>
+        <p>This is the #1 confusion for Python developers, where <code>import</code> finds files by magic. In Rust you must <em>declare</em> every module. An undeclared file compiles silently into nothing.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      <code>mod name { ... }</code> declares a module and its tree position. The tree is <em>declared</em>, not mirrored from the filesystem — orphans are invisible, and modules don't require files.
+    </div>
+  </section>
 
   <!-- 05 -->
   <section class="lesson-section" id="s05">
     <div class="section-number">05</div>
-    <h2 class="section-title">Modules — Privacy and Structure</h2>
-    <p class="section-subtitle">The <code>mod</code> keyword creates a named group with a privacy wall around it</p>
-    <p>A crate can have hundreds of functions, structs, and enums. Without organization, it's a junk drawer. Modules give you two things at once: <strong>names</strong> (so related code is grouped) and <strong>privacy</strong> (so internals stay internal).</p>
-    <p>Define a module with <code>mod</code> and curly brackets. Nest them to mirror your domain:</p>
-    <pre><span class="kw">mod</span> front_of_house {
-    <span class="kw">mod</span> hosting {
-        <span class="kw">fn</span> <span class="fn">add_to_waitlist</span>() {}
-        <span class="kw">fn</span> <span class="fn">seat_at_table</span>() {}
-    }
+    <h2 class="section-title">One Module per File</h2>
+    <p class="section-subtitle">Splitting code across files without losing the tree</p>
+    <p>Inline modules are fine when they're small, but files get long. Moving a module to its own file is a one-character change: swap the curly brackets for a semicolon.</p>
+    <pre><span class="cm">// Before — inline, in src/lib.rs</span>
+<span class="kw">mod</span> inventory {
+    <span class="kw">pub fn</span> <span class="fn">count</span>() -&gt; <span class="ty">u32</span> { <span class="ty">0</span> }
+}
 
-    <span class="kw">mod</span> serving {
-        <span class="kw">fn</span> <span class="fn">take_order</span>() {}
-        <span class="kw">fn</span> <span class="fn">serve_order</span>() {}
-        <span class="kw">fn</span> <span class="fn">take_payment</span>() {}
-    }
-}</pre>
-    <p>This creates a <strong>module tree</strong> — the compiler's view of your crate's structure:</p>
+<span class="cm">// After — declared, in src/lib.rs</span>
+<span class="kw">mod</span> inventory;
+
+<span class="cm">// The compiler looks for the code in, in order:</span>
+<span class="cm">//   1. src/inventory.rs        ← new style, preferred</span>
+<span class="cm">//   2. src/inventory/mod.rs    ← old style</span></pre>
+    <p>Submodules work the same way, one level at a time. Inside <code>inventory.rs</code> you can write <code>mod search;</code> — the compiler finds <code>src/inventory/search.rs</code>.</p>
     <div class="diagram">
-      <div class="diagram-label">The module tree — like a filesystem</div>
-      <pre>crate                     ← the root (src/lib.rs or src/main.rs)
- └── front_of_house       ← a module
-     ├── hosting           ← child of front_of_house
-     │   ├── add_to_waitlist
-     │   └── seat_at_table
-     └── serving           ← sibling of hosting
-         ├── take_order
-         ├── serve_order
-         └── take_payment</pre>
+      <div class="diagram-label">bookcrate's file layout</div>
+      <pre>src/
+├── lib.rs              <span class="cm">← declares: mod inventory; mod lending; pub use ...</span>
+├── inventory.rs        <span class="cm">← declares: mod search; mod register;</span>
+├── inventory/
+│   ├── search.rs       <span class="cm">← by_author(), by_title()</span>
+│   └── register.rs     <span class="cm">← add_book(), remove_book()</span>
+├── lending.rs          <span class="cm">← check_out(), return_book()</span>
+└── main.rs             <span class="cm">← the thin binary front door</span></pre>
     </div>
-    <p>The vocabulary is the same as a filesystem: <code>front_of_house</code> is the <strong>parent</strong> of <code>hosting</code>; <code>hosting</code> and <code>serving</code> are <strong>siblings</strong>; <code>add_to_waitlist</code> is a <strong>child</strong> of <code>hosting</code>.</p>
-
-    <h3>Where does the compiler look for module code?</h3>
-    <p>When you write <code>mod hosting;</code> (with a semicolon, no curly brackets), the compiler searches for the code in these locations, in order:</p>
-    <div class="rules-box">
-      <div class="rules-title">Module file resolution</div>
-      <ol>
-        <li>Inline: <code>mod hosting { ... }</code> — curly brackets right there in the parent file</li>
-        <li>New style: <code>src/front_of_house/hosting.rs</code> — a file named after the module</li>
-        <li>Old style: <code>src/front_of_house/hosting/mod.rs</code> — the <code>mod.rs</code> convention</li>
-      </ol>
-    </div>
-    <p>The new style (<code>module_name.rs</code>) is preferred because it keeps all filenames unique and avoids the <code>mod.rs</code> clutter that stacks up when you have many nested modules.</p>
-
+    <p>Why the new style wins: every module gets a <em>unique</em> filename. With <code>mod.rs</code>, deeply nested projects fill up with files all literally named <code>mod.rs</code> — confusing in editors and diffs alike.</p>
     <details class="python">
-      <summary>🐍 The full Python parallel</summary>
+      <summary>🐍 Python comparison — the filesystem mismatch</summary>
       <div class="dropdown-body">
-        <pre><span class="cm"># Python's package structure IS the module tree</span>
-front_of_house/
+        <pre><span class="cm"># Python: directory structure IS module structure, always</span>
+inventory/
 ├── __init__.py
-├── hosting/
-│   ├── __init__.py
-│   └── waitlist.py        <span class="cm"># add_to_waitlist() lives here</span>
-└── serving/
-    ├── __init__.py
-    └── orders.py
+├── search.py
+└── register.py
 
-<span class="cm"># In __init__.py you manually re-export:</span>
-<span class="kw">from</span> .hosting.waitlist <span class="kw">import</span> add_to_waitlist
-
-<span class="cm"># Importing works like this:</span>
-<span class="kw">from</span> front_of_house.hosting.waitlist <span class="kw">import</span> add_to_waitlist</pre>
-        <p>In Python, the module tree <em>is</em> the filesystem. In Rust, the module tree is defined by <code>mod</code> declarations — you can put multiple modules in one file if you want. This gives Rust more flexibility: a small module doesn't need its own file, you can just write <code>mod hosting { ... }</code> inline. Python requires a file per module, no exceptions.</p>
-        <p>The privacy difference is the big one. In Python, nothing stops you from doing <code>from front_of_house.hosting._internal import _secret</code> — the underscore is just a hint. In Rust, the compiler physically prevents you from reaching private items. If it compiled, the access is legitimate.</p>
+<span class="cm"># Rust: the tree is declared first; files serve it</span>
+<span class="cm"># lib.rs says "mod search;", search.rs just contains the code</span></pre>
+        <p>Python's layout is fixed by the filesystem — renaming a file renames the module, and every folder needs an <code>__init__.py</code>. Rust separates the two: the <em>tree</em> lives in <code>mod</code> declarations, and <em>files</em> are just where the code happens to be. Move code between files and the tree doesn't change.</p>
       </div>
     </details>
-
-    <details class="mistake">
-      <summary>⚠️ Common mistake — forgetting <code>mod</code> in the crate root</summary>
-      <div class="dropdown-body">
-        <pre><span class="cm">// You created src/hosting.rs and wrote code in it.</span>
-<span class="cm">// But src/main.rs doesn't have `mod hosting;`</span>
-<span class="cm">//</span>
-<span class="cm">// Result: the compiler doesn't know hosting exists.</span>
-<span class="cm">// No error about missing code — it just ignores the file entirely.</span>
-<span class="cm">//</span>
-<span class="cm">// Fix: add `mod hosting;` to src/main.rs (or src/lib.rs).</span></pre>
-        <p>This is the #1 confusion for people coming from Python, where <code>import</code> finds the file automatically. In Rust, you must <em>declare</em> every module. A file sitting in <code>src/</code> with no <code>mod</code> declaration is invisible to the compiler — it's as if it doesn't exist.</p>
-      </div>
-    </details>
-
     <div class="takeaway">
       <div class="takeaway-label">Key takeaway</div>
-      <code>mod name;</code> declares a module and tells the compiler to find its code. Everything inside is private by default. You must declare every module — orphan files are invisible.
+      <code>mod name;</code> tells the compiler to find the module's code in <code>name.rs</code> (preferred) or <code>name/mod.rs</code>. Declare submodules inside each file, one level at a time.
     </div>
   </section>
 
   <!-- 06 -->
   <section class="lesson-section" id="s06">
     <div class="section-number">06</div>
-    <h2 class="section-title">Paths — Navigating the Module Tree</h2>
-    <p class="section-subtitle">Absolute (<code>crate::</code>) and relative paths, separated by <code>::</code></p>
-    <p>To call a function in another module, you need its <strong>path</strong> — just like typing a file path in your terminal, but with <code>::</code> as the separator.</p>
-    <p>Two kinds:</p>
+    <h2 class="section-title">Paths — Naming Things</h2>
+    <p class="section-subtitle">How to reach any item in the tree, with <code>::</code></p>
+    <p>Once you have a tree, you need to name things in it. A <strong>path</strong> is a list of names joined by <code>::</code> — like a file path, but with two colons instead of slashes.</p>
+    <p>There are two kinds:</p>
     <ul>
-      <li><strong>Absolute path</strong> — starts from the crate root: <code>crate::front_of_house::hosting::add_to_waitlist()</code></li>
-      <li><strong>Relative path</strong> — starts from the current module: <code>front_of_house::hosting::add_to_waitlist()</code></li>
+      <li><strong>Absolute</strong> — starts at the crate root with <code>crate::</code>: <code>crate::inventory::search::by_author()</code></li>
+      <li><strong>Relative</strong> — starts from the current module: <code>inventory::search::by_author()</code>, or <code>super::</code> to go up one level</li>
     </ul>
-    <pre><span class="kw">mod</span> front_of_house {
-    <span class="kw">pub mod</span> hosting {
-        <span class="kw">pub fn</span> <span class="fn">add_to_waitlist</span>() {}
+    <pre><span class="kw">mod</span> inventory {
+    <span class="kw">pub mod</span> search {
+        <span class="kw">pub fn</span> <span class="fn">by_author</span>() {}
     }
 }
 
-<span class="kw">pub fn</span> <span class="fn">eat_at_restaurant</span>() {
-    <span class="cm">// Absolute — starts from crate root</span>
-    crate::front_of_house::hosting::<span class="fn">add_to_waitlist</span>();
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="cm">// Absolute — explicit about where it starts</span>
+    crate::inventory::search::<span class="fn">by_author</span>();
 
-    <span class="cm">// Relative — starts from current module (crate root here)</span>
-    front_of_house::hosting::<span class="fn">add_to_waitlist</span>();
+    <span class="cm">// Relative — starts from wherever we are (crate root, here)</span>
+    inventory::search::<span class="fn">by_author</span>();
 }</pre>
-    <p>Which to prefer? If you move the <em>definition</em> and the <em>caller</em> together (say, into a new parent module), relative paths stay valid. If you move them independently, absolute paths stay correct. The Rust team generally prefers absolute paths for this reason.</p>
-
+    <p>When to use which: if you move the item <em>and</em> its callers together, relative paths survive the move; if they move independently, absolute paths stay correct. That's why most real Rust code defaults to absolute paths — they read like a map and don't care where you're standing.</p>
+    <p><code>super::</code> is the one relative path you'll see often: it goes up one level, exactly like <code>..</code> in a shell or a Python relative import. Use it when a child module is tightly coupled to its parent and they'd move together.</p>
     <details class="python">
-      <summary>🐍 Python comparison</summary>
+      <summary>🐍 Python comparison — same two kinds</summary>
       <div class="dropdown-body">
-        <pre><span class="cm"># Python's absolute import (preferred by PEP 8)</span>
-<span class="kw">from</span> my_package.front_of_house.hosting <span class="kw">import</span> add_to_waitlist
+        <pre><span class="cm"># Python absolute (PEP 8 prefers this)</span>
+<span class="kw">from</span> my_package.inventory.search <span class="kw">import</span> by_author
 
-<span class="cm"># Python's relative import</span>
-<span class="kw">from</span> .front_of_house.hosting <span class="kw">import</span> add_to_waitlist</pre>
-        <p>Same two kinds! Python's absolute imports start from the top-level package name; relative imports start with <code>.</code> (one dot = current package, <code>..</code> = parent). The parallel is almost exact — Rust's <code>crate::</code> is Python's absolute path, and Rust's module-relative path is Python's <code>.</code> import. The difference: Python's relative imports are optional and sometimes confusing; Rust's paths are the only way to name things, and they're always explicit.</p>
+<span class="cm"># Python relative</span>
+<span class="kw">from</span> .inventory.search <span class="kw">import</span> by_author   <span class="cm"># . = current, .. = parent</span></pre>
+        <p>Nearly identical concepts. Rust's <code>crate::</code> is Python's absolute import; <code>super::</code> is Python's <code>..</code>. The practical difference: Python's relative imports are fragile enough that many teams ban them with linters. Rust's are precise and checked — the compiler tells you the moment a relative path stops resolving.</p>
       </div>
     </details>
-
     <details class="mistake">
-      <summary>⚠️ Common mistake — paths fail because modules are private</summary>
+      <summary>⚠️ Common mistake — the right path, wrong permission</summary>
       <div class="dropdown-body">
-        <pre><span class="cm">// error[E0603]: module `hosting` is private</span>
-crate::front_of_house::hosting::<span class="fn">add_to_waitlist</span>();
+        <pre><span class="cm">// error[E0603]: module `search` is private</span>
+crate::inventory::search::<span class="fn">by_author</span>();
 
-<span class="cm">// The path is CORRECT. But the module isn't public.</span>
-<span class="cm">// Having the right path doesn't mean you have permission.</span>
-<span class="cm">// Fix: make the module AND the function `pub` (see next section).</span></pre>
-        <p>This is a key difference from Python: in Rust, a correct path to a private item is a compile error. In Python, a correct import of a private name works fine — the underscore is just a hint.</p>
+<span class="cm">// The path is PERFECT. The module just isn't pub.</span>
+<span class="cm">// In Python this never happens: right path ⇒ import works.</span>
+<span class="cm">// In Rust, a correct path is only half of it.</span>
+<span class="cm">// Fix: see the next section — `pub`.</span></pre>
+        <p>This error shocks every Python developer once. You spelled everything right and it still fails — because in Rust, having the right <em>address</em> and having <em>permission</em> are two separate checks.</p>
       </div>
     </details>
-
     <div class="takeaway">
       <div class="takeaway-label">Key takeaway</div>
-      Absolute paths start with <code>crate::</code>; relative paths start from the current module. Both use <code>::</code>. A correct path to a private item is still a compile error — privacy and path are separate checks.
+      Paths name items in the tree: <code>crate::</code> is absolute from the root, <code>super::</code> goes up one level, relative paths start where you stand. A correct path to a private item still fails — path and permission are separate checks.
     </div>
   </section>
 
   <!-- 07 -->
   <section class="lesson-section" id="s07">
     <div class="section-number">07</div>
-    <h2 class="section-title">Exposing Code with <code>pub</code></h2>
-    <p class="section-subtitle">Opening the privacy doors — it takes more than one key</p>
-    <p>In Rust, everything is <strong>private to its parent module</strong> by default. Children can see their ancestors (a function inside <code>hosting</code> can use items from <code>front_of_house</code>), but parents can't see into their children. This is the back-office rule: staff can see the whole restaurant, customers can't see the kitchen.</p>
-    <p>To let code outside a module in, you need <code>pub</code>. But here's the catch: <strong>making a module public doesn't make its contents public</strong>. You need two keys:</p>
-    <pre><span class="cm">// Step 1: make the module public (so outsiders can see `hosting` exists)</span>
-<span class="cm">// Step 2: make the item public (so outsiders can call add_to_waitlist)</span>
-<span class="kw">mod</span> front_of_house {
-    <span class="kw">pub mod</span> hosting {                    <span class="cm">// key 1: module is public</span>
-        <span class="kw">pub fn</span> <span class="fn">add_to_waitlist</span>() {}      <span class="cm">// key 2: function is public</span>
+    <h2 class="section-title">Privacy &amp; pub — The Wall</h2>
+    <p class="section-subtitle">The single biggest mental shift from Python</p>
+    <p>This is the section that changes how you write code forever.</p>
+    <p>In Rust, <strong>everything is private by default</strong>. An item is visible to its parent module and its descendants — think of it like an employee who can see the whole org chart above them but whose own department's internals aren't visible from outside. Code inside a module can use anything in its ancestors; code outside cannot see in at all.</p>
+    <p>To open a door, you use <code>pub</code> — and you need <strong>two keys</strong>:</p>
+    <pre><span class="kw">mod</span> inventory {
+    <span class="kw">pub mod</span> search {              <span class="cm">// key 1: the module is public</span>
+        <span class="kw">pub fn</span> <span class="fn">by_author</span>() {}    <span class="cm">// key 2: the function is public</span>
     }
 }</pre>
-    <p>This two-layer design is deliberate. Making the module public says "this <em>exists</em>." Making the item public says "you can <em>use</em> this." You can have a public module with private items — that's the restaurant with an open door but a locked cash register.</p>
-
-    <details class="python">
-      <summary>🐍 Python comparison</summary>
-      <div class="dropdown-body">
-        <pre><span class="cm"># Python — everything is public unless you use underscores</span>
-<span class="kw">from</span> front_of_house.hosting <span class="kw">import</span> add_to_waitlist  <span class="cm"># always works</span>
-
-<span class="cm"># The "privacy" convention:</span>
-_helper()       <span class="cm"># single underscore = "please don't import this"</span>
-__secret()      <span class="cm"># double underscore = name-mangled, but still importable</span>
-
-<span class="cm"># __all__ in __init__.py can restrict `from package import *`</span>
-__all__ = [<span class="str">"add_to_waitlist"</span>]  <span class="cm"># only this is exported on `import *`</span>
-<span class="cm"># But direct imports still bypass __all__!</span></pre>
-        <p>Python's <code>__all__</code> is the closest thing to Rust's <code>pub</code>, but it only affects <code>from package import *</code>. Direct imports (<code>from package import _secret</code>) still work. Rust's compiler physically blocks access to non-<code>pub</code> items — it's not a convention, it's a wall. If it compiles, the access is legitimate.</p>
-      </div>
-    </details>
-
+    <p>Making the module public says <em>"this exists."</em> Making the item public says <em>"you can use this."</em> Both are required, and the split is deliberate: you can have a public module whose contents are all private — an open door with a locked register.</p>
     <details class="insight">
-      <summary>💡 Insight — why the two-layer design?</summary>
+      <summary>💡 Insight — why two layers?</summary>
       <div class="dropdown-body">
-        <p>Consider a module that's public (<code>pub mod hosting</code>) but has all private functions. What can external code do? It can <em>name</em> the module — <code>use crate::front_of_house::hosting</code> — but it can't call anything inside. That seems useless, but it matters for documentation and for future expansion. You're saying "this module exists and you can depend on its existence, but its internals are mine to change." As you evolve the library, you can selectively <code>pub</code> functions without reorganizing the module structure.</p>
+        <p>Because the two promises have different costs. Making a <em>module</em> public promises "this will keep existing" — cheap; you can restructure everything inside it and nobody notices. Making a <em>function</em> public promises "this signature is stable" — expensive; changing it breaks every caller. Splitting the two lets you say: "the shape of my library is stable, its guts are my business." Libraries evolve internal structure freely and only ever guarantee the thin <code>pub</code> surface.</p>
       </div>
     </details>
+    <details class="python">
+      <summary>🐍 Python comparison — convention vs wall</summary>
+      <div class="dropdown-body">
+        <pre><span class="cm"># Python — everything is public unless you play nice</span>
+<span class="kw">from</span> my_package <span class="kw">import</span> _secret    <span class="cm"># works. nothing stops you.</span>
 
+<span class="cm"># __all__ restricts only `import *`</span>
+__all__ = [<span class="str">"public"</span>]
+<span class="kw">from</span> my_package <span class="kw">import</span> _secret    <span class="cm"># STILL works. __all__ is bypassable.</span></pre>
+        <p>Python's <code>_underscore</code> and <code>__all__</code> are gentle suggestions. Rust's compiler physically blocks access to non-<code>pub</code> items — if it compiles, the access is legitimate. The underscore convention goes from "please don't" to "you cannot," and that's a gift: you stop defending conventions and start trusting them.</p>
+      </div>
+    </details>
     <div class="takeaway">
       <div class="takeaway-label">Key takeaway</div>
-      Everything is private by default. <code>pub mod</code> makes the module visible; <code>pub</code> on the item makes it usable. Both are needed — visibility and usability are separate permissions.
+      Everything is private by default; children see ancestors, outsiders see nothing. <code>pub mod</code> makes the module visible, <code>pub</code> on the item makes it usable — both keys required, and the compiler enforces it.
     </div>
   </section>
 
   <!-- 08 -->
   <section class="lesson-section" id="s08">
     <div class="section-number">08</div>
-    <h2 class="section-title">Going Up with <code>super</code></h2>
-    <p class="section-subtitle">Relative paths that start from the parent — like <code>../</code> in a shell</p>
-    <p><code>super</code> at the start of a path goes up one level in the module tree, just like <code>../</code> in a filesystem. Use it when a child module is tightly coupled to its parent and you want to move them together someday without updating paths.</p>
-    <pre><span class="kw">fn</span> <span class="fn">deliver_order</span>() {}
-
-<span class="kw">mod</span> back_of_house {
-    <span class="kw">fn</span> <span class="fn">fix_incorrect_order</span>() {
-        <span class="fn">cook_order</span>();
-        <span class="kw">super</span>::<span class="fn">deliver_order</span>();  <span class="cm">// up to parent, then find deliver_order</span>
-    }
-
-    <span class="kw">fn</span> <span class="fn">cook_order</span>() {}
-}</pre>
-    <p>Think of it as the chef calling the front desk: "I need someone to <em>deliver</em> this order." The chef doesn't know the delivery person's full organizational path — they just go up one level to the parent department.</p>
-
-    <details class="python">
-      <summary>🐍 Python comparison</summary>
-      <div class="dropdown-body">
-        <pre><span class="cm"># Python's relative import — same idea</span>
-<span class="kw">from</span> .. <span class="kw">import</span> deliver_order
-
-<span class="cm"># Each dot = one level up</span>
-<span class="cm"># .  = current package</span>
-<span class="cm"># .. = parent package</span>
-<span class="cm"># ..grandparent = parent's parent</span></pre>
-        <p>Direct parallel. <code>super::</code> in Rust is <code>..</code> in Python. The difference: Rust's <code>super</code> is the only way to go up (there's no absolute equivalent that starts with the parent's name), while Python gives you both relative and absolute paths to the same item.</p>
-      </div>
-    </details>
-    <div class="takeaway">
-      <div class="takeaway-label">Key takeaway</div>
-      <code>super::</code> goes up one level in the module tree. Use it for tightly coupled parent-child relationships where moving them together is likely.
-    </div>
-  </section>
-
-  <!-- 09 -->
-  <section class="lesson-section" id="s09">
-    <div class="section-number">09</div>
     <h2 class="section-title">Struct &amp; Enum Visibility</h2>
-    <p class="section-subtitle">Why the name and the contents have separate privacy rules</p>
-    <p>Making a struct <code>pub</code> exposes the struct name — but <strong>its fields stay private</strong> unless you mark each one <code>pub</code> individually:</p>
-    <pre><span class="kw">mod</span> back_of_house {
-    <span class="kw">pub struct</span> <span class="ty">Breakfast</span> {
-        <span class="kw">pub</span> toast: <span class="ty">String</span>,          <span class="cm">// public — customer picks the bread</span>
-        seasonal_fruit: <span class="ty">String</span>,      <span class="cm">// private — chef decides the fruit</span>
+    <p class="section-subtitle">Why fields and variants have different rules</p>
+    <p>Making a struct <code>pub</code> exposes the <em>name</em> — but each <strong>field</strong> stays private unless you mark it <code>pub</code> individually. That looks like busywork until you see what it buys you: <strong>invariants</strong>.</p>
+    <pre><span class="kw">mod</span> lending {
+    <span class="kw">pub struct</span> <span class="ty">Loan</span> {
+        <span class="kw">pub</span> book_title: <span class="ty">String</span>,     <span class="cm">// public — fine to read/write</span>
+        due_date: <span class="ty">u32</span>,              <span class="cm">// private — rules live here</span>
     }
 
-    <span class="kw">impl</span> <span class="ty">Breakfast</span> {
-        <span class="kw">pub fn</span> <span class="fn">summer</span>(toast: &amp;<span class="ty">str</span>) -&gt; <span class="ty">Breakfast</span> {
-            <span class="ty">Breakfast</span> {
-                toast: <span class="ty">String</span>::<span class="fn">from</span>(toast),
-                seasonal_fruit: <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"peaches"</span>),
-            }
+    <span class="kw">impl</span> <span class="ty">Loan</span> {
+        <span class="kw">pub fn</span> <span class="fn">new</span>(title: &amp;<span class="ty">str</span>) -&gt; <span class="ty">Loan</span> {
+            <span class="ty">Loan</span> { book_title: <span class="ty">String</span>::<span class="fn">from</span>(title), due_date: <span class="ty">0</span> }
+        }
+        <span class="kw">pub fn</span> <span class="fn">extend</span>(&amp;<span class="kw">mut</span> <span class="kw">self</span>, days: <span class="ty">u32</span>) {
+            <span class="kw">self</span>.due_date += days;   <span class="cm">// the ONLY way to change due_date</span>
         }
     }
 }</pre>
-    <p>Because <code>seasonal_fruit</code> is private, the struct <em>must</em> provide a public constructor — otherwise no one outside the module can create a <code>Breakfast</code>. This is a feature: private fields let you enforce invariants (rules about valid data) through constructors and methods, not by trusting callers to set things correctly.</p>
-
-    <p>Enums are the opposite: <strong>making an enum public makes all its variants public</strong>.</p>
-    <pre><span class="kw">mod</span> back_of_house {
-    <span class="kw">pub enum</span> <span class="ty">Appetizer</span> {
-        <span class="ty">Soup</span>,    <span class="cm">// automatically public</span>
-        <span class="ty">Salad</span>,   <span class="cm">// automatically public</span>
-    }
+    <p>Because <code>due_date</code> is private, the only way to touch it is through <code>Loan</code>'s methods. You can enforce "due dates can never go backwards" in exactly one place, and the compiler guarantees nobody sneaks around it. In Python, this is a property + hope; in Rust it's a field marker + certainty.</p>
+    <p>Enums are the <strong>opposite</strong>: make the enum <code>pub</code> and all its <strong>variants</strong> become public automatically.</p>
+    <pre><span class="kw">pub enum</span> <span class="ty">BookStatus</span> {
+    <span class="ty">Available</span>,      <span class="cm">// public, automatically</span>
+    <span class="ty">OnLoan</span>,         <span class="cm">// public, automatically</span>
+    <span class="ty">Discarded</span>,      <span class="cm">// public, automatically</span>
 }</pre>
-    <p>Why the difference? Structs model data with <em>invariants</em> — rules that must hold, like "a bank account's balance can't go negative." Private fields let you enforce those rules. Enums model <em>choices</em> — the caller needs to know all the options to handle them. Making every variant private would be pointless; you'd just annotate every one with <code>pub</code> anyway.</p>
-
+    <p>Why the difference? Enums are <em>choices</em>, and matching on an enum requires knowing every case. A private variant would be unhandleable — your <code>match</code> couldn't cover it. Structs are <em>data with rules</em>; hiding fields is what protects the rules. Different jobs, different defaults.</p>
     <details class="python">
-      <summary>🐍 Python comparison</summary>
+      <summary>🐍 Python comparison — no enforced field privacy</summary>
       <div class="dropdown-body">
         <pre><span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass
 
-<span class="cm"># Python — everything is public, invariants are your problem</span>
 <span class="kw">@dataclass</span>
-<span class="kw">class</span> <span class="ty">Breakfast</span>:
-    toast: <span class="ty">str</span>
-    seasonal_fruit: <span class="ty">str</span>     <span class="cm"># anyone can set this directly</span>
+<span class="kw">class</span> <span class="ty">Loan</span>:
+    book_title: <span class="ty">str</span>
+    due_date: <span class="ty">int</span> = <span class="ty">0</span>
 
-<span class="cm"># No way to make a field "private" — _seasonal_fruit is just a hint</span>
-meal = Breakfast(<span class="str">"Rye"</span>, <span class="str">"peaches"</span>)
-meal.seasonal_fruit = <span class="str">"blueberries"</span>  <span class="cm"># Python won't stop you</span></pre>
-        <p>Python's dataclasses have no enforced field privacy. You can use properties to control access, but it's opt-in boilerplate. Rust's per-field <code>pub</code> is built into the language — private fields are truly private, and the compiler forces you to provide a constructor if you need them set from outside.</p>
+loan = Loan(<span class="str">"The Left Hand of Darkness"</span>)
+loan.due_date = <span class="ty">-100</span>   <span class="cm"># Python: fine. Your invariant: broken.</span></pre>
+        <p>A Python dataclass makes every field publicly assignable; protecting one means writing a <code>property</code> with a setter — opt-in boilerplate you must remember. Rust's per-field <code>pub</code> is the default shape: public by exception, protected by default.</p>
       </div>
     </details>
     <div class="takeaway">
       <div class="takeaway-label">Key takeaway</div>
-      <code>pub struct</code> = public name, private fields (annotate individually). <code>pub enum</code> = public name, all variants public. Structs hide fields to protect invariants; enums expose variants so callers can match them.
+      <code>pub struct</code> = public name, private fields (mark each). <code>pub enum</code> = public name, all variants public. Structs hide fields to protect invariants; enums expose every choice so <code>match</code> can handle them all.
     </div>
   </section>
 
 
   <!-- ═══════════════════════════════════════════════════════════
-       PART C — IMPORTING WITH use
+       PART C — IMPORTING
        ═══════════════════════════════════════════════════════════ -->
 
   <div class="part-divider" id="partC">
-    <div class="part-label">Part C · Chapter 7.4 – 7.5</div>
+    <div class="part-label">Part C · Chapter 7.4</div>
     <h2 class="part-title">Importing with <code>use</code></h2>
-    <p class="part-subtitle">Shortcuts, aliases, re-exports, and external dependencies</p>
+    <p class="part-subtitle">Shortcuts, aliases, re-exports, and the outside world</p>
   </div>
 
-  <!-- 10 -->
-  <section class="lesson-section" id="s10">
-    <div class="section-number">10</div>
-    <h2 class="section-title">Shortcuts with <code>use</code></h2>
-    <p class="section-subtitle">Bringing a path into scope so you don't have to repeat it</p>
-    <p>Typing <code>crate::front_of_house::hosting::add_to_waitlist()</code> every time you call the function is painful. The <code>use</code> keyword creates a local shortcut — bring a path into scope once, use the shorter name everywhere.</p>
-    <pre><span class="kw">use</span> crate::front_of_house::hosting;
+  <!-- 09 -->
+  <section class="lesson-section" id="s09">
+    <div class="section-number">09</div>
+    <h2 class="section-title">use — Local Shortcuts</h2>
+    <p class="section-subtitle">A naming shortcut that costs nothing and runs nothing</p>
+    <p>Paths are precise, and precise paths are long. <code>use</code> brings a path into scope under a short local name — think of it as a symbolic link, or Python's <code>from x import y</code>:</p>
+    <pre><span class="kw">use</span> crate::inventory::search;
 
-<span class="kw">pub fn</span> <span class="fn">eat_at_restaurant</span>() {
-    hosting::<span class="fn">add_to_waitlist</span>();  <span class="cm">// much cleaner</span>
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    search::<span class="fn">by_author</span>(<span class="str">"Ursula K. Le Guin"</span>);   <span class="cm">// instead of the full path, every time</span>
 }</pre>
-    <p><code>use</code> is like creating a symbolic link. After the declaration, <code>hosting</code> is a valid name in this scope — just as if the module had been defined here. But it's <strong>scoped</strong>: move <code>eat_at_restaurant</code> into a child module, and the shortcut disappears. You'd need a new <code>use</code> in that module.</p>
-
+    <p>Two things Python developers get wrong about <code>use</code>, so here they are up front:</p>
+    <ul>
+      <li><strong>It's not "load."</strong> Python's <code>import</code> <em>executes</em> the module — top-level code runs, side effects happen, and you can break things by importing at the wrong moment. Rust compiled your whole crate already. <code>use</code> is purely a naming shortcut: zero runtime cost, zero side effects, it could not possibly fail at runtime.</li>
+      <li><strong>It's scoped like a local variable.</strong> Declare it at the top of a function and it's only valid there. Move code into a child module and the shortcut doesn't follow — the new scope needs its own <code>use</code>.</li>
+    </ul>
     <details class="python">
-      <summary>🐍 Python comparison</summary>
+      <summary>🐍 Python comparison — import runs code, use doesn't</summary>
       <div class="dropdown-body">
-        <pre><span class="cm"># Rust's `use` is Python's `from ... import`</span>
-<span class="kw">use</span> crate::front_of_house::hosting;          <span class="cm"># Rust</span>
-<span class="kw">from</span> my_project.front_of_house <span class="kw">import</span> hosting  <span class="cm"># Python</span>
+        <pre><span class="cm"># Python — importing executes the module</span>
+<span class="cm"># logging.py: print("imported!")   ← runs on import!</span>
+<span class="kw">import</span> logging    <span class="cm"># side effects happen right here</span>
 
-<span class="cm"># Then use it locally in both languages</span>
-hosting.add_to_waitlist()
-</pre>
-        <p>The parallel is almost exact. Both create a local name that points to something defined elsewhere. Both are scoped to the file (Python) or the block (Rust). The key difference: Python's <code>import</code> happens at runtime and can fail if the module isn't on <code>sys.path</code>; Rust's <code>use</code> is resolved at compile time — if it compiled, the path is valid.</p>
+<span class="cm"># Rust — use is a compile-time alias</span>
+<span class="kw">use</span> std::io;     <span class="cm"># nothing runs. it's just a name.</span></pre>
+        <p>Python modules can (and often do) run code at import time; import order matters and circular imports are a real disease. In Rust, <code>use</code> resolves names at compile time — no execution, no ordering hazards, no circular-import errors. Ever.</p>
       </div>
     </details>
     <div class="takeaway">
       <div class="takeaway-label">Key takeaway</div>
-      <code>use path::to::module;</code> creates a local shortcut. It's scoped to where it's declared — just like a local variable.
+      <code>use</code> creates a scoped, compile-time shortcut. It doesn't load or run anything — everything is already compiled. Move code, and the shortcut stays behind with its old scope.
+    </div>
+  </section>
+
+  <!-- 10 -->
+  <section class="lesson-section" id="s10">
+    <div class="section-number">10</div>
+    <h2 class="section-title">Idiomatic use</h2>
+    <p class="section-subtitle">Functions: import the parent. Types: import the item.</p>
+    <p>Two conventions keep <code>use</code> statements readable, and they differ by what you're importing:</p>
+    <table>
+      <tr><th>What</th><th>Idiomatic</th><th>Why</th></tr>
+      <tr><td>Functions</td><td>Import the <strong>parent module</strong></td><td>Keeps the call clearly namespaced</td></tr>
+      <tr><td>Structs / enums</td><td>Import the <strong>item itself</strong></td><td>The name <em>is</em> the type — short is fine</td></tr>
+    </table>
+    <pre><span class="cm">// ✅ Functions — bring in the module, call through it</span>
+<span class="kw">use</span> crate::inventory::search;
+search::<span class="fn">by_author</span>(<span class="str">"Borges"</span>);       <span class="cm">// clearly not a local function</span>
+
+<span class="cm">// ✅ Types — bring in the type directly</span>
+<span class="kw">use</span> std::collections::<span class="ty">HashMap</span>;
+<span class="kw">let</span> <span class="kw">mut</span> index = <span class="ty">HashMap</span>::<span class="fn">new</span>();
+
+<span class="cm">// ⚠️ Works, but reads wrong</span>
+<span class="kw">use</span> crate::inventory::search::<span class="fn">by_author</span>;
+<span class="fn">by_author</span>(<span class="str">"Borges"</span>);               <span class="cm">// looks local. misleads the reader.</span></pre>
+    <p>These are conventions, not rules — the compiler accepts both. But conventions exist because a bare <code>by_author(...)</code> call gives your reader no hint where it came from, and readability is the whole point of <code>use</code>.</p>
+    <details class="mistake">
+      <summary>⚠️ Common mistake — two imports, same name</summary>
+      <div class="dropdown-body">
+        <pre><span class="kw">use</span> std::fmt::<span class="ty">Result</span>;
+<span class="kw">use</span> std::io::<span class="ty">Result</span>;    <span class="cm">// ❌ error[E0255]: name `Result` defined multiple times</span>
+
+<span class="cm">// Python silently shadows the first import — bugs hide.</span>
+<span class="cm">// Rust refuses to guess which one you meant.</span>
+<span class="cm">// Fix: import the parents (fmt::Result / io::Result), or alias (next section).</span></pre>
+        <p>Python lets the last import win and you find out months later. Rust stops you at compile time. Annoying once, correct forever.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Functions: <code>use</code> the parent module. Structs/enums: <code>use</code> the item itself. Convention, not law — but it keeps call sites honest about where names come from.
     </div>
   </section>
 
   <!-- 11 -->
   <section class="lesson-section" id="s11">
     <div class="section-number">11</div>
-    <h2 class="section-title">Idiomatic <code>use</code> Patterns</h2>
-    <p class="section-subtitle">Functions: import the parent. Structs/enums: import the item.</p>
-    <p>Rust has two conventions for <code>use</code>, and the distinction is about readability:</p>
-    <table>
-      <tr><th>What you're importing</th><th>Idiomatic pattern</th><th>Why</th></tr>
-      <tr><td>Functions</td><td>Import the <strong>parent module</strong></td><td>Makes it clear the function isn't local</td></tr>
-      <tr><td>Structs, enums, etc.</td><td>Import the <strong>item itself</strong></td><td>The name is the type — short is fine</td></tr>
-    </table>
-    <pre><span class="cm">// ✅ Functions — import the parent</span>
-<span class="kw">use</span> crate::front_of_house::hosting;
-hosting::<span class="fn">add_to_waitlist</span>();     <span class="cm">// clearly not a local function</span>
+    <h2 class="section-title">Aliases with <code>as</code></h2>
+    <p class="section-subtitle">Renaming an import to dodge a collision</p>
+    <p>When two legitimately useful names collide, <code>as</code> renames one — locally, in the current scope:</p>
+    <pre><span class="kw">use</span> std::fmt::<span class="ty">Result</span>;
+<span class="kw">use</span> std::io::<span class="ty">Result</span> <span class="kw">as</span> <span class="ty">IoResult</span>;   <span class="cm">// both live side by side now</span>
 
-<span class="cm">// ✅ Structs — import the item</span>
-<span class="kw">use</span> std::collections::<span class="ty">HashMap</span>;
-<span class="kw">let</span> <span class="kw">mut</span> map = <span class="ty">HashMap</span>::<span class="fn">new</span>();    <span class="cm">// short and clean</span>
-
-<span class="cm">// ⚠️ Works, but unclear where add_to_waitlist comes from</span>
-<span class="kw">use</span> crate::front_of_house::hosting::<span class="fn">add_to_waitlist</span>;
-<span class="fn">add_to_waitlist</span>();               <span class="cm">// looks like a local function — misleading</span></pre>
-
-    <details class="mistake">
-      <summary>⚠️ Common mistake — importing two things with the same name</summary>
+<span class="kw">fn</span> <span class="fn">format_something</span>() -&gt; <span class="ty">Result</span> { <span class="cm">/* fmt::Result */</span> }
+<span class="kw">fn</span> <span class="fn">read_file</span>() -&gt; <span class="ty">IoResult</span>&lt;()&gt; { <span class="cm">/* io::Result */</span> }</pre>
+    <details class="python">
+      <summary>🐍 Python comparison — same keyword</summary>
       <div class="dropdown-body">
-        <pre><span class="kw">use</span> std::fmt::<span class="ty">Result</span>;
-<span class="kw">use</span> std::io::<span class="ty">Result</span>;    <span class="cm">// ❌ error[E0255]: the name `Result` is defined multiple times</span>
+        <pre><span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">from</span> typing <span class="kw">import</span> Optional <span class="kw">as</span> Opt
 
-<span class="cm">// Fix option 1: stop at the parent module</span>
-<span class="kw">use</span> std::fmt;
-<span class="kw">use</span> std::io;
-<span class="cm">// Then use fmt::Result and io::Result</span>
-
-<span class="cm">// Fix option 2: alias one of them (see next section)</span>
+<span class="cm"># Rust borrowed the keyword verbatim:</span>
 <span class="kw">use</span> std::io::<span class="ty">Result</span> <span class="kw">as</span> <span class="ty">IoResult</span>;</pre>
-        <p>In Python, importing two things with the same name just shadows the first one silently. In Rust, it's a compile error — the compiler won't guess which one you meant.</p>
+        <p>Identical idea, identical keyword. If you can write <code>import numpy as np</code>, you already know this section.</p>
       </div>
     </details>
-
     <div class="takeaway">
       <div class="takeaway-label">Key takeaway</div>
-      Functions: <code>use</code> the parent module (<code>hosting::add_to_waitlist()</code>). Structs/enums: <code>use</code> the item (<code>HashMap</code>). This is convention, not enforced — but it makes code easier to read.
+      <code>use path::Thing as LocalName;</code> renames an import in the current scope — the clean fix when two names collide.
     </div>
   </section>
 
   <!-- 12 -->
   <section class="lesson-section" id="s12">
     <div class="section-number">12</div>
-    <h2 class="section-title">Aliases with <code>as</code></h2>
-    <p class="section-subtitle">Renaming imports when two types have the same name</p>
-    <p>When you need two types with the same name in scope, <code>as</code> gives one a different local name:</p>
-    <pre><span class="kw">use</span> std::fmt::<span class="ty">Result</span>;
-<span class="kw">use</span> std::io::<span class="ty">Result</span> <span class="kw">as</span> <span class="ty">IoResult</span>;
+    <h2 class="section-title">pub use — Re-exporting</h2>
+    <p class="section-subtitle">The <code>__init__.py</code> story, with a wall around it</p>
+    <p>A plain <code>use</code> is a <em>private</em> shortcut — only the scope that declares it can use it. <code>pub use</code> does the same thing <em>and</em> makes the name publicly available to everyone using your crate. That's a <strong>re-export</strong>.</p>
+    <pre><span class="kw">mod</span> inventory {
+    <span class="kw">pub mod</span> search {
+        <span class="kw">pub fn</span> <span class="fn">by_author</span>() {}
+    }
+}
 
-<span class="kw">fn</span> <span class="fn">function1</span>() -&gt; <span class="ty">Result</span> { <span class="cm">/* uses fmt::Result */</span> }
-<span class="kw">fn</span> <span class="fn">function2</span>() -&gt; <span class="ty">IoResult</span>&lt;()&gt; { <span class="cm">/* uses io::Result */</span> }</pre>
+<span class="cm">// Re-export: consumers now reach it at the crate root</span>
+<span class="kw">pub use</span> inventory::search;
 
-    <details class="python">
-      <summary>🐍 Python comparison</summary>
+<span class="cm">// Consumers write:   bookcrate::search::by_author()</span>
+<span class="cm">// Instead of:        bookcrate::inventory::search::by_author()</span></pre>
+    <p>Think warehouse versus shop floor. Internally you store things in deep, logical aisles. Publicly, you put the handful of things customers actually need on a front shelf. <code>pub use</code> moves items to the front shelf — <em>without moving them in the warehouse.</em> Your internal structure can be deep and messy; your public API can be flat and clean.</p>
+    <details class="insight">
+      <summary>💡 Insight — pub use is curation</summary>
       <div class="dropdown-body">
-        <pre><span class="cm"># Python — identical concept</span>
-<span class="kw">import</span> numpy <span class="kw">as</span> np
-<span class="kw">from</span> typing <span class="kw">import</span> Optional <span class="kw">as</span> Opt
+        <p>Real libraries lean on this heavily. A crate's internal module tree might be 4 levels deep, but its public surface is often a single short list of names at the crate root — everything consumers need, nothing else. That's the API design difference between "the code is organized" and "the library is pleasant to use." You organize for yourself; you curate for your users.</p>
+      </div>
+    </details>
+    <details class="python">
+      <summary>🐍 Python comparison — the __init__.py story</summary>
+      <div class="dropdown-body">
+        <pre><span class="cm"># __init__.py — Python's re-export ritual</span>
+<span class="kw">from</span> .inventory.search <span class="kw">import</span> by_author
 
-<span class="cm"># Rust</span>
-<span class="kw">use</span> std::io::<span class="ty">Result</span> <span class="kw">as</span> <span class="ty">IoResult</span></pre>
-        <p>Same keyword, same purpose. Rust even borrowed the name from Python.</p>
+<span class="cm"># Users can now do the short import.</span>
+<span class="kw">from</span> my_package <span class="kw">import</span> by_author
+
+<span class="cm"># ...but they can ALSO bypass it entirely:</span>
+<span class="kw">from</span> my_package.inventory.search <span class="kw">import</span> by_author  <span class="cm"># always works</span></pre>
+        <p>Same idea, different teeth. Python's <code>__init__.py</code> re-exports are a convenience — consumers can always bypass them with a deep import. Rust's <code>pub use</code> is the <em>only</em> door: what you re-export is what exists, and the compiler enforces it.</p>
       </div>
     </details>
     <div class="takeaway">
       <div class="takeaway-label">Key takeaway</div>
-      <code>use path::Type as Alias;</code> renames an import in the current scope. The cleanest fix for name conflicts.
+      <code>pub use</code> re-exports: a shortcut that's also public. Decouple your internal structure from your public API — organize for yourself, curate for your users.
     </div>
   </section>
 
   <!-- 13 -->
   <section class="lesson-section" id="s13">
     <div class="section-number">13</div>
-    <h2 class="section-title">Re-exporting with <code>pub use</code></h2>
-    <p class="section-subtitle">Reshaping your public API for consumers of your crate</p>
-    <p>A regular <code>use</code> creates a <em>private</em> shortcut — only the current scope can use it. <code>pub use</code> does two things: it creates the shortcut <em>and</em> makes it publicly available to anyone using your crate.</p>
-    <pre><span class="kw">mod</span> front_of_house {
-    <span class="kw">pub mod</span> hosting {
-        <span class="kw">pub fn</span> <span class="fn">add_to_waitlist</span>() {}
-    }
-}
+    <h2 class="section-title">External Packages</h2>
+    <p class="section-subtitle">crates.io, Cargo.toml, and why there's no "works on my machine"</p>
+    <p>Almost no project is only your code. Rust's package registry is <a href="https://crates.io">crates.io</a>, and Cargo is pip, the install step, and the build step in one tool. To use someone else's crate, declare it:</p>
+    <pre><span class="cm"># Cargo.toml</span>
+[dependencies]
+serde = { version = <span class="str">"1"</span>, features = [<span class="str">"derive"</span>] }</pre>
+    <p><code>cargo build</code> downloads, compiles, and wires up everything — including transitive dependencies. Then <code>use</code> brings its items into scope, exactly like your own modules:</p>
+    <pre><span class="kw">use</span> serde::<span class="ty">Serialize</span>;
 
-<span class="cm">// Re-export: makes `hosting` available at the crate root</span>
-<span class="kw">pub use</span> crate::front_of_house::hosting;</pre>
-    <p>Without <code>pub use</code>, external code must write <code>restaurant::front_of_house::hosting::add_to_waitlist()</code>. With it, they can write <code>restaurant::hosting::add_to_waitlist()</code>. You've <strong>flattened the internal structure</strong> for consumers without changing how your code is organized.</p>
-    <p>This is powerful because it lets you decouple your <em>internal</em> structure from your <em>public</em> API. Organize code however makes sense for development, then use <code>pub use</code> to present a clean surface.</p>
-
+<span class="kw">#[derive(</span><span class="ty">Serialize</span><span class="kw">)]</span>
+<span class="kw">struct</span> <span class="ty">Book</span> { <span class="kw">pub</span> title: <span class="ty">String</span> }</pre>
+    <p>Two things worth knowing:</p>
+    <ul>
+      <li><strong>No separate install step.</strong> Declare, build, done. And <code>Cargo.lock</code> pins exact versions, so "it compiled for me" means "it compiles for you."</li>
+      <li><strong><code>std</code> is always there.</strong> The standard library ships with Rust — no <code>Cargo.toml</code> entry needed. It still needs a <code>use</code> to bring names into scope: <code>use std::collections::HashMap;</code></li>
+    </ul>
     <details class="python">
-      <summary>🐍 Python comparison</summary>
+      <summary>🐍 Python comparison — pip vs Cargo</summary>
       <div class="dropdown-body">
-        <pre><span class="cm"># Python's equivalent: re-exporting from __init__.py</span>
-<span class="cm"># __init__.py</span>
-<span class="kw">from</span> .front_of_house.hosting <span class="kw">import</span> add_to_waitlist
+        <pre><span class="cm"># Python: three moving parts</span>
+<span class="cm"># 1. requirements.txt:  numpy==1.26</span>
+<span class="cm"># 2. shell:             pip install -r requirements.txt</span>
+<span class="cm"># 3. code:              import numpy</span>
 
-<span class="cm"># Now users can do:</span>
-<span class="kw">from</span> restaurant <span class="kw">import</span> add_to_waitlist  <span class="cm"># flattened!</span>
-<span class="cm"># Instead of:</span>
-<span class="kw">from</span> restaurant.front_of_house.hosting <span class="kw">import</span> add_to_waitlist</pre>
-        <p>Same concept. Python packages re-export from <code>__init__.py</code> to create a clean API. Rust uses <code>pub use</code>. The difference: Python's re-export is just another import statement that anyone can bypass with a direct import. Rust's <code>pub use</code> is the <em>only</em> way to access it from outside the crate — there's no bypassing the privacy system.</p>
+<span class="cm"># Rust: declare, and cargo does the rest</span>
+<span class="cm"># 1. Cargo.toml:        rand = "0.8"</span>
+<span class="cm"># 2. cargo build        ← downloads + compiles + locks versions</span>
+<span class="cm"># 3. code:              use rand::Rng;</span></pre>
+        <p>Same ideas, fewer failure modes. Python splits the job across requirements files, a virtual environment, and an install command that can silently succeed on a stale environment. Rust fuses them: the manifest, the resolution, and the build are one flow, and the lockfile makes it reproducible.</p>
       </div>
     </details>
-
-    <details class="insight">
-      <summary>💡 Insight — when to use <code>pub use</code></summary>
-      <div class="dropdown-body">
-        <p>Use <code>pub use</code> when your internal module structure reflects the <em>implementation</em> (e.g., separate files for separate concerns) but your users think in terms of the <em>domain</em> (e.g., they just want <code>hosting::add_to_waitlist</code>, not <code>front_of_house::hosting::add_to_waitlist</code>). Libraries on <code>crates.io</code> use this extensively — the internal module tree can be deep and messy, but the public API is flat and clean.</p>
-      </div>
-    </details>
-
     <div class="takeaway">
       <div class="takeaway-label">Key takeaway</div>
-      <code>pub use</code> re-exports an item: brings it into scope <em>and</em> makes it publicly available. Use it to design a clean API that differs from your internal structure.
+      Add external crates to <code>Cargo.toml</code>, then <code>use</code> their items. Cargo handles download, compile, and version pinning. <code>std</code> needs no declaration — just a <code>use</code>.
     </div>
   </section>
 
   <!-- 14 -->
   <section class="lesson-section" id="s14">
     <div class="section-number">14</div>
-    <h2 class="section-title">External Packages</h2>
-    <p class="section-subtitle"><code>crates.io</code>, <code>Cargo.toml</code>, and the standard library</p>
-    <p>To use code someone else published, add it to <code>Cargo.toml</code>:</p>
-    <pre><span class="cm">[dependencies]</span>
-rand = <span class="str">"0.8.5"</span></pre>
-    <p>Cargo downloads the package and its dependencies from <a href="https://crates.io">crates.io</a>, compiles them, and makes them available. Then <code>use</code> the items you need:</p>
-    <pre><span class="kw">use</span> rand::<span class="ty">Rng</span>;
-
-<span class="kw">fn</span> <span class="fn">main</span>() {
-    <span class="kw">let</span> secret = rand::<span class="fn">thread_rng</span>().<span class="fn">gen_range</span>(<span class="ty">1</span>..=<span class="ty">100</span>);
-}</pre>
-    <p>The standard library (<code>std</code>) is also an external crate — but it ships with Rust, so you don't add it to <code>Cargo.toml</code>. You still need <code>use</code> to bring items from it into scope:</p>
-    <pre><span class="kw">use</span> std::collections::<span class="ty">HashMap</span>;</pre>
-
-    <details class="python">
-      <summary>🐍 Python comparison</summary>
-      <div class="dropdown-body">
-        <pre><span class="cm"># Python: declare in pyproject.toml, install with pip, then import</span>
-<span class="cm"># pyproject.toml</span>
-[project]
-dependencies = [<span class="str">"numpy>=1.24"</span>]
-
-<span class="cm"># Shell</span>
-$ pip install -e .
-
-<span class="cm"># Code</span>
-<span class="kw">import</span> numpy <span class="kw">as</span> np
-
-<span class="cm"># Rust: declare in Cargo.toml, Cargo downloads + compiles automatically</span>
-<span class="cm"># Cargo.toml</span>
-rand = <span class="str">"0.8.5"</span>
-
-<span class="cm"># Code (no separate install step — cargo build does it)</span>
-<span class="kw">use</span> rand::<span class="ty">Rng</span>;</pre>
-        <p>The workflow is the same: declare → install → import. The difference is <em>when</em> it happens. Python installs at setup time and imports at runtime. Rust downloads and compiles at build time — there's no separate install step, and no runtime surprises. If it compiled, the dependency exists.</p>
-        <p>Also, Rust's <code>std</code> is Python's standard library — both are always available without a <code>Cargo.toml</code>/<code>requirements.txt</code> entry.</p>
-      </div>
-    </details>
-    <div class="takeaway">
-      <div class="takeaway-label">Key takeaway</div>
-      Add external crates to <code>Cargo.toml</code>, then <code>use</code> their items. <code>std</code> is always available without a Cargo entry. Cargo handles download and compilation automatically.
-    </div>
-  </section>
-
-  <!-- 15 -->
-  <section class="lesson-section" id="s15">
-    <div class="section-number">15</div>
     <h2 class="section-title">Nested Paths &amp; Glob</h2>
-    <p class="section-subtitle">Cleaning up long import lists, and when to use <code>*</code></p>
-
-    <h3>Nested paths</h3>
-    <p>When importing multiple items from the same module, collapse them into one line:</p>
-    <pre><span class="cm">// Before — two lines with a shared prefix</span>
+    <p class="section-subtitle">Collapsing long import lists, and the one tool to use sparingly</p>
+    <p>When several imports share a prefix, collapse them with curly brackets — a <strong>nested path</strong>:</p>
+    <pre><span class="cm">// Before — the shared prefix repeats</span>
 <span class="kw">use</span> std::cmp::<span class="ty">Ordering</span>;
 <span class="kw">use</span> std::io;
 
-<span class="cm">// After — nested path with curly brackets</span>
-<span class="kw">use</span> std::{cmp::<span class="ty">Ordering</span>, io};</pre>
-    <p>You can nest at any depth. When one path is a subpath of another, use <code>self</code> to import both the module itself and something from inside it:</p>
-    <pre><span class="cm">// Two lines — one is a subpath of the other</span>
+<span class="cm">// After — one line</span>
+<span class="kw">use</span> std::{cmp::<span class="ty">Ordering</span>, io};
+
+<span class="cm">// When one import IS a subpath of another, `self` names the module itself</span>
 <span class="kw">use</span> std::io;
 <span class="kw">use</span> std::io::<span class="ty">Write</span>;
-
-<span class="cm">// Merged — `self` means "the module itself"</span>
+<span class="cm">// ↓ collapses to</span>
 <span class="kw">use</span> std::io::{<span class="kw">self</span>, <span class="ty">Write</span>};</pre>
-
-    <h3>The glob operator</h3>
-    <p><code>use path::*;</code> imports <em>every</em> public item from a module:</p>
-    <pre><span class="kw">use</span> std::collections::*;   <span class="cm">// HashMap, BTreeMap, HashSet, ... everything</span></pre>
-    <p>Glob is convenient but dangerous in general code — it makes names hard to trace and can cause silent collisions when a dependency upgrades. Two places where it's acceptable:</p>
+    <p>The other tool is the <strong>glob</strong>: <code>use path::*;</code> imports every public item.</p>
+    <pre><span class="kw">use</span> std::collections::*;   <span class="cm">// HashMap, BTreeMap, HashSet... everything</span></pre>
+    <p>Glob is convenient and it's a trap in general code: you can't tell where a name came from, and a dependency upgrade can suddenly make a name ambiguous. Two places where it's genuinely fine:</p>
     <ul>
-      <li><strong>Testing</strong> — bringing everything under test into the <code>tests</code> module (Chapter 11).</li>
-      <li><strong>Prelude patterns</strong> — some crates provide a <code>prelude</code> module designed to be glob-imported.</li>
+      <li><strong>Tests</strong> — bringing everything under test into the test module.</li>
+      <li><strong>Preludes</strong> — crates that ship a <code>prelude</code> module explicitly designed to be glob-imported.</li>
     </ul>
-
-    <details class="python">
-      <summary>🐍 Python comparison</summary>
-      <div class="dropdown-body">
-        <pre><span class="cm"># Nested paths — Python doesn't have this syntax</span>
-<span class="cm"># You'd write separate imports:</span>
-<span class="kw">from</span> os.path <span class="kw">import</span> join, exists
-<span class="kw">import</span> os
-
-<span class="cm"># Glob — Python has the exact equivalent</span>
-<span class="kw">from</span> os.path <span class="kw">import</span> *    <span class="cm"># same risk as Rust's glob</span>
-
-<span class="cm"># Both communities agree: glob is for testing and preludes, not production code.</span></pre>
-        <p>Python's <code>from module import *</code> is Rust's <code>use module::*;</code> — same risk, same community consensus against it. The difference: Python will silently shadow names; Rust will give you a compile error if two glob imports bring in the same name.</p>
-      </div>
-    </details>
-
     <details class="mistake">
-      <summary>⚠️ Common mistake — glob import causes a name collision after an upgrade</summary>
+      <summary>⚠️ Common mistake — the glob that breaks on upgrade</summary>
       <div class="dropdown-body">
-        <pre><span class="kw">use</span> some_crate::*;   <span class="cm">// imports everything</span>
-<span class="kw">use</span> another_crate::*; <span class="cm">// imports everything</span>
+        <pre><span class="kw">use</span> crate_a::*;
+<span class="kw">use</span> crate_b::*;
 
-<span class="cm">// Works today. But if some_crate v1.2 adds a public `Config` type,</span>
-<span class="cm">// and another_crate already has one, you get:</span>
+<span class="cm">// Works today. Then crate_a 1.2 adds a public `Config` type,</span>
+<span class="cm">// crate_b already had one, and suddenly:</span>
 <span class="cm">// error[E0659]: `Config` is ambiguous</span>
 <span class="cm">//</span>
-<span class="cm">// This is why glob imports make upgrades fragile.</span></pre>
+<span class="cm">// Python: silent shadowing, bugs later.</span>
+<span class="cm">// Rust: loud error now — but it still breaks your build.</span></pre>
+        <p>This is why glob imports make upgrades fragile. The compiler will tell you about the collision, but it's you who has to go find the two <code>Config</code>s and disambiguate them.</p>
       </div>
     </details>
-
+    <details class="python">
+      <summary>🐍 Python comparison — identical risk</summary>
+      <div class="dropdown-body">
+        <pre><span class="cm"># Python's `from x import *` is Rust's glob — same idea, same risk</span>
+<span class="kw">from</span> os.path <span class="kw">import</span> *
+<span class="kw">from</span> shutil <span class="kw">import</span> *</pre>
+        <p>Both communities reached the same verdict: glob is for tests and preludes, not production code. The one difference — Rust detects collisions at compile time instead of silently shadowing.</p>
+      </div>
+    </details>
     <div class="takeaway">
       <div class="takeaway-label">Key takeaway</div>
-      <code>use std::{cmp::Ordering, io};</code> collapses shared-prefix imports. <code>use path::*;</code> imports everything — reserve it for tests and preludes, not general code.
+      Nested paths (<code>use std::{cmp::Ordering, io};</code>) collapse shared prefixes; <code>self</code> names the module itself. Glob imports everything — reserve it for tests and preludes.
     </div>
   </section>
 
@@ -1402,22 +1311,20 @@ rand = <span class="str">"0.8.5"</span>
   <div class="chapter-summary-section" id="summary">
     <div class="agenda-title">Chapter 7 Summary</div>
     <ul class="summary-list">
-      <li>A crate is the compiler's unit — one root file, one privacy boundary. Binary crates have <code>main</code>; library crates don't.</li>
-      <li>A package is one <code>Cargo.toml</code> + one library (at most) + binaries (unlimited) + at least one of either.</li>
-      <li>Cargo discovers crates by filename: <code>src/main.rs</code>, <code>src/lib.rs</code>, <code>src/bin/*.rs</code>.</li>
-      <li><code>mod name;</code> declares a module — the compiler finds it inline, in <code>src/name.rs</code>, or <code>src/name/mod.rs</code>.</li>
-      <li>Everything is private by default. Children can see ancestors; parents can't see into children.</li>
-      <li>Absolute paths start with <code>crate::</code>; relative paths start from the current module. Both use <code>::</code>.</li>
-      <li><code>pub mod</code> makes a module visible; <code>pub</code> on the item makes it usable. Both are needed.</li>
-      <li><code>super::</code> goes up one level — the Rust equivalent of Python's <code>..</code> relative import.</li>
-      <li><code>pub struct</code> = public name, private fields. <code>pub enum</code> = public name, all variants public.</li>
-      <li>Keep the module tree in <code>src/lib.rs</code>; make <code>src/main.rs</code> a thin wrapper.</li>
-      <li><code>use</code> creates a local shortcut for a path — scoped to where it's declared.</li>
-      <li>Functions: <code>use</code> the parent module. Structs/enums: <code>use</code> the full path.</li>
-      <li><code>use path as Alias;</code> renames imports to avoid name conflicts.</li>
-      <li><code>pub use</code> re-exports — decouple internal structure from your public API.</li>
-      <li>Add external crates to <code>Cargo.toml</code>; <code>std</code> is always available without an entry.</li>
-      <li>Nested paths: <code>use std::{cmp::Ordering, io};</code>. Glob: <code>use path::*;</code> — testing and preludes only.</li>
+      <li>The whole chapter is three questions: where does code live (crates/modules), how do I name it (paths), who can see it (<code>pub</code>).</li>
+      <li>A crate is the unit of compilation and privacy — one root, one boundary. Binaries run, libraries are shared.</li>
+      <li>A package is one <code>Cargo.toml</code> + ≤1 library + any number of binaries. Cargo discovers crates by filename.</li>
+      <li>Keep logic in <code>src/lib.rs</code>; make <code>src/main.rs</code> a thin wrapper.</li>
+      <li>The module tree is <em>declared</em> with <code>mod</code> — not mirrored from disk. Orphan files are silently invisible.</li>
+      <li><code>mod name;</code> splits a module into <code>name.rs</code> (preferred) or <code>name/mod.rs</code>.</li>
+      <li>Paths: <code>crate::</code> is absolute from the root; <code>super::</code> goes up one level; relative paths start where you stand.</li>
+      <li>Everything is private by default. <code>pub mod</code> + <code>pub item</code> = two keys, both required.</li>
+      <li>Private fields protect invariants (methods are the only way in); enum variants are all public because <code>match</code> needs every case.</li>
+      <li><code>use</code> is a compile-time naming shortcut — it doesn't load or run anything, and it's scoped like a variable.</li>
+      <li>Functions: <code>use</code> the parent module. Types: <code>use</code> the item itself.</li>
+      <li><code>as</code> renames imports; <code>pub use</code> re-exports them — the <code>__init__.py</code> story, enforced.</li>
+      <li>External crates go in <code>Cargo.toml</code>; Cargo downloads, compiles, and pins versions. <code>std</code> needs no declaration.</li>
+      <li>Nested paths collapse shared prefixes; glob is for tests and preludes only.</li>
     </ul>
   </div>
 
@@ -1425,9 +1332,9 @@ rand = <span class="str">"0.8.5"</span>
     <div>
       <div class="next-chapter-label">Next up →</div>
       <div class="next-chapter-text">
-        <strong>Chapter 8: Common Collections</strong> — you've organized code across modules; now you'll learn to
-        work with Rust's three most-used collections: <code>Vec</code>, <code>String</code>, and <code>HashMap</code>. Think Python's
-        <code>list</code>, <code>str</code>, and <code>dict</code>, but with Rust's ownership and type-safety rules baked in.
+        <strong>Chapter 8: Common Collections</strong> — now that code can span files, you'll learn the three
+        workhorses of everyday Rust: <code>Vec</code>, <code>String</code>, and <code>HashMap</code>. Python's
+        <code>list</code>, <code>str</code>, and <code>dict</code> — with ownership and the borrow checker watching.
       </div>
     </div>
   </div>
