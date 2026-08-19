@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rust Chapter 6 — Enums and Pattern Matching</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAFAF8;
+    --surface: #FFFFFF;
+    --surface-alt: #F3F2EE;
+    --border: #E0DED8;
+    --border-light: #ECEAE4;
+    --text: #1A1A18;
+    --text-secondary: #5C5B56;
+    --text-muted: #8A8880;
+    --rust-orange: #C8552D;
+    --rust-orange-light: #FDF0EB;
+    --rust-orange-muted: #E8A88C;
+    --python-blue: #3572A5;
+    --python-blue-light: #EBF2F8;
+    --green: #2E7D4F;
+    --green-light: #EDF7F0;
+    --red: #C0392B;
+    --red-light: #FDECEB;
+    --yellow-light: #FFF8E7;
+    --yellow-border: #E6D59E;
+    --code-bg: #1E1E1C;
+    --code-text: #D4D4C8;
+    --code-comment: #7A7A6E;
+    --code-keyword: #D19A66;
+    --code-string: #98C379;
+    --code-fn: #61AFEF;
+    --code-type: #E5C07B;
+    --code-error: #E06C75;
+    --sidebar-bg: #FFFFFF;
+    --sidebar-border: #E0DED8;
+    --sidebar-hover: #F3F2EE;
+    --sidebar-active-bg: #FDF0EB;
+    --sidebar-active-text: #C8552D;
+    --sidebar-width: 280px;
+    --progress-bg: #E0DED8;
+    --progress-fill: #C8552D;
+  }
+
+  [data-theme="dark"] {
+    --bg: #141413;
+    --surface: #1E1E1C;
+    --surface-alt: #262624;
+    --border: #3A3A36;
+    --border-light: #2E2E2A;
+    --text: #E8E8E2;
+    --text-secondary: #A8A89E;
+    --text-muted: #7A7A70;
+    --rust-orange: #E8784A;
+    --rust-orange-light: #2A1D15;
+    --rust-orange-muted: #7A4A30;
+    --python-blue: #6BA2D4;
+    --python-blue-light: #1A2530;
+    --green: #5AAF7A;
+    --green-light: #1A2A1F;
+    --red: #E06050;
+    --red-light: #2A1815;
+    --yellow-light: #2A2618;
+    --yellow-border: #5A5030;
+    --code-bg: #0E0E0D;
+    --code-text: #D4D4C8;
+    --sidebar-bg: #1A1A18;
+    --sidebar-border: #2E2E2A;
+    --sidebar-hover: #262624;
+    --sidebar-active-bg: #2A1D15;
+    --sidebar-active-text: #E8784A;
+    --progress-bg: #3A3A36;
+    --progress-fill: #E8784A;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  /* ── Progress Bar ── */
+  .progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: var(--progress-bg);
+    z-index: 1000;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--progress-fill);
+    transition: width 0.1s linear;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    position: fixed;
+    top: 3px;
+    left: 0;
+    width: var(--sidebar-width);
+    height: calc(100vh - 3px);
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+    overflow-y: auto;
+    padding: 1.25rem 0;
+    z-index: 900;
+    transition: transform 0.3s ease, background 0.3s;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .sidebar.collapsed {
+    transform: translateX(calc(-1 * var(--sidebar-width)));
+  }
+
+  .sidebar-header {
+    padding: 0.5rem 1.25rem 1rem;
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .sidebar-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .sidebar-progress-text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--rust-orange);
+  }
+
+  .sidebar-part {
+    padding: 0.75rem 1.25rem 0.3rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .sidebar-part:not(:first-of-type) {
+    margin-top: 0.25rem;
+    border-top: 1px solid var(--border-light);
+    padding-top: 0.75rem;
+  }
+
+  .sidebar-link {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.4rem 1.25rem;
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    line-height: 1.4;
+    transition: all 0.15s;
+    border-left: 2px solid transparent;
+  }
+  .sidebar-link:hover {
+    background: var(--sidebar-hover);
+    color: var(--text);
+  }
+  .sidebar-link.active {
+    background: var(--sidebar-active-bg);
+    color: var(--sidebar-active-text);
+    border-left-color: var(--rust-orange);
+    font-weight: 500;
+  }
+  .sidebar-link .num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    flex-shrink: 0;
+    min-width: 1.2rem;
+  }
+
+  /* ── Sidebar Toggle ── */
+  .sidebar-toggle {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 950;
+    width: 36px;
+    height: 36px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .sidebar-toggle:hover { background: var(--surface-alt); }
+  .sidebar-toggle svg { width: 18px; height: 18px; stroke: var(--text-secondary); }
+
+  .sidebar:not(.collapsed) ~ .sidebar-toggle {
+    left: calc(var(--sidebar-width) + 12px);
+  }
+
+  /* ── Dark Mode Toggle ── */
+  .theme-toggle {
+    position: fixed;
+    top: 12px;
+    right: 16px;
+    z-index: 950;
+    width: 36px;
+    height: 36px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .theme-toggle:hover { background: var(--surface-alt); }
+  .theme-toggle svg { width: 18px; height: 18px; stroke: var(--text-secondary); fill: none; }
+
+  /* ── Back to Top ── */
+  .back-to-top {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 950;
+    width: 40px;
+    height: 40px;
+    background: var(--rust-orange);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(200,85,45,0.3);
+    pointer-events: none;
+  }
+  .back-to-top.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  .back-to-top:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(200,85,45,0.4); }
+  .back-to-top svg { width: 20px; height: 20px; stroke: #fff; fill: none; }
+
+  /* ── Main Content ── */
+  .main-content {
+    margin-left: var(--sidebar-width);
+    transition: margin-left 0.3s ease;
+  }
+  .sidebar.collapsed ~ .main-content {
+    margin-left: 0;
+  }
+
+  .container {
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 6rem;
+  }
+
+  /* ── Header ── */
+  .chapter-header {
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 2px solid var(--border);
+  }
+  .chapter-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--rust-orange);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  .chapter-title {
+    font-family: 'Fraunces', serif;
+    font-size: 2.4rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+  }
+  .chapter-summary {
+    font-size: 1.05rem;
+    color: var(--text-secondary);
+    max-width: 620px;
+  }
+
+  /* ── Part Divider ── */
+  .part-divider {
+    margin: 3.5rem 0 2.5rem;
+    padding: 1.5rem 0;
+    border-top: 2px solid var(--rust-orange);
+    border-bottom: 1px solid var(--border-light);
+  }
+  .part-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--rust-orange);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+  }
+  .part-title {
+    font-family: 'Fraunces', serif;
+    font-size: 1.7rem;
+    font-weight: 700;
+    line-height: 1.25;
+    margin-bottom: 0.4rem;
+  }
+  .part-subtitle {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+  }
+
+  /* ── Agenda ── */
+  .agenda {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.75rem 2rem;
+    margin-bottom: 3.5rem;
+  }
+  .agenda-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .agenda ol { list-style: none; counter-reset: agenda; }
+  .agenda li {
+    counter-increment: agenda;
+    padding: 0.4rem 0;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+  }
+  .agenda li::before {
+    content: counter(agenda, decimal-leading-zero);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--rust-orange);
+    flex-shrink: 0;
+  }
+  .agenda li strong { color: var(--text); font-weight: 600; }
+  .agenda-part {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-top: 1rem;
+    margin-bottom: 0.25rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-light);
+  }
+
+  /* ── Sections ── */
+  .lesson-section { margin-bottom: 3.5rem; scroll-margin-top: 1.5rem; }
+  .section-number {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--rust-orange);
+    letter-spacing: 0.06em;
+    margin-bottom: 0.25rem;
+  }
+  .section-title {
+    font-family: 'Fraunces', serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+  }
+  .section-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+  }
+  p { margin-bottom: 1rem; }
+  h3 { font-size: 1rem; font-weight: 600; margin-top: 1.75rem; margin-bottom: 0.75rem; }
+
+  /* ── Code ── */
+  pre {
+    background: var(--code-bg);
+    border-radius: 6px;
+    padding: 1.25rem 1.5rem;
+    overflow-x: auto;
+    margin: 1rem 0 1.25rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    line-height: 1.65;
+    color: var(--code-text);
+  }
+  code { font-family: 'IBM Plex Mono', monospace; font-size: 0.88em; }
+  p code, li code, td code {
+    background: var(--surface-alt);
+    padding: 0.15em 0.4em;
+    border-radius: 3px;
+    font-size: 0.85em;
+    color: var(--rust-orange);
+  }
+  .kw { color: var(--code-keyword); }
+  .str { color: var(--code-string); }
+  .fn { color: var(--code-fn); }
+  .ty { color: var(--code-type); }
+  .cm { color: var(--code-comment); font-style: italic; }
+  .err { color: var(--code-error); }
+
+  /* ── Dropdowns ── */
+  details {
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    margin: 1rem 0 1.25rem;
+    overflow: hidden;
+  }
+  details[open] { border-color: var(--border); }
+  summary {
+    padding: 0.7rem 1rem;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 500;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background 0.15s;
+  }
+  summary:hover { background: var(--surface-alt); }
+  summary::marker, summary::-webkit-details-marker { display: none; }
+  summary::before {
+    content: '▸'; font-size: 0.75rem; color: var(--text-muted);
+    transition: transform 0.2s; flex-shrink: 0;
+  }
+  details[open] > summary::before { transform: rotate(90deg); }
+  .dropdown-body {
+    padding: 0 1rem 1rem;
+    border-top: 1px solid var(--border-light);
+  }
+  .dropdown-body pre { margin-top: 0.75rem; }
+  .dropdown-body p { margin-top: 0.75rem; }
+
+  details.python { border-color: var(--python-blue-light); background: var(--python-blue-light); }
+  details.python[open] { border-color: #C8D9E8; }
+  details.python summary { color: var(--python-blue); }
+  details.python summary::before { color: var(--python-blue); }
+  details.python .dropdown-body { border-top-color: #C8D9E8; }
+  [data-theme="dark"] details.python { border-color: #1A2530; background: #1A2530; }
+  [data-theme="dark"] details.python[open] { border-color: #2A3A48; }
+  [data-theme="dark"] details.python .dropdown-body { border-top-color: #2A3A48; }
+
+  details.mistake { border-color: var(--red-light); background: var(--red-light); }
+  details.mistake[open] { border-color: #F0C4C0; }
+  details.mistake summary { color: var(--red); }
+  details.mistake summary::before { color: var(--red); }
+  details.mistake .dropdown-body { border-top-color: #F0C4C0; }
+  [data-theme="dark"] details.mistake { border-color: #2A1815; background: #2A1815; }
+  [data-theme="dark"] details.mistake[open] { border-color: #3A2520; }
+  [data-theme="dark"] details.mistake .dropdown-body { border-top-color: #3A2520; }
+
+  details.insight { border-color: #E8EAFD; background: #F0F1FD; }
+  details.insight[open] { border-color: #C8CBE8; }
+  details.insight summary { color: #4A4FC4; }
+  details.insight summary::before { color: #4A4FC4; }
+  details.insight .dropdown-body { border-top-color: #C8CBE8; }
+  [data-theme="dark"] details.insight { border-color: #1A1A30; background: #1A1A30; }
+  [data-theme="dark"] details.insight[open] { border-color: #2A2A48; }
+  [data-theme="dark"] details.insight .dropdown-body { border-top-color: #2A2A48; }
+
+  /* ── Takeaway ── */
+  .takeaway {
+    background: var(--green-light);
+    border-left: 3px solid var(--green);
+    padding: 0.85rem 1.1rem;
+    border-radius: 0 6px 6px 0;
+    margin: 1.25rem 0;
+    font-size: 0.92rem;
+  }
+  .takeaway-label {
+    font-weight: 600; color: var(--green);
+    font-size: 0.78rem; letter-spacing: 0.04em;
+    text-transform: uppercase; margin-bottom: 0.2rem;
+  }
+
+  /* ── Diagram ── */
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.25rem 0;
+    overflow-x: auto;
+  }
+  .diagram-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem; font-weight: 600;
+    color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 0.05em; margin-bottom: 0.75rem;
+  }
+  .diagram pre {
+    background: transparent; color: var(--text);
+    padding: 0; margin: 0; font-size: 0.8rem; line-height: 1.5;
+  }
+
+  /* ── Rules Box ── */
+  .rules-box {
+    background: var(--rust-orange-light);
+    border: 1px solid var(--rust-orange-muted);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.25rem 0;
+  }
+  .rules-box .rules-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem; font-weight: 600; color: var(--rust-orange);
+    letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 0.65rem;
+  }
+  .rules-box ol { padding-left: 1.25rem; font-size: 0.92rem; }
+  .rules-box li { padding: 0.2rem 0; }
+
+  /* ── Table ── */
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.25rem; font-size: 0.9rem; }
+  th {
+    text-align: left; padding: 0.6rem 0.85rem; background: var(--surface-alt);
+    font-weight: 600; font-size: 0.82rem; border-bottom: 2px solid var(--border);
+  }
+  td { padding: 0.55rem 0.85rem; border-bottom: 1px solid var(--border-light); }
+
+  /* ── Note ── */
+  .note {
+    background: var(--yellow-light);
+    border: 1px solid var(--yellow-border);
+    border-radius: 6px;
+    padding: 0.85rem 1.1rem;
+    margin: 1.25rem 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+  }
+  .note strong { color: var(--text); }
+
+  /* ── Summary ── */
+  .chapter-summary-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.75rem 2rem;
+    margin-top: 3rem;
+  }
+  .summary-list { list-style: none; padding: 0; }
+  .summary-list li {
+    padding: 0.35rem 0; padding-left: 1.25rem;
+    position: relative; font-size: 0.93rem; color: var(--text-secondary);
+  }
+  .summary-list li::before {
+    content: '✓'; position: absolute; left: 0; color: var(--green); font-weight: 600;
+  }
+
+  /* ── Next Chapter ── */
+  .next-chapter {
+    margin-top: 2rem; padding: 1.25rem 1.5rem;
+    background: var(--rust-orange-light); border-radius: 8px;
+  }
+  .next-chapter-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem; font-weight: 600; color: var(--rust-orange);
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .next-chapter-text {
+    font-size: 0.95rem; color: var(--text-secondary); margin-top: 0.2rem;
+  }
+  .next-chapter-text strong { color: var(--text); }
+
+  @media (max-width: 900px) {
+    .sidebar { transform: translateX(calc(-1 * var(--sidebar-width))); }
+    .sidebar.mobile-open { transform: translateX(0); }
+    .main-content { margin-left: 0 !important; }
+    .sidebar:not(.collapsed) ~ .sidebar-toggle { left: 12px; }
+    .sidebar.mobile-open ~ .sidebar-toggle { left: calc(var(--sidebar-width) + 12px); }
+    .sidebar.mobile-open ~ .sidebar-overlay { display: block; }
+  }
+  .sidebar-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3);
+    z-index: 850; backdrop-filter: blur(2px);
+  }
+
+  @media (max-width: 600px) {
+    .container { padding: 2rem 1rem 4rem; }
+    .chapter-title { font-size: 1.8rem; }
+    .part-title { font-size: 1.4rem; }
+    .section-title { font-size: 1.3rem; }
+    pre { padding: 1rem; font-size: 0.8rem; }
+    .agenda, .chapter-summary-section { padding: 1.25rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Progress Bar -->
+<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+<!-- Sidebar -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-title">Chapter 6</span>
+    <span class="sidebar-progress-text" id="sidebarProgress">0%</span>
+  </div>
+
+  <div class="sidebar-part">Part A · Defining an Enum</div>
+  <a href="#s01" class="sidebar-link" data-section="s01"><span class="num">01</span> What Is an Enum</a>
+  <a href="#s02" class="sidebar-link" data-section="s02"><span class="num">02</span> Defining &amp; Using an Enum</a>
+  <a href="#s03" class="sidebar-link" data-section="s03"><span class="num">03</span> Variants That Hold Data</a>
+  <a href="#s04" class="sidebar-link" data-section="s04"><span class="num">04</span> Different Data Per Variant</a>
+  <a href="#s05" class="sidebar-link" data-section="s05"><span class="num">05</span> Methods on Enums</a>
+  <a href="#s06" class="sidebar-link" data-section="s06"><span class="num">06</span> The Option Enum</a>
+
+  <div class="sidebar-part">Part B · The match Construct</div>
+  <a href="#s07" class="sidebar-link" data-section="s07"><span class="num">07</span> Matching With match</a>
+  <a href="#s08" class="sidebar-link" data-section="s08"><span class="num">08</span> Patterns That Bind</a>
+  <a href="#s09" class="sidebar-link" data-section="s09"><span class="num">09</span> Matching Option&lt;T&gt;</a>
+  <a href="#s10" class="sidebar-link" data-section="s10"><span class="num">10</span> Matches Are Exhaustive</a>
+  <a href="#s11" class="sidebar-link" data-section="s11"><span class="num">11</span> Catch-all &amp; _</a>
+
+  <div class="sidebar-part">Part C · Concise Control Flow</div>
+  <a href="#s12" class="sidebar-link" data-section="s12"><span class="num">12</span> if let</a>
+  <a href="#s13" class="sidebar-link" data-section="s13"><span class="num">13</span> if let else</a>
+</nav>
+
+<!-- Sidebar Overlay (mobile) -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- Sidebar Toggle -->
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+  </svg>
+</button>
+
+<!-- Dark Mode Toggle -->
+<button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+  <svg id="sunIcon" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+    <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+  </svg>
+  <svg id="moonIcon" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </svg>
+</button>
+
+<!-- Back to Top -->
+<button class="back-to-top" id="backToTop" aria-label="Back to top">
+  <svg viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="18 15 12 9 6 15"/>
+  </svg>
+</button>
+
+<!-- Main Content -->
+<div class="main-content" id="mainContent">
+<div class="container">
+
+  <!-- ═══════════ HEADER ═══════════ -->
+  <header class="chapter-header">
+    <div class="chapter-label">The Rust Book · Chapter 6</div>
+    <h1 class="chapter-title">Enums and Pattern Matching</h1>
+    <p class="chapter-summary">
+      A struct says a value has <em>all</em> of these fields. An enum says a value is <em>one of</em> these
+      variants — and each variant can carry its own data. Paired with <code>match</code>, enums let you model
+      choices exactly and force yourself to handle every case. This is where Rust starts to feel special.
+    </p>
+  </header>
+
+  <!-- ═══════════ AGENDA ═══════════ -->
+  <nav class="agenda">
+    <div class="agenda-title">What we'll cover</div>
+    <ol>
+      <div class="agenda-part">Part A — Defining an Enum (6.1)</div>
+      <li><strong>What is an enum</strong> — modeling "one of a fixed set of possibilities"</li>
+      <li><strong>Defining and using an enum</strong> — variants and the <code>::</code> syntax</li>
+      <li><strong>Variants that hold data</strong> — attaching values directly to variants</li>
+      <li><strong>Different data per variant</strong> — the <code>Message</code> enum</li>
+      <li><strong>Methods on enums</strong> — <code>impl</code> works here too</li>
+      <li><strong>The <code>Option</code> enum</strong> — Rust's principled replacement for null</li>
+      <div class="agenda-part">Part B — The match Control Flow Construct (6.2)</div>
+      <li><strong>Matching with <code>match</code></strong> — a powerful switch on steroids</li>
+      <li><strong>Patterns that bind to values</strong> — pulling data out of a variant</li>
+      <li><strong>Matching <code>Option&lt;T&gt;</code></strong> — safely handling "maybe a value"</li>
+      <li><strong>Matches are exhaustive</strong> — the compiler makes you cover every case</li>
+      <li><strong>Catch-all patterns and <code>_</code></strong> — handling "everything else"</li>
+      <div class="agenda-part">Part C — Concise Control Flow with if let (6.3)</div>
+      <li><strong><code>if let</code></strong> — a shorthand when you care about one pattern</li>
+      <li><strong><code>if let</code> … <code>else</code></strong> — handling the one case and the rest</li>
+    </ol>
+  </nav>
+
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PART A — DEFINING AN ENUM
+       ═══════════════════════════════════════════════════════════ -->
+
+  <div class="part-divider" id="partA">
+    <div class="part-label">Part A · Chapter 6.1</div>
+    <h2 class="part-title">Defining an Enum</h2>
+    <p class="part-subtitle">Types whose values are one of a fixed, named set of possibilities</p>
+  </div>
+
+  <!-- 01 -->
+  <section class="lesson-section" id="s01">
+    <div class="section-number">01</div>
+    <h2 class="section-title">What Is an Enum</h2>
+    <p class="section-subtitle">Modeling "one of a fixed set of possibilities"</p>
+    <p>A struct groups data that always appears together — a rectangle <em>always</em> has a width <em>and</em> a height. But some data is an either-or. An IP address is version four <em>or</em> version six, never both. A coin is a penny, nickel, dime, <em>or</em> quarter. That's an <strong>enumeration</strong>, or <strong>enum</strong>: a type whose value is exactly one of a fixed set of named <strong>variants</strong>.</p>
+    <p>Enums exist in many languages, but Rust's are unusually powerful: each variant can <em>carry its own data</em>. That turns an enum into a precise model of a decision — and the compiler guarantees you handle every branch.</p>
+    <details class="python">
+      <summary>🐍 The Python parallel</summary>
+      <div class="dropdown-body">
+        <pre><span class="kw">from</span> enum <span class="kw">import</span> <span class="ty">Enum</span>
+
+<span class="kw">class</span> <span class="ty">IpAddrKind</span>(<span class="ty">Enum</span>):
+    V4 = <span class="ty">1</span>
+    V6 = <span class="ty">2</span></pre>
+        <p>Python's <code>Enum</code> is the closest thing, and it covers the simplest Rust enums. But Python enum members can't each hold different structured data the way Rust variants can — for that you'd reach for a tagged union or a class hierarchy. Rust folds all of that into one enum.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      An enum is a type whose value is exactly one of a fixed set of named variants — and in Rust, each variant can carry its own data.
+    </div>
+  </section>
+
+  <!-- 02 -->
+  <section class="lesson-section" id="s02">
+    <div class="section-number">02</div>
+    <h2 class="section-title">Defining and Using an Enum</h2>
+    <p class="section-subtitle">Variants and the <code>::</code> namespacing syntax</p>
+    <p>Define an enum with the <code>enum</code> keyword and list the variants. Each variant lives in the enum's namespace, so you refer to it with <code>EnumName::Variant</code>.</p>
+    <pre><span class="kw">enum</span> <span class="ty">IpAddrKind</span> {
+    <span class="ty">V4</span>,
+    <span class="ty">V6</span>,
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="cm">// Both values have the same type: IpAddrKind</span>
+    <span class="kw">let</span> four = <span class="ty">IpAddrKind</span>::<span class="ty">V4</span>;
+    <span class="kw">let</span> six = <span class="ty">IpAddrKind</span>::<span class="ty">V6</span>;
+
+    <span class="fn">route</span>(four);
+    <span class="fn">route</span>(six);
+}
+
+<span class="cm">// Takes any IpAddrKind — a function can accept the enum type</span>
+<span class="kw">fn</span> <span class="fn">route</span>(ip_kind: <span class="ty">IpAddrKind</span>) {}</pre>
+    <p>Both <code>four</code> and <code>six</code> have the type <code>IpAddrKind</code>, so a single function can accept either. That's the point: the enum is one type with a fixed set of possible values.</p>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Declare variants with <code>enum</code>, then name them with <code>EnumName::Variant</code> — every variant shares the enum's type.
+    </div>
+  </section>
+
+  <!-- 03 -->
+  <section class="lesson-section" id="s03">
+    <div class="section-number">03</div>
+    <h2 class="section-title">Variants That Hold Data</h2>
+    <p class="section-subtitle">Attaching values directly to each variant</p>
+    <p>Knowing an address is V4 or V6 isn't enough — you need the actual address. You <em>could</em> pair the enum with a struct, but Rust lets you attach data straight to the variant, which is more concise:</p>
+    <pre><span class="kw">enum</span> <span class="ty">IpAddr</span> {
+    <span class="ty">V4</span>(<span class="ty">String</span>),      <span class="cm">// each V4 carries a String</span>
+    <span class="ty">V6</span>(<span class="ty">String</span>),
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="cm">// The variant name becomes a constructor function</span>
+    <span class="kw">let</span> home = <span class="ty">IpAddr</span>::<span class="ty">V4</span>(<span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"127.0.0.1"</span>));
+    <span class="kw">let</span> loopback = <span class="ty">IpAddr</span>::<span class="ty">V6</span>(<span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"::1"</span>));
+}</pre>
+    <p>Notice something elegant: <code>IpAddr::V4()</code> is automatically a function that takes a <code>String</code> and returns an <code>IpAddr</code>. Defining the enum gives you these constructors for free.</p>
+    <details class="insight">
+      <summary>💡 Insight — variants are constructor functions</summary>
+      <div class="dropdown-body">
+        <p>When you write <code>V4(String)</code>, Rust generates a function <code>IpAddr::V4</code> with the signature <code>fn(String) -&gt; IpAddr</code>. This becomes genuinely useful later — you can pass <code>IpAddr::V4</code> anywhere a function is expected, like mapping it over a list of strings. For now, just enjoy that construction is free.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      A variant can hold data — <code>V4(String)</code> — and the variant name doubles as a constructor function returning the enum.
+    </div>
+  </section>
+
+  <!-- 04 -->
+  <section class="lesson-section" id="s04">
+    <div class="section-number">04</div>
+    <h2 class="section-title">Different Data Per Variant</h2>
+    <p class="section-subtitle">Each variant can carry a totally different shape of data</p>
+    <p>Here's the real power: variants don't have to hold the same kind of data. One can hold nothing, another a struct-like set of named fields, another a single value, another a tuple. This one enum replaces four different struct definitions:</p>
+    <pre><span class="kw">enum</span> <span class="ty">Message</span> {
+    <span class="ty">Quit</span>,                          <span class="cm">// no data at all</span>
+    <span class="ty">Move</span> { x: <span class="ty">i32</span>, y: <span class="ty">i32</span> },        <span class="cm">// named fields, like a struct</span>
+    <span class="ty">Write</span>(<span class="ty">String</span>),                 <span class="cm">// a single String</span>
+    <span class="ty">ChangeColor</span>(<span class="ty">i32</span>, <span class="ty">i32</span>, <span class="ty">i32</span>),  <span class="cm">// three values, like a tuple</span>
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> m1 = <span class="ty">Message</span>::<span class="ty">Write</span>(<span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello"</span>));
+    <span class="kw">let</span> m2 = <span class="ty">Message</span>::<span class="ty">Move</span> { x: <span class="ty">10</span>, y: <span class="ty">30</span> };
+    <span class="kw">let</span> m3 = <span class="ty">Message</span>::<span class="ty">ChangeColor</span>(<span class="ty">255</span>, <span class="ty">0</span>, <span class="ty">0</span>);
+    <span class="kw">let</span> m4 = <span class="ty">Message</span>::<span class="ty">Quit</span>;
+}</pre>
+    <p>The advantage over four separate structs is that all four are the <em>same type</em> — <code>Message</code> — so a function can accept any of them, and you handle all the cases in one place (that's what <code>match</code> in Part B is for).</p>
+    <details class="python">
+      <summary>🐍 Python comparison</summary>
+      <div class="dropdown-body">
+        <p>To model this in Python you'd typically build a class hierarchy — a base <code>Message</code> with <code>Quit</code>, <code>Move</code>, <code>Write</code>, <code>ChangeColor</code> subclasses — or use a tagged union with <code>typing.Union</code>. Rust captures the whole idea in one <code>enum</code>, and crucially, the compiler <em>knows</em> the complete list of variants, which it uses to check your <code>match</code> statements later.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Each variant can carry a different shape of data — none, named fields, a value, or a tuple — all unified under one enum type.
+    </div>
+  </section>
+
+  <!-- 05 -->
+  <section class="lesson-section" id="s05">
+    <div class="section-number">05</div>
+    <h2 class="section-title">Methods on Enums</h2>
+    <p class="section-subtitle">"Enums get methods just like structs" is true — but the interesting part is what you do with <code>self</code> <em>inside</em> the method</p>
+    <p>The mechanic is exactly what you saw in Chapter 5: an <code>impl</code> block attaches functions to a type, and <code>impl</code> doesn't care whether that type is a struct or an enum. You get the same three receiver forms — <code>&amp;self</code>, <code>&amp;mut self</code>, <code>self</code> — and the same associated functions (the enum equivalent of <code>String::from</code>). So the boring answer to "can enums have methods?" is: yes, identically.</p>
+    <pre><span class="kw">enum</span> <span class="ty">Message</span> {
+    <span class="ty">Quit</span>,
+    <span class="ty">Move</span> { x: <span class="ty">i32</span>, y: <span class="ty">i32</span> },
+    <span class="ty">Write</span>(<span class="ty">String</span>),
+    <span class="ty">ChangeColor</span>(<span class="ty">i32</span>, <span class="ty">i32</span>, <span class="ty">i32</span>),
+}
+
+<span class="kw">impl</span> <span class="ty">Message</span> {
+    <span class="kw">fn</span> <span class="fn">call</span>(&amp;<span class="kw">self</span>) { <span class="cm">/* ... */</span> }
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> m = <span class="ty">Message</span>::<span class="ty">Write</span>(<span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello"</span>));
+    m.<span class="fn">call</span>();   <span class="cm">// same dot-call syntax as struct methods</span>
+}</pre>
+
+    <p>Now the part that summary glosses over. On a <em>struct</em>, <code>self</code> has one fixed shape — every field is guaranteed to exist, so a method just reaches for them:</p>
+    <pre><span class="kw">struct</span> <span class="ty">Point</span> { x: <span class="ty">i32</span>, y: <span class="ty">i32</span> }
+
+<span class="kw">impl</span> <span class="ty">Point</span> {
+    <span class="kw">fn</span> <span class="fn">sum</span>(&amp;<span class="kw">self</span>) -&gt; <span class="ty">i32</span> {
+        <span class="kw">self</span>.x + <span class="kw">self</span>.y   <span class="cm">// x and y ALWAYS exist — no branching needed</span>
+    }
+}</pre>
+    <p>On an <em>enum</em>, <code>self</code> could be <em>any</em> of the variants, each with a different shape of data. You can't reach for <code>self.x</code>, because the value in front of you might be a <code>Quit</code> that has no fields at all. So an enum method almost always opens the same way — by matching on <code>self</code> to find out which variant it actually is:</p>
+    <pre><span class="kw">impl</span> <span class="ty">Message</span> {
+    <span class="kw">fn</span> <span class="fn">call</span>(&amp;<span class="kw">self</span>) {
+        <span class="kw">match</span> <span class="kw">self</span> {
+            <span class="ty">Message</span>::<span class="ty">Quit</span> =&gt; {
+                <span class="fn">println!</span>(<span class="str">"Quit — no data"</span>);
+            }
+            <span class="ty">Message</span>::<span class="ty">Move</span> { x, y } =&gt; {
+                <span class="fn">println!</span>(<span class="str">"Move to ({x}, {y})"</span>);
+            }
+            <span class="ty">Message</span>::<span class="ty">Write</span>(text) =&gt; {
+                <span class="fn">println!</span>(<span class="str">"Write: {text}"</span>);
+            }
+            <span class="ty">Message</span>::<span class="ty">ChangeColor</span>(r, g, b) =&gt; {
+                <span class="fn">println!</span>(<span class="str">"Color: {r} {g} {b}"</span>);
+            }
+        }
+    }
+}</pre>
+    <p>That <code>match self { ... }</code> pattern is the heart of nearly every enum method. Don't worry about the full mechanics of <code>match</code> yet — that's all of Part B — but notice the shape: one method, one <code>match</code>, one arm per variant, each arm handling that variant's specific data.</p>
+
+    <div class="diagram">
+      <div class="diagram-label">Struct method vs. enum method — the essential difference</div>
+      <pre>STRUCT  self ─► { x, y }                one fixed shape → just read the fields
+                └──────────┐
+                           ▼  self.x + self.y
+
+ENUM    self ─► which one? ─┬─ Quit               ─► handle (no data)
+                           ├─ Move { x, y }       ─► handle x, y
+                           ├─ Write(text)         ─► handle text
+                           └─ ChangeColor(r,g,b)  ─► handle r, g, b
+                              ▲
+                    `match self` picks the right arm at runtime</pre>
+    </div>
+
+    <p>Why <code>&amp;self</code> and not plain <code>self</code>? The same rule as structs: <code>&amp;self</code> <em>reads</em> the value and the caller keeps ownership afterwards — that's the default you want almost always. <code>&amp;mut self</code> lets the method <em>mutate</em> the enum in place. Plain <code>self</code> <em>consumes</em> the value (rarer — used when the method transforms it into something else). One subtlety: because <code>call</code> takes <code>&amp;self</code>, the bindings the <code>match</code> pulls out — <code>text</code>, <code>x</code>, <code>y</code> — are <em>references</em> borrowed out of the variant, not moves. The original <code>Message</code> stays intact.</p>
+
+    <p>Here's a more realistic example where the payoff is obvious — computing the area of different shapes. Each variant carries the numbers that shape needs, and one method gives variant-specific behavior behind a single dot-call:</p>
+    <pre><span class="kw">enum</span> <span class="ty">Shape</span> {
+    <span class="ty">Circle</span>(<span class="ty">f64</span>),           <span class="cm">// radius</span>
+    <span class="ty">Rectangle</span>(<span class="ty">f64</span>, <span class="ty">f64</span>),   <span class="cm">// width, height</span>
+    <span class="ty">Triangle</span>(<span class="ty">f64</span>, <span class="ty">f64</span>),    <span class="cm">// base, height</span>
+}
+
+<span class="kw">impl</span> <span class="ty">Shape</span> {
+    <span class="kw">fn</span> <span class="fn">area</span>(&amp;<span class="kw">self</span>) -&gt; <span class="ty">f64</span> {
+        <span class="kw">match</span> <span class="kw">self</span> {
+            <span class="ty">Shape</span>::<span class="ty">Circle</span>(r)       =&gt; <span class="ty">std</span>::<span class="ty">f64</span>::<span class="ty">consts</span>::<span class="ty">PI</span> * r * r,
+            <span class="ty">Shape</span>::<span class="ty">Rectangle</span>(w, h) =&gt; w * h,
+            <span class="ty">Shape</span>::<span class="ty">Triangle</span>(b, h)  =&gt; <span class="ty">0.5</span> * b * h,
+        }
+    }
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> shapes = [
+        <span class="ty">Shape</span>::<span class="ty">Circle</span>(<span class="ty">2.0</span>),
+        <span class="ty">Shape</span>::<span class="ty">Rectangle</span>(<span class="ty">3.0</span>, <span class="ty">4.0</span>),
+        <span class="ty">Shape</span>::<span class="ty">Triangle</span>(<span class="ty">6.0</span>, <span class="ty">8.0</span>),
+    ];
+    <span class="kw">for</span> s <span class="kw">in</span> &amp;shapes {
+        <span class="fn">println!</span>(<span class="str">"area = {:.2}"</span>, s.<span class="fn">area</span>());
+    }
+}</pre>
+    <p>Three shapes, three formulas, one operation — unified behind <code>s.area()</code>. The loop doesn't know or care which variant each <code>s</code> is; the method sorts that out internally.</p>
+
+    <details class="insight">
+      <summary>💡 Insight — why bundling this into <code>impl</code> is such a good design</summary>
+      <div class="dropdown-body">
+        <p>Three reasons this pays off:</p>
+        <ol>
+          <li><strong>The operation lives next to the type.</strong> Everything about a <code>Shape</code> — its variants and what "area" means for each — sits in one place, not scattered across free functions.</li>
+          <li><strong>Callers use <code>s.area()</code>, not <code>area(&amp;s)</code>.</strong> The behavior reads as something the value <em>does</em>, and it's discoverable through the dot.</li>
+          <li><strong>The compiler becomes your checklist.</strong> Add a new variant — say <code>Shape::Square(f64)</code> — and every method whose <code>match</code> doesn't handle it fails to compile, pointing you at the exact spot. The compiler turns "I added a variant" into "here are the exact methods you need to update." (You'll see this exhaustiveness check up close in §10.)</li>
+        </ol>
+      </div>
+    </details>
+
+    <details class="python">
+      <summary>🐍 Python comparison</summary>
+      <div class="dropdown-body">
+        <pre><span class="kw">class</span> <span class="ty">Shape</span>:
+    <span class="kw">def</span> <span class="fn">area</span>(self) -&gt; <span class="ty">float</span>:
+        <span class="kw">match</span> self:
+            <span class="kw">case</span> <span class="ty">Circle</span>(r):       <span class="kw">return</span> math.pi * r * r
+            <span class="kw">case</span> <span class="ty">Rectangle</span>(w, h): <span class="kw">return</span> w * h
+            <span class="kw">case</span> <span class="ty">Triangle</span>(b, h):  <span class="kw">return</span> <span class="ty">0.5</span> * b * h</pre>
+        <p>The Python instinct is a class hierarchy with <code>area()</code> overridden per subclass — polymorphism spreads the logic across classes. Rust's enum keeps it in one method with one <code>match</code>. The real difference isn't syntax: if you forget a case in Python, it silently returns <code>None</code> and you find out at runtime. Rust refuses to compile until every variant is handled.</p>
+      </div>
+    </details>
+
+    <details class="mistake">
+      <summary>⚠️ Common mistake — reaching for fields like it's a struct</summary>
+      <div class="dropdown-body">
+        <pre><span class="kw">impl</span> <span class="ty">Message</span> {
+    <span class="kw">fn</span> <span class="fn">call</span>(&amp;<span class="kw">self</span>) {
+        <span class="fn">println!</span>(<span class="str">"{} {}"</span>, <span class="kw">self</span>.x, <span class="kw">self</span>.y);
+    }
+}
+<span class="err">// ❌ error[E0609]: no field `x` on type `&amp;Message`</span></pre>
+        <p><code>self</code> here is a <code>Message</code>, which might be <code>Quit</code> (no fields) or <code>Write(String)</code> (a value, no <code>x</code>). There is no single <code>self.x</code> to reach for — the fields only exist <em>inside</em> a specific variant. You have to <code>match self</code> first to get into the arm where <code>x</code> and <code>y</code> are in scope.</p>
+      </div>
+    </details>
+
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      A struct method answers "given these fields, do X." An enum method answers "given which of several shapes I am, do the right X for that shape." The <code>impl</code> machinery is identical — the enum method just almost always opens with <code>match self</code>.
+    </div>
+  </section>
+
+  <!-- 06 -->
+  <section class="lesson-section" id="s06">
+    <div class="section-number">06</div>
+    <h2 class="section-title">The Option Enum</h2>
+    <p class="section-subtitle">Rust's principled replacement for null</p>
+    <p>Here's one of Rust's best ideas. Many languages have <code>null</code> — a value meaning "nothing here." The trouble is you can accidentally use a null as if it were real, causing crashes (Tony Hoare, who invented it, calls it his "billion-dollar mistake"). Rust has <strong>no null</strong>. Instead, the standard library defines an enum:</p>
+    <pre><span class="kw">enum</span> <span class="ty">Option</span>&lt;<span class="ty">T</span>&gt; {   <span class="cm">// T is a generic — works for any type</span>
+    <span class="ty">None</span>,             <span class="cm">// there is no value</span>
+    <span class="ty">Some</span>(<span class="ty">T</span>),          <span class="cm">// there is a value, and here it is</span>
+}</pre>
+    <p><code>Option&lt;T&gt;</code> is so useful it's in scope everywhere — you write <code>Some</code> and <code>None</code> without any prefix. The <code>&lt;T&gt;</code> means it works for any type: <code>Option&lt;i32&gt;</code>, <code>Option&lt;String&gt;</code>, and so on.</p>
+    <pre><span class="kw">let</span> some_number = <span class="ty">Some</span>(<span class="ty">5</span>);              <span class="cm">// inferred Option&lt;i32&gt;</span>
+<span class="kw">let</span> some_char = <span class="ty">Some</span>(<span class="str">'e'</span>);             <span class="cm">// inferred Option&lt;char&gt;</span>
+<span class="kw">let</span> absent: <span class="ty">Option</span>&lt;<span class="ty">i32</span>&gt; = <span class="ty">None</span>;      <span class="cm">// must annotate — None alone gives no type</span></pre>
+    <p>Why is this better than null? Because <code>Option&lt;i32&gt;</code> and <code>i32</code> are <em>different types</em>. You can't accidentally use a maybe-missing value as if it were definitely there — the compiler forces you to check for <code>None</code> first.</p>
+    <details class="mistake">
+      <summary>⚠️ Common mistake — using Option as if it were the value</summary>
+      <div class="dropdown-body">
+        <pre><span class="kw">let</span> x: <span class="ty">i8</span> = <span class="ty">5</span>;
+<span class="kw">let</span> y: <span class="ty">Option</span>&lt;<span class="ty">i8</span>&gt; = <span class="ty">Some</span>(<span class="ty">5</span>);
+<span class="kw">let</span> sum = x + y;
+<span class="err">// ❌ error[E0277]: cannot add `Option&lt;i8&gt;` to `i8`</span></pre>
+        <p>You can't add an <code>Option&lt;i8&gt;</code> to an <code>i8</code> — they're different types. To get at the value, you must first handle the possibility that it's <code>None</code> (with <code>match</code>, coming up next). This is exactly the safety net that null lacks.</p>
+      </div>
+    </details>
+    <details class="python">
+      <summary>🐍 Python comparison</summary>
+      <div class="dropdown-body">
+        <pre>value: <span class="ty">Optional</span>[int] = get_value()
+<span class="cm"># Nothing STOPS you from doing this:</span>
+result = value + <span class="ty">1</span>   <span class="cm"># 💥 TypeError at runtime if value is None</span></pre>
+        <p>Python's <code>None</code> and <code>Optional[int]</code> are advisory — type checkers may warn, but Python will happily run <code>None + 1</code> and crash. Rust makes it a hard compile error: you literally cannot reach the inner value without handling <code>None</code>. The mistake becomes impossible, not just discouraged.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Rust has no null; <code>Option&lt;T&gt;</code> is either <code>Some(value)</code> or <code>None</code>, and the compiler forces you to handle the <code>None</code> case before using the value.
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PART B — THE match CONTROL FLOW CONSTRUCT
+       ═══════════════════════════════════════════════════════════ -->
+
+  <div class="part-divider" id="partB">
+    <div class="part-label">Part B · Chapter 6.2</div>
+    <h2 class="part-title">The match Control Flow Construct</h2>
+    <p class="part-subtitle">Compare a value against patterns and run code for whichever matches — exhaustively</p>
+  </div>
+
+  <!-- 07 -->
+  <section class="lesson-section" id="s07">
+    <div class="section-number">07</div>
+    <h2 class="section-title">Matching With match</h2>
+    <p class="section-subtitle">A switch statement, but far more capable</p>
+    <p><code>match</code> compares a value against a series of <strong>patterns</strong> and runs the code for the first one that fits. Think of it as a coin-sorting machine: the coin falls through until it hits the first hole it fits, and that determines what happens.</p>
+    <pre><span class="kw">enum</span> <span class="ty">Coin</span> {
+    <span class="ty">Penny</span>,
+    <span class="ty">Nickel</span>,
+    <span class="ty">Dime</span>,
+    <span class="ty">Quarter</span>,
+}
+
+<span class="kw">fn</span> <span class="fn">value_in_cents</span>(coin: <span class="ty">Coin</span>) -&gt; <span class="ty">u8</span> {
+    <span class="kw">match</span> coin {
+        <span class="ty">Coin</span>::<span class="ty">Penny</span>   =&gt; <span class="ty">1</span>,     <span class="cm">// each arm: PATTERN =&gt; CODE</span>
+        <span class="ty">Coin</span>::<span class="ty">Nickel</span>  =&gt; <span class="ty">5</span>,
+        <span class="ty">Coin</span>::<span class="ty">Dime</span>    =&gt; <span class="ty">10</span>,
+        <span class="ty">Coin</span>::<span class="ty">Quarter</span> =&gt; <span class="ty">25</span>,
+    }
+}</pre>
+    <p>Each arm is a pattern, then <code>=&gt;</code>, then the code to run. <code>match</code> is an <em>expression</em> — it produces a value, so here the whole <code>match</code> becomes the function's return value. If an arm needs multiple lines, wrap them in <code>{ }</code>.</p>
+    <details class="python">
+      <summary>🐍 Python comparison</summary>
+      <div class="dropdown-body">
+        <pre><span class="kw">match</span> coin:
+    <span class="kw">case</span> <span class="ty">Coin</span>.PENNY:   value = <span class="ty">1</span>
+    <span class="kw">case</span> <span class="ty">Coin</span>.NICKEL:  value = <span class="ty">5</span>
+    <span class="kw">case</span> <span class="ty">Coin</span>.DIME:    value = <span class="ty">10</span>
+    <span class="kw">case</span> <span class="ty">Coin</span>.QUARTER: value = <span class="ty">25</span></pre>
+        <p>Python 3.10+ added structural pattern matching with <code>match</code>/<code>case</code>, which looks similar. The two big differences: Rust's <code>match</code> is an expression that returns a value, and Rust <em>requires</em> you cover every case — Python's <code>match</code> silently does nothing if no case fits.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      <code>match</code> runs the code of the first pattern a value fits, and it's an expression — the matching arm's value becomes the result.
+    </div>
+  </section>
+
+  <!-- 08 -->
+  <section class="lesson-section" id="s08">
+    <div class="section-number">08</div>
+    <h2 class="section-title">Patterns That Bind to Values</h2>
+    <p class="section-subtitle">Pulling the data out of a variant</p>
+    <p>When a variant holds data, a <code>match</code> arm can <strong>bind</strong> that data to a name so you can use it. Say quarters now carry which US state they came from:</p>
+    <pre><span class="kw">#[derive(Debug)]</span>
+<span class="kw">enum</span> <span class="ty">UsState</span> {
+    <span class="ty">Alabama</span>,
+    <span class="ty">Alaska</span>,
+    <span class="cm">// ... etc</span>
+}
+
+<span class="kw">enum</span> <span class="ty">Coin</span> {
+    <span class="ty">Penny</span>,
+    <span class="ty">Nickel</span>,
+    <span class="ty">Dime</span>,
+    <span class="ty">Quarter</span>(<span class="ty">UsState</span>),   <span class="cm">// this variant carries a state</span>
+}
+
+<span class="kw">fn</span> <span class="fn">value_in_cents</span>(coin: <span class="ty">Coin</span>) -&gt; <span class="ty">u8</span> {
+    <span class="kw">match</span> coin {
+        <span class="ty">Coin</span>::<span class="ty">Penny</span>   =&gt; <span class="ty">1</span>,
+        <span class="ty">Coin</span>::<span class="ty">Nickel</span>  =&gt; <span class="ty">5</span>,
+        <span class="ty">Coin</span>::<span class="ty">Dime</span>    =&gt; <span class="ty">10</span>,
+        <span class="ty">Coin</span>::<span class="ty">Quarter</span>(state) =&gt; {   <span class="cm">// bind the inner value to `state`</span>
+            <span class="fn">println!</span>(<span class="str">"State quarter from {state:?}!"</span>);
+            <span class="ty">25</span>
+        }
+    }
+}</pre>
+    <p>When a <code>Coin::Quarter(UsState::Alaska)</code> matches, <code>state</code> binds to <code>UsState::Alaska</code>, and you can use it inside the arm. This is how you reach the data a variant carries — <code>match</code> destructures it for you.</p>
+    <div class="diagram">
+      <div class="diagram-label">How binding works</div>
+      <pre>value:  Coin::Quarter(UsState::Alaska)
+                      │
+pattern: Coin::Quarter(state)
+                       │
+                       └──► state = UsState::Alaska   ← usable in the arm body</pre>
+    </div>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      A pattern like <code>Coin::Quarter(state)</code> binds the variant's inner data to <code>state</code>, letting you use it inside that arm.
+    </div>
+  </section>
+
+  <!-- 09 -->
+  <section class="lesson-section" id="s09">
+    <div class="section-number">09</div>
+    <h2 class="section-title">Matching Option&lt;T&gt;</h2>
+    <p class="section-subtitle">Safely handling "maybe a value"</p>
+    <p>Now the payoff for <code>Option&lt;T&gt;</code>. Because it's just an enum, you handle it with <code>match</code> — and the compiler makes sure you deal with <code>None</code>. Here's a function that adds one to a number that might be absent:</p>
+    <pre><span class="kw">fn</span> <span class="fn">plus_one</span>(x: <span class="ty">Option</span>&lt;<span class="ty">i32</span>&gt;) -&gt; <span class="ty">Option</span>&lt;<span class="ty">i32</span>&gt; {
+    <span class="kw">match</span> x {
+        <span class="ty">None</span> =&gt; <span class="ty">None</span>,                <span class="cm">// no value in → no value out</span>
+        <span class="ty">Some</span>(i) =&gt; <span class="ty">Some</span>(i + <span class="ty">1</span>),      <span class="cm">// bind the value to i, add 1, re-wrap</span>
+    }
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> five = <span class="ty">Some</span>(<span class="ty">5</span>);
+    <span class="kw">let</span> six = <span class="fn">plus_one</span>(five);    <span class="cm">// Some(6)</span>
+    <span class="kw">let</span> none = <span class="fn">plus_one</span>(<span class="ty">None</span>);    <span class="cm">// None</span>
+}</pre>
+    <p>The <code>Some(i)</code> arm binds the inner value so you can work with it; the <code>None</code> arm handles absence explicitly. There's no way to forget the <code>None</code> case — as the next section shows, the compiler won't let you.</p>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Handle an <code>Option&lt;T&gt;</code> by matching its <code>Some(value)</code> and <code>None</code> arms — the <code>Some</code> arm binds the inner value for you to use.
+    </div>
+  </section>
+
+  <!-- 10 -->
+  <section class="lesson-section" id="s10">
+    <div class="section-number">10</div>
+    <h2 class="section-title">Matches Are Exhaustive</h2>
+    <p class="section-subtitle">The compiler makes you cover every case</p>
+    <p>This is the safety guarantee that makes <code>match</code> so trustworthy: it must be <strong>exhaustive</strong>. You have to handle every possible variant. Leave one out and the code won't compile.</p>
+    <pre><span class="kw">fn</span> <span class="fn">plus_one</span>(x: <span class="ty">Option</span>&lt;<span class="ty">i32</span>&gt;) -&gt; <span class="ty">Option</span>&lt;<span class="ty">i32</span>&gt; {
+    <span class="kw">match</span> x {
+        <span class="ty">Some</span>(i) =&gt; <span class="ty">Some</span>(i + <span class="ty">1</span>),
+        <span class="cm">// forgot the None arm!</span>
+    }
+}
+<span class="err">// ❌ error[E0004]: non-exhaustive patterns: `None` not covered</span></pre>
+    <p>The compiler knows every variant of the enum, so it knows exactly what you missed — and it says so by name. This eliminates a whole category of bugs: the "I forgot to handle that case" crash simply cannot ship.</p>
+    <details class="insight">
+      <summary>💡 Insight — why this matters so much</summary>
+      <div class="dropdown-body">
+        <p>In most languages, forgetting a case in a switch is a silent bug you discover in production. In Rust it's a compile error. Better still, when you later <em>add</em> a new variant to an enum, every <code>match</code> that doesn't handle it stops compiling — the compiler hands you a to-do list of every place you need to update. Exhaustiveness turns the compiler into a refactoring assistant.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      A <code>match</code> must handle every possible variant — leave one out and you get a compile error naming exactly what you missed.
+    </div>
+  </section>
+
+  <!-- 11 -->
+  <section class="lesson-section" id="s11">
+    <div class="section-number">11</div>
+    <h2 class="section-title">Catch-all Patterns and _</h2>
+    <p class="section-subtitle">Handling "everything else" without listing it all</p>
+    <p>Exhaustiveness sounds heavy when an enum has many variants but you only care about a few. Two catch-all patterns solve this. A <strong>named binding</strong> catches every remaining value <em>and</em> gives you access to it:</p>
+    <pre><span class="kw">let</span> dice_roll = <span class="ty">9</span>;
+<span class="kw">match</span> dice_roll {
+    <span class="ty">3</span> =&gt; <span class="fn">add_fancy_hat</span>(),
+    <span class="ty">7</span> =&gt; <span class="fn">remove_fancy_hat</span>(),
+    other =&gt; <span class="fn">move_player</span>(other),   <span class="cm">// catches all other rolls, binds to `other`</span>
+}</pre>
+    <p>If you don't need the value, use <code>_</code> — the wildcard that matches anything and binds nothing:</p>
+    <pre><span class="kw">match</span> dice_roll {
+    <span class="ty">3</span> =&gt; <span class="fn">add_fancy_hat</span>(),
+    <span class="ty">7</span> =&gt; <span class="fn">remove_fancy_hat</span>(),
+    _ =&gt; <span class="fn">reroll</span>(),          <span class="cm">// "anything else" — value ignored</span>
+}
+
+<span class="cm">// And to explicitly do nothing for the rest, use the unit value ():</span>
+<span class="kw">match</span> dice_roll {
+    <span class="ty">3</span> =&gt; <span class="fn">add_fancy_hat</span>(),
+    <span class="ty">7</span> =&gt; <span class="fn">remove_fancy_hat</span>(),
+    _ =&gt; (),               <span class="cm">// nothing happens for any other roll</span>
+}</pre>
+    <p>The catch-all must come <strong>last</strong> — arms are tried top to bottom, so anything after a catch-all would be unreachable. Use <code>other</code> when you need the value, <code>_</code> when you don't.</p>
+    <details class="mistake">
+      <summary>⚠️ Common mistake — catch-all not last</summary>
+      <div class="dropdown-body">
+        <pre><span class="kw">match</span> dice_roll {
+    _ =&gt; <span class="fn">reroll</span>(),        <span class="cm">// catch-all first...</span>
+    <span class="ty">3</span> =&gt; <span class="fn">add_fancy_hat</span>(),   <span class="cm">// ...makes this unreachable</span>
+}
+<span class="err">// ❌ warning: unreachable pattern — the `_` above already matched everything</span></pre>
+        <p>Since arms are evaluated in order, a catch-all placed early swallows every value before the specific arms get a chance. Always put <code>_</code> or a named catch-all at the bottom.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Cover the remaining cases with a named binding (<code>other</code>) when you need the value, or <code>_</code> when you don't — and always place it last.
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PART C — CONCISE CONTROL FLOW WITH if let
+       ═══════════════════════════════════════════════════════════ -->
+
+  <div class="part-divider" id="partC">
+    <div class="part-label">Part C · Chapter 6.3</div>
+    <h2 class="part-title">Concise Control Flow with if let</h2>
+    <p class="part-subtitle">A lighter syntax for when you care about one pattern and want to ignore the rest</p>
+  </div>
+
+  <!-- 12 -->
+  <section class="lesson-section" id="s12">
+    <div class="section-number">12</div>
+    <h2 class="section-title">if let</h2>
+    <p class="section-subtitle">A shorthand when only one pattern matters</p>
+    <p>Sometimes a full <code>match</code> is overkill. If you only want to act on <em>one</em> pattern and ignore everything else, the <code>_ =&gt; ()</code> arm is just noise. Look at this <code>match</code> that only cares about <code>Some</code>:</p>
+    <pre><span class="kw">let</span> config_max = <span class="ty">Some</span>(<span class="ty">3u8</span>);
+<span class="kw">match</span> config_max {
+    <span class="ty">Some</span>(max) =&gt; <span class="fn">println!</span>(<span class="str">"The maximum is configured to be {max}"</span>),
+    _ =&gt; (),   <span class="cm">// we don't care about None — but must write this arm</span>
+}</pre>
+    <p><code>if let</code> expresses the same thing more concisely. It runs its block only when the value matches the pattern, binding any inner data:</p>
+    <pre><span class="kw">let</span> config_max = <span class="ty">Some</span>(<span class="ty">3u8</span>);
+<span class="kw">if let</span> <span class="ty">Some</span>(max) = config_max {
+    <span class="fn">println!</span>(<span class="str">"The maximum is configured to be {max}"</span>);
+}
+<span class="cm">// Reads as: "if config_max matches Some(max), run this with max bound"</span></pre>
+    <p>It's exactly the same behavior — less to type, easier to read. The tradeoff: you give up the exhaustiveness check, since you're deliberately handling only one case. Use it when that's genuinely what you want.</p>
+    <details class="python">
+      <summary>🐍 Python comparison</summary>
+      <div class="dropdown-body">
+        <pre><span class="kw">if</span> config_max <span class="kw">is not</span> <span class="ty">None</span>:
+    max = config_max
+    <span class="fn">print</span>(<span class="str">f"The maximum is configured to be {max}"</span>)</pre>
+        <p>Python's <code>if x is not None:</code> is the everyday equivalent — check for presence, then use the value. Rust's <code>if let</code> combines the check and the unwrap into one line, and it works for <em>any</em> pattern, not just <code>None</code>.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      <code>if let PATTERN = value { ... }</code> runs its block only when the value matches — a concise <code>match</code> for when you care about a single pattern.
+    </div>
+  </section>
+
+  <!-- 13 -->
+  <section class="lesson-section" id="s13">
+    <div class="section-number">13</div>
+    <h2 class="section-title">if let else</h2>
+    <p class="section-subtitle">Handle the one case, and everything else in an <code>else</code></p>
+    <p>You can pair <code>if let</code> with an <code>else</code>, which covers all the patterns the <code>if let</code> didn't. The <code>else</code> plays the role of the <code>_</code> arm in a <code>match</code>. Here's a counter that tallies every non-quarter coin while announcing quarters:</p>
+    <pre><span class="kw">let</span> <span class="kw">mut</span> count = <span class="ty">0</span>;
+
+<span class="cm">// The match version:</span>
+<span class="kw">match</span> coin {
+    <span class="ty">Coin</span>::<span class="ty">Quarter</span>(state) =&gt; <span class="fn">println!</span>(<span class="str">"Quarter from {state:?}!"</span>),
+    _ =&gt; count += <span class="ty">1</span>,
+}
+
+<span class="cm">// The equivalent if let / else:</span>
+<span class="kw">if let</span> <span class="ty">Coin</span>::<span class="ty">Quarter</span>(state) = coin {
+    <span class="fn">println!</span>(<span class="str">"Quarter from {state:?}!"</span>);
+} <span class="kw">else</span> {
+    count += <span class="ty">1</span>;   <span class="cm">// runs for every non-Quarter coin</span>
+}</pre>
+    <p>Both forms behave identically. Choose whichever reads better: a full <code>match</code> when you handle several cases meaningfully, <code>if let</code>/<code>else</code> when it's really "this one pattern versus everything else."</p>
+    <div class="note">
+      <strong>Rule of thumb:</strong> reach for <code>match</code> when exhaustiveness protects you (especially with enums you might extend later), and <code>if let</code> when a single pattern is all you care about and the check would just be ceremony.
+    </div>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      <code>if let … else</code> handles one pattern in the <code>if</code> block and all remaining cases in the <code>else</code> — the compact twin of a two-arm <code>match</code>.
+    </div>
+  </section>
+
+
+  <!-- ═══════════ SUMMARY ═══════════ -->
+  <div class="chapter-summary-section" id="summary">
+    <div class="agenda-title">Chapter 6 Summary</div>
+    <ul class="summary-list">
+      <li>An enum is a type whose value is exactly one of a fixed set of named variants.</li>
+      <li>Declare variants with <code>enum</code> and name them with <code>EnumName::Variant</code>.</li>
+      <li>Variants can hold data, and the variant name doubles as a constructor function.</li>
+      <li>Each variant can carry a different shape of data — none, named fields, a value, or a tuple.</li>
+      <li>Enums get methods through <code>impl</code> blocks, just like structs.</li>
+      <li>Rust has no null; <code>Option&lt;T&gt;</code> is <code>Some(value)</code> or <code>None</code>, forcing you to handle absence.</li>
+      <li><code>match</code> runs the code of the first pattern a value fits, and is an expression.</li>
+      <li>Patterns bind a variant's inner data to a name for use inside the arm.</li>
+      <li>You handle <code>Option&lt;T&gt;</code> by matching its <code>Some</code> and <code>None</code> arms.</li>
+      <li>Matches must be exhaustive — the compiler names any case you forgot.</li>
+      <li>Catch-all patterns (<code>other</code> or <code>_</code>) cover the rest and must come last.</li>
+      <li><code>if let</code> is a concise <code>match</code> for when you care about a single pattern.</li>
+      <li><code>if let … else</code> handles one pattern plus an "everything else" branch.</li>
+    </ul>
+  </div>
+
+  <div class="next-chapter">
+    <div>
+      <div class="next-chapter-label">Next up →</div>
+      <div class="next-chapter-text">
+        <strong>Chapter 7: Managing Growing Projects with Packages, Crates, and Modules</strong> — you've
+        built types and behavior; now you'll learn how to organize them across files and control what's
+        public. Think Python's packages, modules, and <code>import</code>, but with Rust's own rules about
+        paths and visibility.
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+// ── Progress Bar ──
+const progressFill = document.getElementById('progressFill');
+const sidebarProgress = document.getElementById('sidebarProgress');
+
+function updateProgress() {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const pct = docHeight > 0 ? Math.min(Math.round((scrollTop / docHeight) * 100), 100) : 0;
+  progressFill.style.width = pct + '%';
+  sidebarProgress.textContent = pct + '%';
+}
+
+// ── Active Section Highlighting ──
+const sections = document.querySelectorAll('.lesson-section');
+const sidebarLinks = document.querySelectorAll('.sidebar-link');
+
+function updateActiveSection() {
+  let current = '';
+  const offset = window.innerHeight * 0.3;
+
+  sections.forEach(section => {
+    const rect = section.getBoundingClientRect();
+    if (rect.top <= offset) {
+      current = section.id;
+    }
+  });
+
+  sidebarLinks.forEach(link => {
+    link.classList.toggle('active', link.dataset.section === current);
+  });
+}
+
+// ── Back to Top ──
+const backToTop = document.getElementById('backToTop');
+
+function updateBackToTop() {
+  backToTop.classList.toggle('visible', window.scrollY > 400);
+}
+
+backToTop.addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+// ── Scroll Listener (debounced) ──
+let ticking = false;
+window.addEventListener('scroll', () => {
+  if (!ticking) {
+    requestAnimationFrame(() => {
+      updateProgress();
+      updateActiveSection();
+      updateBackToTop();
+      ticking = false;
+    });
+    ticking = true;
+  }
+});
+
+// ── Sidebar Toggle ──
+const sidebar = document.getElementById('sidebar');
+const sidebarToggle = document.getElementById('sidebarToggle');
+const sidebarOverlay = document.getElementById('sidebarOverlay');
+const isMobile = () => window.innerWidth <= 900;
+
+sidebarToggle.addEventListener('click', () => {
+  if (isMobile()) {
+    sidebar.classList.toggle('mobile-open');
+  } else {
+    sidebar.classList.toggle('collapsed');
+  }
+});
+
+sidebarOverlay.addEventListener('click', () => {
+  sidebar.classList.remove('mobile-open');
+});
+
+// Close sidebar on link click (mobile)
+sidebarLinks.forEach(link => {
+  link.addEventListener('click', () => {
+    if (isMobile()) {
+      sidebar.classList.remove('mobile-open');
+    }
+  });
+});
+
+// ── Dark Mode Toggle ──
+const themeToggle = document.getElementById('themeToggle');
+const sunIcon = document.getElementById('sunIcon');
+const moonIcon = document.getElementById('moonIcon');
+
+function setTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  sunIcon.style.display = dark ? 'none' : 'block';
+  moonIcon.style.display = dark ? 'block' : 'none';
+}
+
+// Check system preference
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+setTheme(prefersDark);
+
+themeToggle.addEventListener('click', () => {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  setTheme(!isDark);
+});
+
+// ── Smooth scroll for sidebar links ──
+sidebarLinks.forEach(link => {
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    const target = document.getElementById(link.dataset.section);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+});
+
+// Init
+updateProgress();
+updateActiveSection();
+</script>
+
+</body>
+</html>

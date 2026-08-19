@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rust Chapter 5 — Using Structs to Structure Related Data</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAFAF8;
+    --surface: #FFFFFF;
+    --surface-alt: #F3F2EE;
+    --border: #E0DED8;
+    --border-light: #ECEAE4;
+    --text: #1A1A18;
+    --text-secondary: #5C5B56;
+    --text-muted: #8A8880;
+    --rust-orange: #C8552D;
+    --rust-orange-light: #FDF0EB;
+    --rust-orange-muted: #E8A88C;
+    --python-blue: #3572A5;
+    --python-blue-light: #EBF2F8;
+    --green: #2E7D4F;
+    --green-light: #EDF7F0;
+    --red: #C0392B;
+    --red-light: #FDECEB;
+    --yellow-light: #FFF8E7;
+    --yellow-border: #E6D59E;
+    --code-bg: #1E1E1C;
+    --code-text: #D4D4C8;
+    --code-comment: #7A7A6E;
+    --code-keyword: #D19A66;
+    --code-string: #98C379;
+    --code-fn: #61AFEF;
+    --code-type: #E5C07B;
+    --code-error: #E06C75;
+    --sidebar-bg: #FFFFFF;
+    --sidebar-border: #E0DED8;
+    --sidebar-hover: #F3F2EE;
+    --sidebar-active-bg: #FDF0EB;
+    --sidebar-active-text: #C8552D;
+    --sidebar-width: 280px;
+    --progress-bg: #E0DED8;
+    --progress-fill: #C8552D;
+  }
+
+  [data-theme="dark"] {
+    --bg: #141413;
+    --surface: #1E1E1C;
+    --surface-alt: #262624;
+    --border: #3A3A36;
+    --border-light: #2E2E2A;
+    --text: #E8E8E2;
+    --text-secondary: #A8A89E;
+    --text-muted: #7A7A70;
+    --rust-orange: #E8784A;
+    --rust-orange-light: #2A1D15;
+    --rust-orange-muted: #7A4A30;
+    --python-blue: #6BA2D4;
+    --python-blue-light: #1A2530;
+    --green: #5AAF7A;
+    --green-light: #1A2A1F;
+    --red: #E06050;
+    --red-light: #2A1815;
+    --yellow-light: #2A2618;
+    --yellow-border: #5A5030;
+    --code-bg: #0E0E0D;
+    --code-text: #D4D4C8;
+    --sidebar-bg: #1A1A18;
+    --sidebar-border: #2E2E2A;
+    --sidebar-hover: #262624;
+    --sidebar-active-bg: #2A1D15;
+    --sidebar-active-text: #E8784A;
+    --progress-bg: #3A3A36;
+    --progress-fill: #E8784A;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  /* ── Progress Bar ── */
+  .progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: var(--progress-bg);
+    z-index: 1000;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--progress-fill);
+    transition: width 0.1s linear;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    position: fixed;
+    top: 3px;
+    left: 0;
+    width: var(--sidebar-width);
+    height: calc(100vh - 3px);
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+    overflow-y: auto;
+    padding: 1.25rem 0;
+    z-index: 900;
+    transition: transform 0.3s ease, background 0.3s;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .sidebar.collapsed {
+    transform: translateX(calc(-1 * var(--sidebar-width)));
+  }
+
+  .sidebar-header {
+    padding: 0.5rem 1.25rem 1rem;
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .sidebar-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .sidebar-progress-text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--rust-orange);
+  }
+
+  .sidebar-part {
+    padding: 0.75rem 1.25rem 0.3rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .sidebar-part:not(:first-of-type) {
+    margin-top: 0.25rem;
+    border-top: 1px solid var(--border-light);
+    padding-top: 0.75rem;
+  }
+
+  .sidebar-link {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.4rem 1.25rem;
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    line-height: 1.4;
+    transition: all 0.15s;
+    border-left: 2px solid transparent;
+  }
+  .sidebar-link:hover {
+    background: var(--sidebar-hover);
+    color: var(--text);
+  }
+  .sidebar-link.active {
+    background: var(--sidebar-active-bg);
+    color: var(--sidebar-active-text);
+    border-left-color: var(--rust-orange);
+    font-weight: 500;
+  }
+  .sidebar-link .num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    flex-shrink: 0;
+    min-width: 1.2rem;
+  }
+
+  /* ── Sidebar Toggle ── */
+  .sidebar-toggle {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 950;
+    width: 36px;
+    height: 36px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .sidebar-toggle:hover { background: var(--surface-alt); }
+  .sidebar-toggle svg { width: 18px; height: 18px; stroke: var(--text-secondary); }
+
+  .sidebar:not(.collapsed) ~ .sidebar-toggle {
+    left: calc(var(--sidebar-width) + 12px);
+  }
+
+  /* ── Dark Mode Toggle ── */
+  .theme-toggle {
+    position: fixed;
+    top: 12px;
+    right: 16px;
+    z-index: 950;
+    width: 36px;
+    height: 36px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .theme-toggle:hover { background: var(--surface-alt); }
+  .theme-toggle svg { width: 18px; height: 18px; stroke: var(--text-secondary); fill: none; }
+
+  /* ── Back to Top ── */
+  .back-to-top {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 950;
+    width: 40px;
+    height: 40px;
+    background: var(--rust-orange);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(200,85,45,0.3);
+    pointer-events: none;
+  }
+  .back-to-top.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  .back-to-top:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(200,85,45,0.4); }
+  .back-to-top svg { width: 20px; height: 20px; stroke: #fff; fill: none; }
+
+  /* ── Main Content ── */
+  .main-content {
+    margin-left: var(--sidebar-width);
+    transition: margin-left 0.3s ease;
+  }
+  .sidebar.collapsed ~ .main-content {
+    margin-left: 0;
+  }
+
+  .container {
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 6rem;
+  }
+
+  /* ── Header ── */
+  .chapter-header {
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 2px solid var(--border);
+  }
+  .chapter-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--rust-orange);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  .chapter-title {
+    font-family: 'Fraunces', serif;
+    font-size: 2.4rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+  }
+  .chapter-summary {
+    font-size: 1.05rem;
+    color: var(--text-secondary);
+    max-width: 620px;
+  }
+
+  /* ── Part Divider ── */
+  .part-divider {
+    margin: 3.5rem 0 2.5rem;
+    padding: 1.5rem 0;
+    border-top: 2px solid var(--rust-orange);
+    border-bottom: 1px solid var(--border-light);
+  }
+  .part-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--rust-orange);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+  }
+  .part-title {
+    font-family: 'Fraunces', serif;
+    font-size: 1.7rem;
+    font-weight: 700;
+    line-height: 1.25;
+    margin-bottom: 0.4rem;
+  }
+  .part-subtitle {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+  }
+
+  /* ── Agenda ── */
+  .agenda {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.75rem 2rem;
+    margin-bottom: 3.5rem;
+  }
+  .agenda-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .agenda ol { list-style: none; counter-reset: agenda; }
+  .agenda li {
+    counter-increment: agenda;
+    padding: 0.4rem 0;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+  }
+  .agenda li::before {
+    content: counter(agenda, decimal-leading-zero);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--rust-orange);
+    flex-shrink: 0;
+  }
+  .agenda li strong { color: var(--text); font-weight: 600; }
+  .agenda-part {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-top: 1rem;
+    margin-bottom: 0.25rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-light);
+  }
+
+  /* ── Sections ── */
+  .lesson-section { margin-bottom: 3.5rem; scroll-margin-top: 1.5rem; }
+  .section-number {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--rust-orange);
+    letter-spacing: 0.06em;
+    margin-bottom: 0.25rem;
+  }
+  .section-title {
+    font-family: 'Fraunces', serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+  }
+  .section-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+  }
+  p { margin-bottom: 1rem; }
+  h3 { font-size: 1rem; font-weight: 600; margin-top: 1.75rem; margin-bottom: 0.75rem; }
+
+  /* ── Code ── */
+  pre {
+    background: var(--code-bg);
+    border-radius: 6px;
+    padding: 1.25rem 1.5rem;
+    overflow-x: auto;
+    margin: 1rem 0 1.25rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    line-height: 1.65;
+    color: var(--code-text);
+  }
+  code { font-family: 'IBM Plex Mono', monospace; font-size: 0.88em; }
+  p code, li code, td code {
+    background: var(--surface-alt);
+    padding: 0.15em 0.4em;
+    border-radius: 3px;
+    font-size: 0.85em;
+    color: var(--rust-orange);
+  }
+  .kw { color: var(--code-keyword); }
+  .str { color: var(--code-string); }
+  .fn { color: var(--code-fn); }
+  .ty { color: var(--code-type); }
+  .cm { color: var(--code-comment); font-style: italic; }
+  .err { color: var(--code-error); }
+
+  /* ── Dropdowns ── */
+  details {
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    margin: 1rem 0 1.25rem;
+    overflow: hidden;
+  }
+  details[open] { border-color: var(--border); }
+  summary {
+    padding: 0.7rem 1rem;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 500;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background 0.15s;
+  }
+  summary:hover { background: var(--surface-alt); }
+  summary::marker, summary::-webkit-details-marker { display: none; }
+  summary::before {
+    content: '▸'; font-size: 0.75rem; color: var(--text-muted);
+    transition: transform 0.2s; flex-shrink: 0;
+  }
+  details[open] > summary::before { transform: rotate(90deg); }
+  .dropdown-body {
+    padding: 0 1rem 1rem;
+    border-top: 1px solid var(--border-light);
+  }
+  .dropdown-body pre { margin-top: 0.75rem; }
+  .dropdown-body p { margin-top: 0.75rem; }
+
+  details.python { border-color: var(--python-blue-light); background: var(--python-blue-light); }
+  details.python[open] { border-color: #C8D9E8; }
+  details.python summary { color: var(--python-blue); }
+  details.python summary::before { color: var(--python-blue); }
+  details.python .dropdown-body { border-top-color: #C8D9E8; }
+  [data-theme="dark"] details.python { border-color: #1A2530; background: #1A2530; }
+  [data-theme="dark"] details.python[open] { border-color: #2A3A48; }
+  [data-theme="dark"] details.python .dropdown-body { border-top-color: #2A3A48; }
+
+  details.mistake { border-color: var(--red-light); background: var(--red-light); }
+  details.mistake[open] { border-color: #F0C4C0; }
+  details.mistake summary { color: var(--red); }
+  details.mistake summary::before { color: var(--red); }
+  details.mistake .dropdown-body { border-top-color: #F0C4C0; }
+  [data-theme="dark"] details.mistake { border-color: #2A1815; background: #2A1815; }
+  [data-theme="dark"] details.mistake[open] { border-color: #3A2520; }
+  [data-theme="dark"] details.mistake .dropdown-body { border-top-color: #3A2520; }
+
+  details.insight { border-color: #E8EAFD; background: #F0F1FD; }
+  details.insight[open] { border-color: #C8CBE8; }
+  details.insight summary { color: #4A4FC4; }
+  details.insight summary::before { color: #4A4FC4; }
+  details.insight .dropdown-body { border-top-color: #C8CBE8; }
+  [data-theme="dark"] details.insight { border-color: #1A1A30; background: #1A1A30; }
+  [data-theme="dark"] details.insight[open] { border-color: #2A2A48; }
+  [data-theme="dark"] details.insight .dropdown-body { border-top-color: #2A2A48; }
+
+  /* ── Takeaway ── */
+  .takeaway {
+    background: var(--green-light);
+    border-left: 3px solid var(--green);
+    padding: 0.85rem 1.1rem;
+    border-radius: 0 6px 6px 0;
+    margin: 1.25rem 0;
+    font-size: 0.92rem;
+  }
+  .takeaway-label {
+    font-weight: 600; color: var(--green);
+    font-size: 0.78rem; letter-spacing: 0.04em;
+    text-transform: uppercase; margin-bottom: 0.2rem;
+  }
+
+  /* ── Diagram ── */
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.25rem 0;
+    overflow-x: auto;
+  }
+  .diagram-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem; font-weight: 600;
+    color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 0.05em; margin-bottom: 0.75rem;
+  }
+  .diagram pre {
+    background: transparent; color: var(--text);
+    padding: 0; margin: 0; font-size: 0.8rem; line-height: 1.5;
+  }
+
+  /* ── Rules Box ── */
+  .rules-box {
+    background: var(--rust-orange-light);
+    border: 1px solid var(--rust-orange-muted);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.25rem 0;
+  }
+  .rules-box .rules-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem; font-weight: 600; color: var(--rust-orange);
+    letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 0.65rem;
+  }
+  .rules-box ol { padding-left: 1.25rem; font-size: 0.92rem; }
+  .rules-box li { padding: 0.2rem 0; }
+
+  /* ── Table ── */
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.25rem; font-size: 0.9rem; }
+  th {
+    text-align: left; padding: 0.6rem 0.85rem; background: var(--surface-alt);
+    font-weight: 600; font-size: 0.82rem; border-bottom: 2px solid var(--border);
+  }
+  td { padding: 0.55rem 0.85rem; border-bottom: 1px solid var(--border-light); }
+
+  /* ── Note ── */
+  .note {
+    background: var(--yellow-light);
+    border: 1px solid var(--yellow-border);
+    border-radius: 6px;
+    padding: 0.85rem 1.1rem;
+    margin: 1.25rem 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+  }
+  .note strong { color: var(--text); }
+
+  /* ── Summary ── */
+  .chapter-summary-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.75rem 2rem;
+    margin-top: 3rem;
+  }
+  .summary-list { list-style: none; padding: 0; }
+  .summary-list li {
+    padding: 0.35rem 0; padding-left: 1.25rem;
+    position: relative; font-size: 0.93rem; color: var(--text-secondary);
+  }
+  .summary-list li::before {
+    content: '✓'; position: absolute; left: 0; color: var(--green); font-weight: 600;
+  }
+
+  /* ── Next Chapter ── */
+  .next-chapter {
+    margin-top: 2rem; padding: 1.25rem 1.5rem;
+    background: var(--rust-orange-light); border-radius: 8px;
+  }
+  .next-chapter-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem; font-weight: 600; color: var(--rust-orange);
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .next-chapter-text {
+    font-size: 0.95rem; color: var(--text-secondary); margin-top: 0.2rem;
+  }
+  .next-chapter-text strong { color: var(--text); }
+
+  @media (max-width: 900px) {
+    .sidebar { transform: translateX(calc(-1 * var(--sidebar-width))); }
+    .sidebar.mobile-open { transform: translateX(0); }
+    .main-content { margin-left: 0 !important; }
+    .sidebar:not(.collapsed) ~ .sidebar-toggle { left: 12px; }
+    .sidebar.mobile-open ~ .sidebar-toggle { left: calc(var(--sidebar-width) + 12px); }
+    .sidebar.mobile-open ~ .sidebar-overlay { display: block; }
+  }
+  .sidebar-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3);
+    z-index: 850; backdrop-filter: blur(2px);
+  }
+
+  @media (max-width: 600px) {
+    .container { padding: 2rem 1rem 4rem; }
+    .chapter-title { font-size: 1.8rem; }
+    .part-title { font-size: 1.4rem; }
+    .section-title { font-size: 1.3rem; }
+    pre { padding: 1rem; font-size: 0.8rem; }
+    .agenda, .chapter-summary-section { padding: 1.25rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Progress Bar -->
+<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+<!-- Sidebar -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-title">Chapter 5</span>
+    <span class="sidebar-progress-text" id="sidebarProgress">0%</span>
+  </div>
+
+  <div class="sidebar-part">Part A · Defining Structs</div>
+  <a href="#s01" class="sidebar-link" data-section="s01"><span class="num">01</span> What Is a Struct</a>
+  <a href="#s02" class="sidebar-link" data-section="s02"><span class="num">02</span> Defining &amp; Instantiating</a>
+  <a href="#s03" class="sidebar-link" data-section="s03"><span class="num">03</span> Accessing &amp; Mutating</a>
+  <a href="#s04" class="sidebar-link" data-section="s04"><span class="num">04</span> Field Init Shorthand</a>
+  <a href="#s05" class="sidebar-link" data-section="s05"><span class="num">05</span> Struct Update Syntax</a>
+  <a href="#s06" class="sidebar-link" data-section="s06"><span class="num">06</span> Tuple Structs</a>
+  <a href="#s07" class="sidebar-link" data-section="s07"><span class="num">07</span> Unit-Like Structs</a>
+  <a href="#s08" class="sidebar-link" data-section="s08"><span class="num">08</span> Ownership of Struct Data</a>
+
+  <div class="sidebar-part">Part B · An Example Program</div>
+  <a href="#s09" class="sidebar-link" data-section="s09"><span class="num">09</span> Refactoring With Structs</a>
+  <a href="#s10" class="sidebar-link" data-section="s10"><span class="num">10</span> Deriving Debug</a>
+  <a href="#s11" class="sidebar-link" data-section="s11"><span class="num">11</span> The dbg! Macro</a>
+
+  <div class="sidebar-part">Part C · Method Syntax</div>
+  <a href="#s12" class="sidebar-link" data-section="s12"><span class="num">12</span> Defining Methods</a>
+  <a href="#s13" class="sidebar-link" data-section="s13"><span class="num">13</span> self, &amp;self, &amp;mut self</a>
+  <a href="#s14" class="sidebar-link" data-section="s14"><span class="num">14</span> Methods vs Fields</a>
+  <a href="#s15" class="sidebar-link" data-section="s15"><span class="num">15</span> More Parameters</a>
+  <a href="#s16" class="sidebar-link" data-section="s16"><span class="num">16</span> Associated Functions</a>
+  <a href="#s17" class="sidebar-link" data-section="s17"><span class="num">17</span> Multiple impl Blocks</a>
+</nav>
+
+<!-- Sidebar Overlay (mobile) -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- Sidebar Toggle -->
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+  </svg>
+</button>
+
+<!-- Dark Mode Toggle -->
+<button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+  <svg id="sunIcon" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+    <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+  </svg>
+  <svg id="moonIcon" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </svg>
+</button>
+
+<!-- Back to Top -->
+<button class="back-to-top" id="backToTop" aria-label="Back to top">
+  <svg viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="18 15 12 9 6 15"/>
+  </svg>
+</button>
+
+<!-- Main Content -->
+<div class="main-content" id="mainContent">
+<div class="container">
+
+  <!-- ═══════════ HEADER ═══════════ -->
+  <header class="chapter-header">
+    <div class="chapter-label">The Rust Book · Chapter 5</div>
+    <h1 class="chapter-title">Using Structs to Structure Related Data</h1>
+    <p class="chapter-summary">
+      Now that you understand ownership, it's time to build your own types. A struct bundles related values into one
+      named package — Rust's answer to Python's class. By the end you'll define structs, print them, and give them
+      behavior with methods.
+    </p>
+  </header>
+
+  <!-- ═══════════ AGENDA ═══════════ -->
+  <nav class="agenda">
+    <div class="agenda-title">What we'll cover</div>
+    <ol>
+      <div class="agenda-part">Part A — Defining &amp; Instantiating Structs (5.1)</div>
+      <li><strong>What is a struct</strong> — why group related data into one type</li>
+      <li><strong>Defining and instantiating</strong> — declaring fields and filling them in</li>
+      <li><strong>Accessing and mutating fields</strong> — dot notation and the <code>mut</code> rule</li>
+      <li><strong>Field init shorthand</strong> — skip the repetition when names match</li>
+      <li><strong>Struct update syntax</strong> — build a new instance from an old one</li>
+      <li><strong>Tuple structs</strong> — named types without named fields</li>
+      <li><strong>Unit-like structs</strong> — structs with no data at all</li>
+      <li><strong>Ownership of struct data</strong> — why fields use <code>String</code>, not <code>&amp;str</code></li>
+      <div class="agenda-part">Part B — An Example Program (5.2)</div>
+      <li><strong>Refactoring with structs</strong> — from loose variables to a meaningful type</li>
+      <li><strong>Deriving Debug</strong> — teaching Rust how to print your struct</li>
+      <li><strong>The <code>dbg!</code> macro</strong> — inspecting values without breaking the flow</li>
+      <div class="agenda-part">Part C — Method Syntax (5.3)</div>
+      <li><strong>Defining methods</strong> — attaching behavior with <code>impl</code></li>
+      <li><strong><code>self</code>, <code>&amp;self</code>, <code>&amp;mut self</code></strong> — how a method borrows its instance</li>
+      <li><strong>Methods vs fields</strong> — same name, different meaning</li>
+      <li><strong>Methods with more parameters</strong> — passing another struct in</li>
+      <li><strong>Associated functions</strong> — constructors that don't take <code>self</code></li>
+      <li><strong>Multiple <code>impl</code> blocks</strong> — organizing behavior your way</li>
+    </ol>
+  </nav>
+
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PART A — DEFINING AND INSTANTIATING STRUCTS
+       ═══════════════════════════════════════════════════════════ -->
+
+  <div class="part-divider" id="partA">
+    <div class="part-label">Part A · Chapter 5.1</div>
+    <h2 class="part-title">Defining and Instantiating Structs</h2>
+    <p class="part-subtitle">Custom types that group related, named pieces of data together</p>
+  </div>
+
+  <!-- 01 -->
+  <section class="lesson-section" id="s01">
+    <div class="section-number">01</div>
+    <h2 class="section-title">What Is a Struct</h2>
+    <p class="section-subtitle">Why group related data into one type</p>
+    <p>So far your data has been single values — an <code>i32</code>, a <code>String</code>. But real programs deal with <em>things</em> made of several values: a user has a name, an email, and a login count. A rectangle has a width and a height. Passing those around as loose separate variables is error-prone.</p>
+    <p>A <strong>struct</strong> (short for "structure") lets you name a bundle of values and treat it as one custom type. Each piece of data gets a name, called a <strong>field</strong>. Because you name the fields, a struct is more flexible than a tuple — you don't rely on position.</p>
+    <p>If you know Python's classes or <code>@dataclass</code>, you already have the mental model. The big difference: a struct holds <em>only data</em>. Behavior lives in a separate <code>impl</code> block (Part C), and ownership rules from Chapter 4 apply to every field.</p>
+    <details class="python">
+      <summary>🐍 The Python parallel</summary>
+      <div class="dropdown-body">
+        <pre><span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass
+
+<span class="fn">@dataclass</span>
+<span class="kw">class</span> <span class="ty">User</span>:
+    active: bool
+    username: str
+    email: str
+    sign_in_count: int</pre>
+        <p>A Rust struct is almost exactly a <code>@dataclass</code>: named fields, each with a type. The difference is that a struct never contains methods in its definition — those go in a separate <code>impl</code> block — and every field is owned according to Chapter 4's rules.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      A struct is a custom type that bundles several named fields into one meaningful package — like a Python dataclass, but with data and behavior kept separate.
+    </div>
+  </section>
+
+  <!-- 02 -->
+  <section class="lesson-section" id="s02">
+    <div class="section-number">02</div>
+    <h2 class="section-title">Defining and Instantiating</h2>
+    <p class="section-subtitle">Declaring fields, then filling them in</p>
+    <p>You define a struct with the <code>struct</code> keyword and a name, then list each field with its type. Defining it doesn't create any data — it's a blueprint. To actually use it, you create an <strong>instance</strong> by giving a concrete value for every field.</p>
+    <pre><span class="cm">// Definition — a blueprint. No data exists yet.</span>
+<span class="kw">struct</span> <span class="ty">User</span> {
+    active: <span class="ty">bool</span>,
+    username: <span class="ty">String</span>,
+    email: <span class="ty">String</span>,
+    sign_in_count: <span class="ty">u64</span>,
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="cm">// Instance — one concrete User. Order of fields doesn't matter.</span>
+    <span class="kw">let</span> user1 = <span class="ty">User</span> {
+        active: <span class="kw">true</span>,
+        username: <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"someusername123"</span>),
+        email: <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"someone@example.com"</span>),
+        sign_in_count: <span class="ty">1</span>,
+    };
+}</pre>
+    <p>To read a value, use dot notation: <code>user1.email</code>. Because you name each field explicitly at creation, you can list them in any order — unlike a tuple, where position is everything.</p>
+    <details class="python">
+      <summary>🐍 Python comparison</summary>
+      <div class="dropdown-body">
+        <pre>user1 = <span class="ty">User</span>(
+    active=<span class="ty">True</span>,
+    username=<span class="str">"someusername123"</span>,
+    email=<span class="str">"someone@example.com"</span>,
+    sign_in_count=<span class="ty">1</span>,
+)
+<span class="fn">print</span>(user1.email)   <span class="cm"># same dot access</span></pre>
+        <p>The instantiation reads like Python's keyword arguments, and field access is identical. The key difference is that Rust checks at compile time that you supplied <em>every</em> field with the <em>right</em> type — no missing or misspelled attributes slip through.</p>
+      </div>
+    </details>
+    <details class="mistake">
+      <summary>⚠️ Common mistake — forgetting a field</summary>
+      <div class="dropdown-body">
+        <pre><span class="kw">let</span> user1 = <span class="ty">User</span> {
+    active: <span class="kw">true</span>,
+    username: <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"someusername123"</span>),
+    email: <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"someone@example.com"</span>),
+    <span class="cm">// sign_in_count is missing!</span>
+};   <span class="err">// ❌ error[E0063]: missing field `sign_in_count` in initializer of `User`</span></pre>
+        <p>Rust requires every field to have a value. The compiler caught a bug that Python would only surface later, when something tried to read the missing attribute.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      <code>struct</code> declares the blueprint; a <code>User { ... }</code> literal creates an instance with a value for every field, in any order.
+    </div>
+  </section>
+
+  <!-- 03 -->
+  <section class="lesson-section" id="s03">
+    <div class="section-number">03</div>
+    <h2 class="section-title">Accessing and Mutating Fields</h2>
+    <p class="section-subtitle">Dot notation and the whole-instance <code>mut</code> rule</p>
+    <p>You read and write fields with the same dot notation. But to change a field, the <strong>entire instance</strong> must be mutable — you cannot mark just one field as mutable. This is a deliberate rule: mutability in Rust is a property of the binding, not of individual fields.</p>
+    <pre><span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let mut</span> user1 = <span class="ty">User</span> {          <span class="cm">// the whole instance is mutable</span>
+        active: <span class="kw">true</span>,
+        username: <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"someusername123"</span>),
+        email: <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"someone@example.com"</span>),
+        sign_in_count: <span class="ty">1</span>,
+    };
+
+    user1.email = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"another@example.com"</span>);   <span class="cm">// ✅ allowed</span>
+}</pre>
+    <details class="mistake">
+      <summary>⚠️ Common mistake — mutating an immutable instance</summary>
+      <div class="dropdown-body">
+        <pre><span class="kw">let</span> user1 = <span class="ty">User</span> { <span class="cm">/* ... */</span> };   <span class="cm">// no `mut`</span>
+user1.email = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"x@y.com"</span>);
+<span class="err">// ❌ error[E0594]: cannot assign to `user1.email`, as `user1` is not declared as mutable</span></pre>
+        <p>There's no way to make a single field mutable while the rest stays fixed — it's all-or-nothing per binding. This keeps Rust's mutation rules simple and predictable.</p>
+      </div>
+    </details>
+    <details class="python">
+      <summary>🐍 Python comparison</summary>
+      <div class="dropdown-body">
+        <p>In Python, every attribute of every object is mutable by default — <code>user1.email = "..."</code> always works. Rust flips the default: values are immutable unless you opt in with <code>mut</code>, and that choice applies to the whole instance.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Access fields with a dot. To change any field, the whole instance must be declared <code>mut</code> — Rust has no per-field mutability.
+    </div>
+  </section>
+
+  <!-- 04 -->
+  <section class="lesson-section" id="s04">
+    <div class="section-number">04</div>
+    <h2 class="section-title">Field Init Shorthand</h2>
+    <p class="section-subtitle">Skip the repetition when variable names match field names</p>
+    <p>It's common to build a struct inside a function whose parameters share the field names. Writing <code>email: email</code> feels redundant. Rust's <strong>field init shorthand</strong> lets you write just <code>email</code> when the variable and the field have the same name.</p>
+    <pre><span class="kw">fn</span> <span class="fn">build_user</span>(email: <span class="ty">String</span>, username: <span class="ty">String</span>) -&gt; <span class="ty">User</span> {
+    <span class="ty">User</span> {
+        active: <span class="kw">true</span>,
+        username,           <span class="cm">// shorthand for `username: username`</span>
+        email,              <span class="cm">// shorthand for `email: email`</span>
+        sign_in_count: <span class="ty">1</span>,
+    }
+}</pre>
+    <p>This is purely a convenience — it compiles to exactly the same thing as the long form. Reach for it only when the names genuinely match.</p>
+    <details class="python">
+      <summary>🐍 Python comparison</summary>
+      <div class="dropdown-body">
+        <p>Python has no direct equivalent — you'd still write <code>User(email=email, username=username)</code>. The closest cousin is f-string's <code>f"{email=}"</code> debug syntax, but that's for printing, not construction. Rust's shorthand is a small ergonomics win with no runtime difference.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      When a variable's name matches a field's name, write the name once — <code>username</code> instead of <code>username: username</code>.
+    </div>
+  </section>
+
+  <!-- 05 -->
+  <section class="lesson-section" id="s05">
+    <div class="section-number">05</div>
+    <h2 class="section-title">Struct Update Syntax</h2>
+    <p class="section-subtitle">Build a new instance mostly from an old one</p>
+    <p>Often you want a new instance that's identical to an existing one except for a field or two. The <strong>struct update syntax</strong> <code>..</code> fills in the remaining fields from another instance, so you only spell out what changes.</p>
+    <pre><span class="kw">let</span> user2 = <span class="ty">User</span> {
+    email: <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"another@example.com"</span>),
+    ..user1     <span class="cm">// take every other field from user1</span>
+};</pre>
+    <p>The <code>..user1</code> must come last. But there's a catch tied straight to Chapter 4: this syntax <strong>moves</strong> data. Because <code>user1.username</code> is a <code>String</code> (heap-owned), it moves into <code>user2</code> — so <code>user1</code> as a whole can no longer be used.</p>
+    <div class="diagram">
+      <div class="diagram-label">What <code>..user1</code> moves</div>
+      <pre>user1                                user2
+┌──────────────────┐                 ┌──────────────────┐
+│ active: true     │ ── Copy ──────► │ active: true     │
+│ username: "..."  │ ── MOVE ──────► │ username: "..."  │   ← String moved
+│ email: "old"     │   (replaced)    │ email: "another" │   ← brand new
+│ sign_in_count: 1 │ ── Copy ──────► │ sign_in_count: 1 │
+└──────────────────┘                 └──────────────────┘
+
+user1.username was moved → user1 is no longer usable as a whole.</pre>
+    </div>
+    <details class="mistake">
+      <summary>⚠️ Common mistake — using user1 after an update-move</summary>
+      <div class="dropdown-body">
+        <pre><span class="kw">let</span> user2 = <span class="ty">User</span> { email: <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"a@b.com"</span>), ..user1 };
+<span class="fn">println!</span>(<span class="str">"{}"</span>, user1.username);
+<span class="err">// ❌ error[E0382]: borrow of moved value: `user1.username`</span></pre>
+        <p>Had you overridden <em>both</em> <code>String</code> fields with new values, only the <code>Copy</code> fields (<code>active</code>, <code>sign_in_count</code>) would be taken from <code>user1</code> — and <code>user1</code> would remain fully valid. Move rules from Chapter 4 apply field by field.</p>
+      </div>
+    </details>
+    <details class="python">
+      <summary>🐍 Python comparison</summary>
+      <div class="dropdown-body">
+        <pre><span class="kw">import</span> dataclasses
+user2 = dataclasses.<span class="fn">replace</span>(user1, email=<span class="str">"another@example.com"</span>)</pre>
+        <p><code>dataclasses.replace</code> is the spiritual twin of struct update syntax. The difference: Python copies references and leaves <code>user1</code> fully usable, while Rust <em>moves</em> heap-owned fields, invalidating <code>user1</code>.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      <code>..other</code> fills the unspecified fields from another instance — but it moves heap-owned fields, so the source may become unusable.
+    </div>
+  </section>
+
+  <!-- 06 -->
+  <section class="lesson-section" id="s06">
+    <div class="section-number">06</div>
+    <h2 class="section-title">Tuple Structs</h2>
+    <p class="section-subtitle">Named types without named fields</p>
+    <p>Sometimes you want the meaning of a named type but the fields don't need names — the position says it all. A <strong>tuple struct</strong> gives you that: a name for the type, with fields identified by index.</p>
+    <pre><span class="kw">struct</span> <span class="ty">Color</span>(<span class="ty">i32</span>, <span class="ty">i32</span>, <span class="ty">i32</span>);   <span class="cm">// RGB</span>
+<span class="kw">struct</span> <span class="ty">Point</span>(<span class="ty">i32</span>, <span class="ty">i32</span>, <span class="ty">i32</span>);   <span class="cm">// x, y, z</span>
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> black = <span class="ty">Color</span>(<span class="ty">0</span>, <span class="ty">0</span>, <span class="ty">0</span>);
+    <span class="kw">let</span> origin = <span class="ty">Point</span>(<span class="ty">0</span>, <span class="ty">0</span>, <span class="ty">0</span>);
+
+    <span class="fn">println!</span>(<span class="str">"red channel: {}"</span>, black.<span class="ty">0</span>);   <span class="cm">// access by index, not name</span>
+}</pre>
+    <p>Crucially, <code>Color</code> and <code>Point</code> are <strong>different types</strong> even though both hold three <code>i32</code>s. A function that wants a <code>Point</code> will reject a <code>Color</code>. This lets you give distinct meaning to structurally identical data.</p>
+    <details class="insight">
+      <summary>💡 Analogy — same shape, different label</summary>
+      <div class="dropdown-body">
+        <p>Think of two identical glass jars — one labeled "salt," the other "sugar." Physically interchangeable, but the labels stop you from grabbing the wrong one. Tuple structs are those labels for the compiler: it refuses to swap a <code>Color</code> for a <code>Point</code> even though the bytes match.</p>
+      </div>
+    </details>
+    <details class="python">
+      <summary>🐍 Python comparison</summary>
+      <div class="dropdown-body">
+        <p>The closest thing is <code>collections.namedtuple</code> or <code>typing.NamedTuple</code> — but Python won't stop you from passing a <code>Color</code> where a <code>Point</code> is expected, since it's all just tuples at runtime. Rust makes them genuinely incompatible types.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      A tuple struct names a type but numbers its fields (<code>.0</code>, <code>.1</code>). Two tuple structs with identical fields are still distinct, incompatible types.
+    </div>
+  </section>
+
+  <!-- 07 -->
+  <section class="lesson-section" id="s07">
+    <div class="section-number">07</div>
+    <h2 class="section-title">Unit-Like Structs</h2>
+    <p class="section-subtitle">Structs with no data at all</p>
+    <p>You can define a struct with <em>no fields</em>. These are called <strong>unit-like structs</strong> because they behave like <code>()</code>, the unit type. Why would you want a type that stores nothing? Because sometimes you need a type to hang behavior on — to implement a trait — without any data to go with it.</p>
+    <pre><span class="kw">struct</span> <span class="ty">AlwaysEqual</span>;
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> subject = <span class="ty">AlwaysEqual</span>;   <span class="cm">// no parentheses, no braces</span>
+}</pre>
+    <p>Later, in Chapter 10, you'll implement traits (shared behavior) on types. A unit-like struct is perfect when the behavior matters but there's genuinely no state to carry — for example, a marker type or a trait implementation that always returns the same result.</p>
+    <div class="note">
+      <strong>Don't over-teach yourself here.</strong> Unit-like structs only become useful once you've met traits. For now, just know they exist and that a struct <em>can</em> hold zero fields.
+    </div>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      A unit-like struct (<code>struct AlwaysEqual;</code>) has no fields — useful purely as something to attach behavior to.
+    </div>
+  </section>
+
+  <!-- 08 -->
+  <section class="lesson-section" id="s08">
+    <div class="section-number">08</div>
+    <h2 class="section-title">Ownership of Struct Data</h2>
+    <p class="section-subtitle">Why fields use owned <code>String</code>, not <code>&amp;str</code></p>
+    <p>You may have wondered why the <code>User</code> struct used <code>String</code> (owned) rather than <code>&amp;str</code> (a borrowed slice from Chapter 4). The reason ties directly to ownership: a struct should <strong>own all of its data</strong>, so that data stays valid for as long as the whole struct is valid.</p>
+    <p>If a field were a reference, that reference would point to data owned by <em>something else</em>. Then you'd have to guarantee the borrowed data outlives the struct — and expressing that guarantee requires <strong>lifetimes</strong>, which the compiler will demand you spell out.</p>
+    <pre><span class="kw">struct</span> <span class="ty">User</span> {
+    username: &amp;<span class="ty">str</span>,     <span class="cm">// a reference — borrows data owned elsewhere</span>
+    email: &amp;<span class="ty">str</span>,
+}
+<span class="err">// ❌ error[E0106]: missing lifetime specifier</span>
+<span class="cm">// help: consider introducing a named lifetime parameter: `&lt;'a&gt;`</span></pre>
+    <p>The compiler isn't being difficult — it caught a real ambiguity. It has no way to know how long that borrowed string will live. Using owned <code>String</code> sidesteps the whole question: the struct owns its data, full stop.</p>
+    <div class="note">
+      <strong>We'll return to this.</strong> Storing references in structs is entirely possible, but it needs lifetime annotations — a Chapter 10 topic. For now, prefer owned types like <code>String</code> in your struct fields.
+    </div>
+    <details class="python">
+      <summary>🐍 Python comparison</summary>
+      <div class="dropdown-body">
+        <p>Python never makes you think about this — every attribute is just a reference to a heap object, and the garbage collector keeps things alive as long as anything points to them. Rust has no GC, so it must know at compile time who owns what. Owning the data is the simplest, safest default.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Give struct fields owned types like <code>String</code> so the struct owns its data — storing references would require lifetimes, saved for later.
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PART B — AN EXAMPLE PROGRAM USING STRUCTS
+       ═══════════════════════════════════════════════════════════ -->
+
+  <div class="part-divider" id="partB">
+    <div class="part-label">Part B · Chapter 5.2</div>
+    <h2 class="part-title">An Example Program Using Structs</h2>
+    <p class="part-subtitle">Watch loose variables evolve into a struct that carries meaning — and learn to print it</p>
+  </div>
+
+  <!-- 09 -->
+  <section class="lesson-section" id="s09">
+    <div class="section-number">09</div>
+    <h2 class="section-title">Refactoring With Structs</h2>
+    <p class="section-subtitle">From loose variables to a type that means something</p>
+    <p>Let's compute the area of a rectangle and watch why a struct is the right tool. First, the naive version — two unrelated parameters:</p>
+    <pre><span class="cm">// v1 — width and height are separate. Nothing ties them together.</span>
+<span class="kw">fn</span> <span class="fn">area</span>(width: <span class="ty">u32</span>, height: <span class="ty">u32</span>) -&gt; <span class="ty">u32</span> {
+    width * height
+}</pre>
+    <p>The signature <code>area(width, height)</code> doesn't say these two numbers belong to <em>one</em> rectangle. A tuple groups them, but then <code>.0</code> and <code>.1</code> lose all meaning. A struct gives us the best of both — grouped <em>and</em> named:</p>
+    <pre><span class="kw">struct</span> <span class="ty">Rectangle</span> {
+    width: <span class="ty">u32</span>,
+    height: <span class="ty">u32</span>,
+}
+
+<span class="cm">// v3 — one parameter that clearly means "a rectangle".</span>
+<span class="cm">// We borrow with &amp; so main keeps ownership (Chapter 4!).</span>
+<span class="kw">fn</span> <span class="fn">area</span>(rectangle: &amp;<span class="ty">Rectangle</span>) -&gt; <span class="ty">u32</span> {
+    rectangle.width * rectangle.height
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> rect = <span class="ty">Rectangle</span> { width: <span class="ty">30</span>, height: <span class="ty">50</span> };
+    <span class="fn">println!</span>(<span class="str">"Area: {}"</span>, <span class="fn">area</span>(&amp;rect));   <span class="cm">// 1500 — rect still usable after</span>
+}</pre>
+    <p>Notice <code>&amp;Rectangle</code>: <code>area</code> only needs to <em>read</em> the rectangle, so it borrows an immutable reference. <code>main</code> keeps ownership and can keep using <code>rect</code>. This is Chapter 4's borrowing put to work on your own type.</p>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      A struct turns related loose variables into one named, meaningful type — and functions borrow it with <code>&amp;</code> to read without taking ownership.
+    </div>
+  </section>
+
+  <!-- 10 -->
+  <section class="lesson-section" id="s10">
+    <div class="section-number">10</div>
+    <h2 class="section-title">Deriving Debug</h2>
+    <p class="section-subtitle">Teaching Rust how to print your struct</p>
+    <p>Try to print a <code>Rectangle</code> the obvious way and Rust stops you:</p>
+    <pre><span class="fn">println!</span>(<span class="str">"rect is {rect}"</span>);
+<span class="err">// ❌ error[E0277]: `Rectangle` doesn't implement `std::fmt::Display`</span></pre>
+    <p>The <code>{}</code> placeholder uses <code>Display</code>, which is meant for end-user output — and Rust can't guess how <em>your</em> struct should look to a user. For developer-facing inspection there's <code>{:?}</code>, which uses the <code>Debug</code> trait. But your struct has to opt in first with a <code>#[derive(Debug)]</code> annotation:</p>
+    <pre><span class="kw">#[derive(Debug)]</span>          <span class="cm">// auto-generate a Debug implementation</span>
+<span class="kw">struct</span> <span class="ty">Rectangle</span> {
+    width: <span class="ty">u32</span>,
+    height: <span class="ty">u32</span>,
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> rect = <span class="ty">Rectangle</span> { width: <span class="ty">30</span>, height: <span class="ty">50</span> };
+
+    <span class="fn">println!</span>(<span class="str">"rect is {rect:?}"</span>);    <span class="cm">// Rectangle { width: 30, height: 50 }</span>
+    <span class="fn">println!</span>(<span class="str">"rect is {rect:#?}"</span>);   <span class="cm">// pretty-printed over multiple lines</span>
+}</pre>
+    <p>The <code>{:#?}</code> variant pretty-prints across lines — handy for larger structs. <code>derive</code> is Rust asking the compiler to write boilerplate for you; you'll see it again for traits like <code>Clone</code> and <code>PartialEq</code>.</p>
+    <details class="python">
+      <summary>🐍 Python comparison</summary>
+      <div class="dropdown-body">
+        <pre><span class="fn">@dataclass</span>
+<span class="kw">class</span> <span class="ty">Rectangle</span>:
+    width: int
+    height: int
+
+<span class="fn">print</span>(rect)   <span class="cm"># Rectangle(width=30, height=50) — __repr__ is free</span></pre>
+        <p>A Python <code>@dataclass</code> gives you a readable <code>__repr__</code> automatically. Rust makes it explicit: nothing is printable until you opt in with <code>#[derive(Debug)]</code>. Slightly more typing, but zero surprises about what's printable.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Add <code>#[derive(Debug)]</code> to make a struct printable with <code>{:?}</code> (compact) or <code>{:#?}</code> (pretty) — Rust never prints your types until you opt in.
+    </div>
+  </section>
+
+  <!-- 11 -->
+  <section class="lesson-section" id="s11">
+    <div class="section-number">11</div>
+    <h2 class="section-title">The dbg! Macro</h2>
+    <p class="section-subtitle">Inspecting values without breaking the flow</p>
+    <p>Beyond <code>println!</code>, Rust ships a <code>dbg!</code> macro built for quick debugging. It prints the file and line number, the expression, <em>and</em> its value — then hands the value back, so you can wrap it around an expression without disrupting your code.</p>
+    <pre><span class="kw">#[derive(Debug)]</span>
+<span class="kw">struct</span> <span class="ty">Rectangle</span> { width: <span class="ty">u32</span>, height: <span class="ty">u32</span> }
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> scale = <span class="ty">2</span>;
+    <span class="kw">let</span> rect = <span class="ty">Rectangle</span> {
+        width: <span class="fn">dbg!</span>(<span class="ty">30</span> * scale),   <span class="cm">// prints "30 * scale = 60", returns 60</span>
+        height: <span class="ty">50</span>,
+    };
+
+    <span class="fn">dbg!</span>(&amp;rect);   <span class="cm">// borrow so dbg! doesn't take ownership of rect</span>
+}</pre>
+    <p>Two things to notice. First, <code>dbg!</code> prints to <strong>stderr</strong> (not stdout like <code>println!</code>), so it won't pollute your program's real output. Second, it <em>takes ownership</em> of what you pass and returns it — so we pass <code>&amp;rect</code> to borrow instead, keeping <code>rect</code> usable afterward.</p>
+    <div class="note">
+      <strong>Rule of thumb:</strong> use <code>println!("{x:?}")</code> for logging you want to keep, and <code>dbg!</code> for temporary "what is this value right now?" checks you'll delete later.
+    </div>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      <code>dbg!(&amp;value)</code> prints the file, line, expression, and value to stderr and returns the value — a purpose-built debugging tool that <code>println!</code> can't quite match.
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PART C — METHOD SYNTAX
+       ═══════════════════════════════════════════════════════════ -->
+
+  <div class="part-divider" id="partC">
+    <div class="part-label">Part C · Chapter 5.3</div>
+    <h2 class="part-title">Method Syntax</h2>
+    <p class="part-subtitle">Attaching behavior to your structs — the other half of what a Python class does</p>
+  </div>
+
+  <!-- 12 -->
+  <section class="lesson-section" id="s12">
+    <div class="section-number">12</div>
+    <h2 class="section-title">Defining Methods</h2>
+    <p class="section-subtitle">Attaching behavior with an <code>impl</code> block</p>
+    <p>So far <code>area</code> was a free-standing function. But <code>area</code> is really <em>behavior of a rectangle</em> — it belongs with the type. A <strong>method</strong> is a function defined inside an <code>impl</code> (implementation) block for a struct, whose first parameter is always <code>self</code>.</p>
+    <pre><span class="kw">#[derive(Debug)]</span>
+<span class="kw">struct</span> <span class="ty">Rectangle</span> { width: <span class="ty">u32</span>, height: <span class="ty">u32</span> }
+
+<span class="kw">impl</span> <span class="ty">Rectangle</span> {                <span class="cm">// everything about Rectangle's behavior</span>
+    <span class="kw">fn</span> <span class="fn">area</span>(&amp;<span class="kw">self</span>) -&gt; <span class="ty">u32</span> {     <span class="cm">// &amp;self = borrow the instance we're called on</span>
+        <span class="kw">self</span>.width * <span class="kw">self</span>.height
+    }
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> rect = <span class="ty">Rectangle</span> { width: <span class="ty">30</span>, height: <span class="ty">50</span> };
+    <span class="fn">println!</span>(<span class="str">"Area: {}"</span>, rect.<span class="fn">area</span>());   <span class="cm">// call with a dot — no argument needed</span>
+}</pre>
+    <p>Now you call it as <code>rect.area()</code>. The <code>self</code> refers to the instance the method was called on — here, <code>rect</code>. Grouping the definition and its methods in one <code>impl</code> block keeps everything about <code>Rectangle</code> in one place.</p>
+    <details class="insight">
+      <summary>💡 Insight — automatic referencing</summary>
+      <div class="dropdown-body">
+        <p>In some languages you'd write <code>(&amp;rect).area()</code> when a method takes <code>&amp;self</code>. Rust does <strong>automatic referencing</strong>: given <code>rect.area()</code>, it automatically adds <code>&amp;</code>, <code>&amp;mut</code>, or <code>*</code> to match the method's <code>self</code>. So the same <code>rect.method()</code> syntax works no matter how the method borrows.</p>
+      </div>
+    </details>
+    <details class="python">
+      <summary>🐍 Python comparison</summary>
+      <div class="dropdown-body">
+        <pre><span class="kw">class</span> <span class="ty">Rectangle</span>:
+    <span class="kw">def</span> <span class="fn">area</span>(<span class="kw">self</span>):
+        <span class="kw">return</span> <span class="kw">self</span>.width * <span class="kw">self</span>.height</pre>
+        <p>Nearly identical — both use an explicit <code>self</code> first parameter and call with a dot. The difference is location: Python puts methods <em>inside</em> the class body, Rust puts them in a separate <code>impl</code> block. And Rust's <code>self</code> can borrow (<code>&amp;self</code>) or own (<code>self</code>), which Python never distinguishes.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Methods live in an <code>impl</code> block, take <code>self</code> as their first parameter, and are called with a dot: <code>rect.area()</code>.
+    </div>
+  </section>
+
+  <!-- 13 -->
+  <section class="lesson-section" id="s13">
+    <div class="section-number">13</div>
+    <h2 class="section-title">self, &amp;self, and &amp;mut self</h2>
+    <p class="section-subtitle">How a method borrows — or takes — its instance</p>
+    <p>The form of <code>self</code> decides what the method may do with the instance. It's Chapter 4's ownership rules applied to methods, and choosing the right one is most of the skill:</p>
+    <div class="rules-box">
+      <div class="rules-title">The three forms of self</div>
+      <ol>
+        <li><code>&amp;self</code> — <strong>borrow immutably</strong>. Read the fields; can't change them. The default and most common.</li>
+        <li><code>&amp;mut self</code> — <strong>borrow mutably</strong>. Read <em>and</em> modify fields. Requires the caller's binding to be <code>mut</code>.</li>
+        <li><code>self</code> — <strong>take ownership</strong>. The instance is moved into the method and consumed. Rare — used when transforming a value into something else.</li>
+      </ol>
+    </div>
+    <pre><span class="kw">impl</span> <span class="ty">Rectangle</span> {
+    <span class="kw">fn</span> <span class="fn">area</span>(&amp;<span class="kw">self</span>) -&gt; <span class="ty">u32</span> {          <span class="cm">// reads only</span>
+        <span class="kw">self</span>.width * <span class="kw">self</span>.height
+    }
+
+    <span class="kw">fn</span> <span class="fn">double_width</span>(&amp;<span class="kw">mut</span> <span class="kw">self</span>) {      <span class="cm">// mutates a field</span>
+        <span class="kw">self</span>.width *= <span class="ty">2</span>;
+    }
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let mut</span> rect = <span class="ty">Rectangle</span> { width: <span class="ty">30</span>, height: <span class="ty">50</span> };
+    rect.<span class="fn">double_width</span>();               <span class="cm">// needs `mut` on rect</span>
+    <span class="fn">println!</span>(<span class="str">"{}"</span>, rect.<span class="fn">area</span>());       <span class="cm">// 3000</span>
+}</pre>
+    <details class="mistake">
+      <summary>⚠️ Common mistake — mutating through &amp;self</summary>
+      <div class="dropdown-body">
+        <pre><span class="kw">impl</span> <span class="ty">Rectangle</span> {
+    <span class="kw">fn</span> <span class="fn">grow</span>(&amp;<span class="kw">self</span>) {        <span class="cm">// only borrowed immutably...</span>
+        <span class="kw">self</span>.width += <span class="ty">1</span>;      <span class="cm">// ...but tries to change a field</span>
+    }
+}
+<span class="err">// ❌ error[E0594]: cannot assign to `self.width`, which is behind a `&amp;` reference</span></pre>
+        <p>To modify, the method must take <code>&amp;mut self</code>, and the instance must be declared <code>mut</code>. The compiler enforces the same "one mutable borrow" discipline you learned in Chapter 4.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Use <code>&amp;self</code> to read, <code>&amp;mut self</code> to modify, and bare <code>self</code> (rarely) to consume the instance — the same borrow rules as Chapter 4.
+    </div>
+  </section>
+
+  <!-- 14 -->
+  <section class="lesson-section" id="s14">
+    <div class="section-number">14</div>
+    <h2 class="section-title">Methods vs Fields</h2>
+    <p class="section-subtitle">Same name, different meaning</p>
+    <p>A method can share its name with a field. Rust tells them apart by the parentheses: <code>rect.width</code> reads the field, while <code>rect.width()</code> calls the method. This is often used to build <strong>getters</strong> — methods that return a field's value.</p>
+    <pre><span class="kw">impl</span> <span class="ty">Rectangle</span> {
+    <span class="kw">fn</span> <span class="fn">width</span>(&amp;<span class="kw">self</span>) -&gt; <span class="ty">bool</span> {
+        <span class="kw">self</span>.width &gt; <span class="ty">0</span>          <span class="cm">// the method: "does it have a width?"</span>
+    }
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> rect = <span class="ty">Rectangle</span> { width: <span class="ty">30</span>, height: <span class="ty">50</span> };
+
+    <span class="kw">if</span> rect.<span class="fn">width</span>() {                 <span class="cm">// method call — returns bool</span>
+        <span class="fn">println!</span>(<span class="str">"width is {}"</span>, rect.width);   <span class="cm">// field access — returns u32</span>
+    }
+}</pre>
+    <p>Why bother? Getters matter once you make fields <strong>private</strong> (Chapter 7): outside code can call <code>width()</code> to read the value but can't assign to the field directly. It's the read-only-access pattern, enforced by the compiler.</p>
+    <details class="python">
+      <summary>🐍 Python comparison</summary>
+      <div class="dropdown-body">
+        <pre><span class="kw">class</span> <span class="ty">Rectangle</span>:
+    <span class="fn">@property</span>
+    <span class="kw">def</span> <span class="fn">width</span>(<span class="kw">self</span>):
+        <span class="kw">return</span> <span class="kw">self</span>._width</pre>
+        <p>Python's <code>@property</code> lets an attribute access secretly run a method — no parentheses at the call site. Rust keeps them visually distinct: <code>()</code> always means "call a method." Less magic, more clarity about what's happening.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      <code>rect.width</code> reads a field; <code>rect.width()</code> calls a method — the parentheses disambiguate, enabling read-only getters over private fields.
+    </div>
+  </section>
+
+  <!-- 15 -->
+  <section class="lesson-section" id="s15">
+    <div class="section-number">15</div>
+    <h2 class="section-title">Methods With More Parameters</h2>
+    <p class="section-subtitle">Passing another struct in</p>
+    <p>Methods can take parameters beyond <code>self</code>. A classic example: does one rectangle fully fit inside another? The method borrows <code>self</code> <em>and</em> a reference to the other rectangle.</p>
+    <pre><span class="kw">impl</span> <span class="ty">Rectangle</span> {
+    <span class="kw">fn</span> <span class="fn">can_hold</span>(&amp;<span class="kw">self</span>, other: &amp;<span class="ty">Rectangle</span>) -&gt; <span class="ty">bool</span> {
+        <span class="kw">self</span>.width &gt; other.width &amp;&amp; <span class="kw">self</span>.height &gt; other.height
+    }
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> rect1 = <span class="ty">Rectangle</span> { width: <span class="ty">30</span>, height: <span class="ty">50</span> };
+    <span class="kw">let</span> rect2 = <span class="ty">Rectangle</span> { width: <span class="ty">10</span>, height: <span class="ty">40</span> };
+
+    <span class="fn">println!</span>(<span class="str">"Can rect1 hold rect2? {}"</span>, rect1.<span class="fn">can_hold</span>(&amp;rect2));   <span class="cm">// true</span>
+}</pre>
+    <p>Note the second parameter is <code>&amp;Rectangle</code>, not <code>Rectangle</code> — we only need to <em>read</em> <code>other</code>, so we borrow it. After the call, both <code>rect1</code> and <code>rect2</code> remain usable. Every method parameter follows the same ownership choices as any function.</p>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Methods can take extra parameters after <code>self</code> — and you borrow them with <code>&amp;</code> when you only need to read, keeping the caller's values intact.
+    </div>
+  </section>
+
+  <!-- 16 -->
+  <section class="lesson-section" id="s16">
+    <div class="section-number">16</div>
+    <h2 class="section-title">Associated Functions</h2>
+    <p class="section-subtitle">Functions in <code>impl</code> that don't take <code>self</code></p>
+    <p>Not every function in an <code>impl</code> block needs an instance. A function without a <code>self</code> parameter is an <strong>associated function</strong> — it's tied to the type but doesn't operate on a specific instance. You've already used one: <code>String::from</code>. These are commonly used as <strong>constructors</strong>.</p>
+    <pre><span class="kw">impl</span> <span class="ty">Rectangle</span> {
+    <span class="cm">// No self — this builds a Rectangle rather than using one.</span>
+    <span class="kw">fn</span> <span class="fn">square</span>(size: <span class="ty">u32</span>) -&gt; <span class="ty">Self</span> {
+        <span class="ty">Self</span> { width: size, height: size }   <span class="cm">// Self = Rectangle</span>
+    }
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> sq = <span class="ty">Rectangle</span>::<span class="fn">square</span>(<span class="ty">3</span>);   <span class="cm">// call with :: not . — Rectangle { 3, 3 }</span>
+}</pre>
+    <p>Two things to spot. You call an associated function with the <code>::</code> syntax on the type — <code>Rectangle::square(3)</code> — not with a dot on an instance. And <code>Self</code> (capital S) is a handy alias for the type the <code>impl</code> block is for, so you don't have to repeat <code>Rectangle</code>.</p>
+    <details class="python">
+      <summary>🐍 Python comparison</summary>
+      <div class="dropdown-body">
+        <pre><span class="kw">class</span> <span class="ty">Rectangle</span>:
+    <span class="fn">@classmethod</span>
+    <span class="kw">def</span> <span class="fn">square</span>(<span class="kw">cls</span>, size):
+        <span class="kw">return</span> <span class="kw">cls</span>(size, size)
+
+sq = <span class="ty">Rectangle</span>.<span class="fn">square</span>(<span class="ty">3</span>)</pre>
+        <p>An associated function is Rust's version of a <code>@classmethod</code> or <code>@staticmethod</code> — a factory that lives on the type, not an instance. The <code>::</code> call syntax even mirrors Python's <code>ClassName.method()</code>. Rust's <code>Self</code> plays the role of <code>cls</code>.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      An associated function has no <code>self</code>, is called with <code>Type::name()</code>, and often serves as a constructor — like <code>String::from</code> and <code>Rectangle::square</code>.
+    </div>
+  </section>
+
+  <!-- 17 -->
+  <section class="lesson-section" id="s17">
+    <div class="section-number">17</div>
+    <h2 class="section-title">Multiple impl Blocks</h2>
+    <p class="section-subtitle">Organizing behavior however suits you</p>
+    <p>A struct can have any number of <code>impl</code> blocks. Splitting methods across several blocks is perfectly valid Rust — each block just adds more behavior to the same type.</p>
+    <pre><span class="kw">impl</span> <span class="ty">Rectangle</span> {
+    <span class="kw">fn</span> <span class="fn">area</span>(&amp;<span class="kw">self</span>) -&gt; <span class="ty">u32</span> {
+        <span class="kw">self</span>.width * <span class="kw">self</span>.height
+    }
+}
+
+<span class="kw">impl</span> <span class="ty">Rectangle</span> {                      <span class="cm">// a second block — totally fine</span>
+    <span class="kw">fn</span> <span class="fn">can_hold</span>(&amp;<span class="kw">self</span>, other: &amp;<span class="ty">Rectangle</span>) -&gt; <span class="ty">bool</span> {
+        <span class="kw">self</span>.width &gt; other.width &amp;&amp; <span class="kw">self</span>.height &gt; other.height
+    }
+}</pre>
+    <p>For a simple type there's no reason to split like this. But it becomes genuinely useful with <strong>generic types and traits</strong> (Chapter 10), where different <code>impl</code> blocks apply under different conditions. For now, just know the option exists.</p>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      A type may have multiple <code>impl</code> blocks — harmless for simple structs, and essential once generics and traits arrive.
+    </div>
+  </section>
+
+
+  <!-- ═══════════ SUMMARY ═══════════ -->
+  <div class="chapter-summary-section" id="summary">
+    <div class="agenda-title">Chapter 5 Summary</div>
+    <ul class="summary-list">
+      <li>A struct bundles related, named fields into one custom type — Rust's dataclass.</li>
+      <li>Define the blueprint with <code>struct</code>; create an instance by giving every field a value.</li>
+      <li>Access fields with a dot; to change any field, the whole instance must be <code>mut</code>.</li>
+      <li>Field init shorthand lets you write <code>email</code> instead of <code>email: email</code>.</li>
+      <li>Struct update syntax (<code>..other</code>) copies the rest — but moves heap-owned fields.</li>
+      <li>Tuple structs name a type with positional fields; two with identical fields are still distinct.</li>
+      <li>Unit-like structs hold no data — useful purely for attaching behavior later.</li>
+      <li>Struct fields should own their data (<code>String</code>); references would require lifetimes.</li>
+      <li>A struct groups loose variables into a type functions can borrow with <code>&amp;</code>.</li>
+      <li><code>#[derive(Debug)]</code> makes a struct printable with <code>{:?}</code> and <code>{:#?}</code>.</li>
+      <li><code>dbg!(&amp;value)</code> prints file, line, and value to stderr and returns the value.</li>
+      <li>Methods live in <code>impl</code> blocks, take <code>self</code>, and are called with a dot.</li>
+      <li><code>&amp;self</code> reads, <code>&amp;mut self</code> modifies, <code>self</code> consumes — Chapter 4's rules again.</li>
+      <li>Associated functions (no <code>self</code>) are called with <code>Type::name()</code> and serve as constructors.</li>
+    </ul>
+  </div>
+
+  <div class="next-chapter">
+    <div>
+      <div class="next-chapter-label">Next up →</div>
+      <div class="next-chapter-text">
+        <strong>Chapter 6: Enums and Pattern Matching</strong> — where structs let you say "a value has all
+        of these fields," enums let you say "a value is <em>one of</em> these variants." Think Python's
+        <code>Enum</code>, but far more powerful — each variant can carry its own data, and <code>match</code>
+        forces you to handle every case.
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+// ── Progress Bar ──
+const progressFill = document.getElementById('progressFill');
+const sidebarProgress = document.getElementById('sidebarProgress');
+
+function updateProgress() {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const pct = docHeight > 0 ? Math.min(Math.round((scrollTop / docHeight) * 100), 100) : 0;
+  progressFill.style.width = pct + '%';
+  sidebarProgress.textContent = pct + '%';
+}
+
+// ── Active Section Highlighting ──
+const sections = document.querySelectorAll('.lesson-section');
+const sidebarLinks = document.querySelectorAll('.sidebar-link');
+
+function updateActiveSection() {
+  let current = '';
+  const offset = window.innerHeight * 0.3;
+
+  sections.forEach(section => {
+    const rect = section.getBoundingClientRect();
+    if (rect.top <= offset) {
+      current = section.id;
+    }
+  });
+
+  sidebarLinks.forEach(link => {
+    link.classList.toggle('active', link.dataset.section === current);
+  });
+}
+
+// ── Back to Top ──
+const backToTop = document.getElementById('backToTop');
+
+function updateBackToTop() {
+  backToTop.classList.toggle('visible', window.scrollY > 400);
+}
+
+backToTop.addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+// ── Scroll Listener (debounced) ──
+let ticking = false;
+window.addEventListener('scroll', () => {
+  if (!ticking) {
+    requestAnimationFrame(() => {
+      updateProgress();
+      updateActiveSection();
+      updateBackToTop();
+      ticking = false;
+    });
+    ticking = true;
+  }
+});
+
+// ── Sidebar Toggle ──
+const sidebar = document.getElementById('sidebar');
+const sidebarToggle = document.getElementById('sidebarToggle');
+const sidebarOverlay = document.getElementById('sidebarOverlay');
+const isMobile = () => window.innerWidth <= 900;
+
+sidebarToggle.addEventListener('click', () => {
+  if (isMobile()) {
+    sidebar.classList.toggle('mobile-open');
+  } else {
+    sidebar.classList.toggle('collapsed');
+  }
+});
+
+sidebarOverlay.addEventListener('click', () => {
+  sidebar.classList.remove('mobile-open');
+});
+
+// Close sidebar on link click (mobile)
+sidebarLinks.forEach(link => {
+  link.addEventListener('click', () => {
+    if (isMobile()) {
+      sidebar.classList.remove('mobile-open');
+    }
+  });
+});
+
+// ── Dark Mode Toggle ──
+const themeToggle = document.getElementById('themeToggle');
+const sunIcon = document.getElementById('sunIcon');
+const moonIcon = document.getElementById('moonIcon');
+
+function setTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  sunIcon.style.display = dark ? 'none' : 'block';
+  moonIcon.style.display = dark ? 'block' : 'none';
+}
+
+// Check system preference
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+setTheme(prefersDark);
+
+themeToggle.addEventListener('click', () => {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  setTheme(!isDark);
+});
+
+// ── Smooth scroll for sidebar links ──
+sidebarLinks.forEach(link => {
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    const target = document.getElementById(link.dataset.section);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+});
+
+// Init
+updateProgress();
+updateActiveSection();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rust Chapter 4 — Understanding Ownership</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAFAF8;
+    --surface: #FFFFFF;
+    --surface-alt: #F3F2EE;
+    --border: #E0DED8;
+    --border-light: #ECEAE4;
+    --text: #1A1A18;
+    --text-secondary: #5C5B56;
+    --text-muted: #8A8880;
+    --rust-orange: #C8552D;
+    --rust-orange-light: #FDF0EB;
+    --rust-orange-muted: #E8A88C;
+    --python-blue: #3572A5;
+    --python-blue-light: #EBF2F8;
+    --green: #2E7D4F;
+    --green-light: #EDF7F0;
+    --red: #C0392B;
+    --red-light: #FDECEB;
+    --yellow-light: #FFF8E7;
+    --yellow-border: #E6D59E;
+    --code-bg: #1E1E1C;
+    --code-text: #D4D4C8;
+    --code-comment: #7A7A6E;
+    --code-keyword: #D19A66;
+    --code-string: #98C379;
+    --code-fn: #61AFEF;
+    --code-type: #E5C07B;
+    --code-error: #E06C75;
+    --sidebar-bg: #FFFFFF;
+    --sidebar-border: #E0DED8;
+    --sidebar-hover: #F3F2EE;
+    --sidebar-active-bg: #FDF0EB;
+    --sidebar-active-text: #C8552D;
+    --sidebar-width: 280px;
+    --progress-bg: #E0DED8;
+    --progress-fill: #C8552D;
+  }
+
+  [data-theme="dark"] {
+    --bg: #141413;
+    --surface: #1E1E1C;
+    --surface-alt: #262624;
+    --border: #3A3A36;
+    --border-light: #2E2E2A;
+    --text: #E8E8E2;
+    --text-secondary: #A8A89E;
+    --text-muted: #7A7A70;
+    --rust-orange: #E8784A;
+    --rust-orange-light: #2A1D15;
+    --rust-orange-muted: #7A4A30;
+    --python-blue: #6BA2D4;
+    --python-blue-light: #1A2530;
+    --green: #5AAF7A;
+    --green-light: #1A2A1F;
+    --red: #E06050;
+    --red-light: #2A1815;
+    --yellow-light: #2A2618;
+    --yellow-border: #5A5030;
+    --code-bg: #0E0E0D;
+    --code-text: #D4D4C8;
+    --sidebar-bg: #1A1A18;
+    --sidebar-border: #2E2E2A;
+    --sidebar-hover: #262624;
+    --sidebar-active-bg: #2A1D15;
+    --sidebar-active-text: #E8784A;
+    --progress-bg: #3A3A36;
+    --progress-fill: #E8784A;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  /* ── Progress Bar ── */
+  .progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: var(--progress-bg);
+    z-index: 1000;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--progress-fill);
+    transition: width 0.1s linear;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    position: fixed;
+    top: 3px;
+    left: 0;
+    width: var(--sidebar-width);
+    height: calc(100vh - 3px);
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+    overflow-y: auto;
+    padding: 1.25rem 0;
+    z-index: 900;
+    transition: transform 0.3s ease, background 0.3s;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .sidebar.collapsed {
+    transform: translateX(calc(-1 * var(--sidebar-width)));
+  }
+
+  .sidebar-header {
+    padding: 0.5rem 1.25rem 1rem;
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .sidebar-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .sidebar-progress-text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--rust-orange);
+  }
+
+  .sidebar-part {
+    padding: 0.75rem 1.25rem 0.3rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .sidebar-part:not(:first-of-type) {
+    margin-top: 0.25rem;
+    border-top: 1px solid var(--border-light);
+    padding-top: 0.75rem;
+  }
+
+  .sidebar-link {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.4rem 1.25rem;
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    line-height: 1.4;
+    transition: all 0.15s;
+    border-left: 2px solid transparent;
+  }
+  .sidebar-link:hover {
+    background: var(--sidebar-hover);
+    color: var(--text);
+  }
+  .sidebar-link.active {
+    background: var(--sidebar-active-bg);
+    color: var(--sidebar-active-text);
+    border-left-color: var(--rust-orange);
+    font-weight: 500;
+  }
+  .sidebar-link .num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    flex-shrink: 0;
+    min-width: 1.2rem;
+  }
+
+  /* ── Sidebar Toggle ── */
+  .sidebar-toggle {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 950;
+    width: 36px;
+    height: 36px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .sidebar-toggle:hover { background: var(--surface-alt); }
+  .sidebar-toggle svg { width: 18px; height: 18px; stroke: var(--text-secondary); }
+
+  .sidebar:not(.collapsed) ~ .sidebar-toggle {
+    left: calc(var(--sidebar-width) + 12px);
+  }
+
+  /* ── Dark Mode Toggle ── */
+  .theme-toggle {
+    position: fixed;
+    top: 12px;
+    right: 16px;
+    z-index: 950;
+    width: 36px;
+    height: 36px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .theme-toggle:hover { background: var(--surface-alt); }
+  .theme-toggle svg { width: 18px; height: 18px; stroke: var(--text-secondary); fill: none; }
+
+  /* ── Back to Top ── */
+  .back-to-top {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 950;
+    width: 40px;
+    height: 40px;
+    background: var(--rust-orange);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(200,85,45,0.3);
+    pointer-events: none;
+  }
+  .back-to-top.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  .back-to-top:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(200,85,45,0.4); }
+  .back-to-top svg { width: 20px; height: 20px; stroke: #fff; fill: none; }
+
+  /* ── Main Content ── */
+  .main-content {
+    margin-left: var(--sidebar-width);
+    transition: margin-left 0.3s ease;
+  }
+  .sidebar.collapsed ~ .main-content {
+    margin-left: 0;
+  }
+
+  .container {
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 6rem;
+  }
+
+  /* ── Header ── */
+  .chapter-header {
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 2px solid var(--border);
+  }
+  .chapter-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--rust-orange);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  .chapter-title {
+    font-family: 'Fraunces', serif;
+    font-size: 2.4rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+  }
+  .chapter-summary {
+    font-size: 1.05rem;
+    color: var(--text-secondary);
+    max-width: 620px;
+  }
+
+  /* ── Part Divider ── */
+  .part-divider {
+    margin: 3.5rem 0 2.5rem;
+    padding: 1.5rem 0;
+    border-top: 2px solid var(--rust-orange);
+    border-bottom: 1px solid var(--border-light);
+  }
+  .part-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--rust-orange);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+  }
+  .part-title {
+    font-family: 'Fraunces', serif;
+    font-size: 1.7rem;
+    font-weight: 700;
+    line-height: 1.25;
+    margin-bottom: 0.4rem;
+  }
+  .part-subtitle {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+  }
+
+  /* ── Agenda ── */
+  .agenda {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.75rem 2rem;
+    margin-bottom: 3.5rem;
+  }
+  .agenda-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .agenda ol { list-style: none; counter-reset: agenda; }
+  .agenda li {
+    counter-increment: agenda;
+    padding: 0.4rem 0;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+  }
+  .agenda li::before {
+    content: counter(agenda, decimal-leading-zero);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--rust-orange);
+    flex-shrink: 0;
+  }
+  .agenda li strong { color: var(--text); font-weight: 600; }
+  .agenda-part {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-top: 1rem;
+    margin-bottom: 0.25rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-light);
+  }
+
+  /* ── Sections ── */
+  .lesson-section { margin-bottom: 3.5rem; scroll-margin-top: 1.5rem; }
+  .section-number {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--rust-orange);
+    letter-spacing: 0.06em;
+    margin-bottom: 0.25rem;
+  }
+  .section-title {
+    font-family: 'Fraunces', serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+  }
+  .section-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+  }
+  p { margin-bottom: 1rem; }
+  h3 { font-size: 1rem; font-weight: 600; margin-top: 1.75rem; margin-bottom: 0.75rem; }
+
+  /* ── Code ── */
+  pre {
+    background: var(--code-bg);
+    border-radius: 6px;
+    padding: 1.25rem 1.5rem;
+    overflow-x: auto;
+    margin: 1rem 0 1.25rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    line-height: 1.65;
+    color: var(--code-text);
+  }
+  code { font-family: 'IBM Plex Mono', monospace; font-size: 0.88em; }
+  p code, li code, td code {
+    background: var(--surface-alt);
+    padding: 0.15em 0.4em;
+    border-radius: 3px;
+    font-size: 0.85em;
+    color: var(--rust-orange);
+  }
+  .kw { color: var(--code-keyword); }
+  .str { color: var(--code-string); }
+  .fn { color: var(--code-fn); }
+  .ty { color: var(--code-type); }
+  .cm { color: var(--code-comment); font-style: italic; }
+  .err { color: var(--code-error); }
+
+  /* ── Dropdowns ── */
+  details {
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    margin: 1rem 0 1.25rem;
+    overflow: hidden;
+  }
+  details[open] { border-color: var(--border); }
+  summary {
+    padding: 0.7rem 1rem;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 500;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background 0.15s;
+  }
+  summary:hover { background: var(--surface-alt); }
+  summary::marker, summary::-webkit-details-marker { display: none; }
+  summary::before {
+    content: '▸'; font-size: 0.75rem; color: var(--text-muted);
+    transition: transform 0.2s; flex-shrink: 0;
+  }
+  details[open] > summary::before { transform: rotate(90deg); }
+  .dropdown-body {
+    padding: 0 1rem 1rem;
+    border-top: 1px solid var(--border-light);
+  }
+  .dropdown-body pre { margin-top: 0.75rem; }
+  .dropdown-body p { margin-top: 0.75rem; }
+
+  details.python { border-color: var(--python-blue-light); background: var(--python-blue-light); }
+  details.python[open] { border-color: #C8D9E8; }
+  details.python summary { color: var(--python-blue); }
+  details.python summary::before { color: var(--python-blue); }
+  details.python .dropdown-body { border-top-color: #C8D9E8; }
+  [data-theme="dark"] details.python { border-color: #1A2530; background: #1A2530; }
+  [data-theme="dark"] details.python[open] { border-color: #2A3A48; }
+  [data-theme="dark"] details.python .dropdown-body { border-top-color: #2A3A48; }
+
+  details.mistake { border-color: var(--red-light); background: var(--red-light); }
+  details.mistake[open] { border-color: #F0C4C0; }
+  details.mistake summary { color: var(--red); }
+  details.mistake summary::before { color: var(--red); }
+  details.mistake .dropdown-body { border-top-color: #F0C4C0; }
+  [data-theme="dark"] details.mistake { border-color: #2A1815; background: #2A1815; }
+  [data-theme="dark"] details.mistake[open] { border-color: #3A2520; }
+  [data-theme="dark"] details.mistake .dropdown-body { border-top-color: #3A2520; }
+
+  details.insight { border-color: #E8EAFD; background: #F0F1FD; }
+  details.insight[open] { border-color: #C8CBE8; }
+  details.insight summary { color: #4A4FC4; }
+  details.insight summary::before { color: #4A4FC4; }
+  details.insight .dropdown-body { border-top-color: #C8CBE8; }
+  [data-theme="dark"] details.insight { border-color: #1A1A30; background: #1A1A30; }
+  [data-theme="dark"] details.insight[open] { border-color: #2A2A48; }
+  [data-theme="dark"] details.insight .dropdown-body { border-top-color: #2A2A48; }
+
+  /* ── Takeaway ── */
+  .takeaway {
+    background: var(--green-light);
+    border-left: 3px solid var(--green);
+    padding: 0.85rem 1.1rem;
+    border-radius: 0 6px 6px 0;
+    margin: 1.25rem 0;
+    font-size: 0.92rem;
+  }
+  .takeaway-label {
+    font-weight: 600; color: var(--green);
+    font-size: 0.78rem; letter-spacing: 0.04em;
+    text-transform: uppercase; margin-bottom: 0.2rem;
+  }
+
+  /* ── Diagram ── */
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.25rem 0;
+    overflow-x: auto;
+  }
+  .diagram-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem; font-weight: 600;
+    color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 0.05em; margin-bottom: 0.75rem;
+  }
+  .diagram pre {
+    background: transparent; color: var(--text);
+    padding: 0; margin: 0; font-size: 0.8rem; line-height: 1.5;
+  }
+
+  /* ── Rules Box ── */
+  .rules-box {
+    background: var(--rust-orange-light);
+    border: 1px solid var(--rust-orange-muted);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.25rem 0;
+  }
+  .rules-box .rules-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem; font-weight: 600; color: var(--rust-orange);
+    letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 0.65rem;
+  }
+  .rules-box ol { padding-left: 1.25rem; font-size: 0.92rem; }
+  .rules-box li { padding: 0.2rem 0; }
+
+  /* ── Table ── */
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.25rem; font-size: 0.9rem; }
+  th {
+    text-align: left; padding: 0.6rem 0.85rem; background: var(--surface-alt);
+    font-weight: 600; font-size: 0.82rem; border-bottom: 2px solid var(--border);
+  }
+  td { padding: 0.55rem 0.85rem; border-bottom: 1px solid var(--border-light); }
+
+  /* ── Note ── */
+  .note {
+    background: var(--yellow-light);
+    border: 1px solid var(--yellow-border);
+    border-radius: 6px;
+    padding: 0.85rem 1.1rem;
+    margin: 1.25rem 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+  }
+  .note strong { color: var(--text); }
+
+  /* ── Summary ── */
+  .chapter-summary-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.75rem 2rem;
+    margin-top: 3rem;
+  }
+  .summary-list { list-style: none; padding: 0; }
+  .summary-list li {
+    padding: 0.35rem 0; padding-left: 1.25rem;
+    position: relative; font-size: 0.93rem; color: var(--text-secondary);
+  }
+  .summary-list li::before {
+    content: '✓'; position: absolute; left: 0; color: var(--green); font-weight: 600;
+  }
+
+  /* ── Next Chapter ── */
+  .next-chapter {
+    margin-top: 2rem; padding: 1.25rem 1.5rem;
+    background: var(--rust-orange-light); border-radius: 8px;
+  }
+  .next-chapter-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem; font-weight: 600; color: var(--rust-orange);
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .next-chapter-text {
+    font-size: 0.95rem; color: var(--text-secondary); margin-top: 0.2rem;
+  }
+  .next-chapter-text strong { color: var(--text); }
+
+  @media (max-width: 900px) {
+    .sidebar { transform: translateX(calc(-1 * var(--sidebar-width))); }
+    .sidebar.mobile-open { transform: translateX(0); }
+    .main-content { margin-left: 0 !important; }
+    .sidebar:not(.collapsed) ~ .sidebar-toggle { left: 12px; }
+    .sidebar.mobile-open ~ .sidebar-toggle { left: calc(var(--sidebar-width) + 12px); }
+    .sidebar.mobile-open ~ .sidebar-overlay { display: block; }
+  }
+  .sidebar-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3);
+    z-index: 850; backdrop-filter: blur(2px);
+  }
+
+  @media (max-width: 600px) {
+    .container { padding: 2rem 1rem 4rem; }
+    .chapter-title { font-size: 1.8rem; }
+    .part-title { font-size: 1.4rem; }
+    .section-title { font-size: 1.3rem; }
+    pre { padding: 1rem; font-size: 0.8rem; }
+    .agenda, .chapter-summary-section { padding: 1.25rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Progress Bar -->
+<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+<!-- Sidebar -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-title">Chapter 4</span>
+    <span class="sidebar-progress-text" id="sidebarProgress">0%</span>
+  </div>
+
+  <div class="sidebar-part">Part A · Ownership</div>
+  <a href="#s01" class="sidebar-link" data-section="s01"><span class="num">01</span> Stack vs Heap</a>
+  <a href="#s02" class="sidebar-link" data-section="s02"><span class="num">02</span> The Three Rules</a>
+  <a href="#s03" class="sidebar-link" data-section="s03"><span class="num">03</span> Variable Scope</a>
+  <a href="#s04" class="sidebar-link" data-section="s04"><span class="num">04</span> The String Type</a>
+  <a href="#s05" class="sidebar-link" data-section="s05"><span class="num">05</span> Move Semantics</a>
+  <a href="#s06" class="sidebar-link" data-section="s06"><span class="num">06</span> Clone and Copy</a>
+  <a href="#s07" class="sidebar-link" data-section="s07"><span class="num">07</span> Ownership &amp; Functions</a>
+
+  <div class="sidebar-part">Part B · Borrowing</div>
+  <a href="#s08" class="sidebar-link" data-section="s08"><span class="num">08</span> References</a>
+  <a href="#s09" class="sidebar-link" data-section="s09"><span class="num">09</span> Mutable References</a>
+  <a href="#s10" class="sidebar-link" data-section="s10"><span class="num">10</span> Rules of References</a>
+  <a href="#s11" class="sidebar-link" data-section="s11"><span class="num">11</span> Dangling References</a>
+
+  <div class="sidebar-part">Part C · Slices</div>
+  <a href="#s12" class="sidebar-link" data-section="s12"><span class="num">12</span> Problem With Indices</a>
+  <a href="#s13" class="sidebar-link" data-section="s13"><span class="num">13</span> String Slices</a>
+  <a href="#s14" class="sidebar-link" data-section="s14"><span class="num">14</span> Syntax Shortcuts</a>
+  <a href="#s15" class="sidebar-link" data-section="s15"><span class="num">15</span> Compiler Saves You</a>
+  <a href="#s16" class="sidebar-link" data-section="s16"><span class="num">16</span> Literals Are Slices</a>
+  <a href="#s17" class="sidebar-link" data-section="s17"><span class="num">17</span> &amp;str vs &amp;String</a>
+  <a href="#s18" class="sidebar-link" data-section="s18"><span class="num">18</span> Array Slices</a>
+</nav>
+
+<!-- Sidebar Overlay (mobile) -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- Sidebar Toggle -->
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+  </svg>
+</button>
+
+<!-- Dark Mode Toggle -->
+<button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+  <svg id="sunIcon" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+    <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+  </svg>
+  <svg id="moonIcon" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </svg>
+</button>
+
+<!-- Back to Top -->
+<button class="back-to-top" id="backToTop" aria-label="Back to top">
+  <svg viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="18 15 12 9 6 15"/>
+  </svg>
+</button>
+
+<!-- Main Content -->
+<div class="main-content" id="mainContent">
+<div class="container">
+
+  <!-- ═══════════ HEADER ═══════════ -->
+  <header class="chapter-header">
+    <div class="chapter-label">The Rust Book · Chapter 4</div>
+    <h1 class="chapter-title">Understanding Ownership</h1>
+    <p class="chapter-summary">
+      Ownership is Rust's most unique feature and the reason it can guarantee memory safety without a garbage collector.
+      This is the chapter that separates "writing Rust" from "fighting Rust." Take your time here.
+    </p>
+  </header>
+
+  <!-- ═══════════ AGENDA ═══════════ -->
+  <nav class="agenda">
+    <div class="agenda-title">What we'll cover</div>
+    <ol>
+      <div class="agenda-part">Part A — What is Ownership (4.1)</div>
+      <li><strong>Stack vs Heap</strong> — where data lives and why it matters</li>
+      <li><strong>The three ownership rules</strong> — Rust's non-negotiable contract</li>
+      <li><strong>Variable scope</strong> — when values are born and when they die</li>
+      <li><strong>The String type</strong> — your first heap-allocated type</li>
+      <li><strong>Move semantics</strong> — what happens when you assign one variable to another</li>
+      <li><strong>Clone and Copy</strong> — when you actually want to duplicate data</li>
+      <li><strong>Ownership and functions</strong> — passing values in and getting them back</li>
+      <div class="agenda-part">Part B — References &amp; Borrowing (4.2)</div>
+      <li><strong>References</strong> — looking at data without taking ownership</li>
+      <li><strong>Mutable references</strong> — modifying borrowed data, with strict rules</li>
+      <li><strong>The rules of references</strong> — Rust's two-rule system</li>
+      <li><strong>Dangling references</strong> — a bug Rust makes impossible</li>
+      <div class="agenda-part">Part C — The Slice Type (4.3)</div>
+      <li><strong>The problem with indices</strong> — why returning a number is fragile</li>
+      <li><strong>String slices</strong> — referencing a portion of a String</li>
+      <li><strong>Slice syntax shortcuts</strong> — range expressions made concise</li>
+      <li><strong>The compiler saves you</strong> — how slices prevent stale-reference bugs</li>
+      <li><strong>String literals are slices</strong> — where <code>"hello"</code> actually lives</li>
+      <li><strong><code>&amp;str</code> vs <code>&amp;String</code></strong> — why functions should take <code>&amp;str</code></li>
+      <li><strong>Array slices</strong> — the same concept beyond strings</li>
+    </ol>
+  </nav>
+
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PART A — WHAT IS OWNERSHIP
+       ═══════════════════════════════════════════════════════════ -->
+
+  <div class="part-divider" id="partA">
+    <div class="part-label">Part A · Chapter 4.1</div>
+    <h2 class="part-title">What Is Ownership</h2>
+    <p class="part-subtitle">The rules that make Rust's memory safety possible — without a garbage collector</p>
+  </div>
+
+  <!-- 01 -->
+  <section class="lesson-section" id="s01">
+    <div class="section-number">01</div>
+    <h2 class="section-title">Stack vs Heap</h2>
+    <p class="section-subtitle">Where data lives and why it matters</p>
+    <p>In Python, you never think about where your data lives in memory. Python handles it all behind the scenes with a garbage collector. In Rust, there's no garbage collector — so understanding <em>where</em> data lives is essential.</p>
+    <h3>The Stack — fast, rigid, automatic</h3>
+    <p>Think of a stack of plates. You add plates on top and remove from the top — last in, first out. The stack stores data whose size is known at compile time: integers, floats, booleans, fixed-size arrays. Allocation and cleanup are instant.</p>
+    <h3>The Heap — flexible, slower, manual</h3>
+    <p>The heap is a big pool of memory. When you need space for data whose size isn't known at compile time (like a string of any length), you ask the allocator to find a spot. It returns a <em>pointer</em> — the stack stores that pointer, and the actual data lives on the heap.</p>
+    <div class="diagram">
+      <div class="diagram-label">Stack vs Heap</div>
+      <pre>STACK (fast, fixed-size)          HEAP (flexible, dynamic)
+┌──────────────┐                  ┌─────────────────────────┐
+│ x: i32 = 42  │                  │                         │
+│ y: bool = T  │                  │  "hello world" bytes    │
+│ ptr ─────────│──────────────►   │  (allocated at runtime) │
+│ len: 11      │                  │                         │
+│ capacity: 11 │                  └─────────────────────────┘
+└──────────────┘
+   Cleaned up                        Must be freed when
+   automatically                     no longer needed</pre>
+    </div>
+    <details class="python">
+      <summary>🐍 How Python handles this</summary>
+      <div class="dropdown-body">
+        <p>In Python, almost everything lives on the heap. Python uses <strong>reference counting + a garbage collector</strong> to clean things up automatically. You never think about it.</p>
+        <p>Rust has no garbage collector. Instead, it uses <strong>ownership rules</strong> enforced at compile time. The compiler figures out exactly when to free heap data — no runtime overhead.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Stack data is fast and automatic. Heap data is flexible but needs to be freed. Ownership is Rust's system for knowing when to free heap data — at compile time, with zero runtime cost.
+    </div>
+  </section>
+
+  <!-- 02 -->
+  <section class="lesson-section" id="s02">
+    <div class="section-number">02</div>
+    <h2 class="section-title">The Three Ownership Rules</h2>
+    <p class="section-subtitle">Rust's non-negotiable contract</p>
+    <p>Every piece of data in Rust follows these three rules. No exceptions:</p>
+    <div class="rules-box">
+      <div class="rules-title">Ownership rules</div>
+      <ol>
+        <li>Each value in Rust has a variable called its <strong>owner</strong>.</li>
+        <li>There can only be <strong>one owner</strong> at a time.</li>
+        <li>When the owner goes <strong>out of scope</strong>, the value is <strong>dropped</strong> (freed).</li>
+      </ol>
+    </div>
+    <p>These three rules are the entire foundation. Every concept in this chapter — moves, borrows, slices — is a consequence of these rules.</p>
+    <details class="python">
+      <summary>🐍 Python comparison</summary>
+      <div class="dropdown-body">
+        <p>In Python, values can have <strong>many references</strong>. Python tracks the count and frees the value when the count hits zero. Flexible but requires a runtime garbage collector.</p>
+        <p>Rust's approach: <strong>one owner, period.</strong> No counting needed. The compiler enforces this — no runtime mechanism required.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      One owner. When the owner leaves scope, the value is freed. This single idea replaces Python's entire garbage collector.
+    </div>
+  </section>
+
+  <!-- 03 -->
+  <section class="lesson-section" id="s03">
+    <div class="section-number">03</div>
+    <h2 class="section-title">Variable Scope</h2>
+    <p class="section-subtitle">When values are born and when they die</p>
+    <p>A variable is valid from the point it's declared until its enclosing curly braces end:</p>
+    <pre>{                              <span class="cm">// s is not valid here — not declared yet</span>
+    <span class="kw">let</span> s = <span class="str">"hello"</span>;          <span class="cm">// s is valid from this point forward</span>
+
+    <span class="cm">// you can use s here</span>
+
+}                              <span class="cm">// scope over — s is no longer valid</span></pre>
+    <p>The moment <code>s</code> goes out of scope (the closing <code>}</code>), Rust calls a special function called <code>drop</code> which frees any resources the variable owned.</p>
+    <details class="python">
+      <summary>🐍 Python comparison</summary>
+      <div class="dropdown-body">
+        <p>In Python, a variable created inside an <code>if</code> block is still accessible after the block ends. Python cleans up when the reference count hits zero, which may be much later.</p>
+        <pre><span class="kw">if</span> <span class="ty">True</span>:
+    s = <span class="str">"hello"</span>
+<span class="fn">print</span>(s)    <span class="cm"># ✅ works in Python — s leaks out of the block</span></pre>
+        <p>In Rust, that would be a compiler error. The <code>{}</code> block is a hard boundary.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Variables live from declaration to the closing <code>}</code>. When they go out of scope, Rust frees their resources automatically.
+    </div>
+  </section>
+
+  <!-- 04 -->
+  <section class="lesson-section" id="s04">
+    <div class="section-number">04</div>
+    <h2 class="section-title">The String Type</h2>
+    <p class="section-subtitle">Your first heap-allocated, ownable type</p>
+    <p>To see ownership in action, we need a type on the heap. Simple types like <code>i32</code> live on the stack and copy cheaply. <code>String</code> is where things get interesting.</p>
+    <pre><span class="cm">// String literal — baked into the binary, immutable, type is &amp;str</span>
+<span class="kw">let</span> s1 = <span class="str">"hello"</span>;
+
+<span class="cm">// String::from — allocated on the heap, mutable, type is String</span>
+<span class="kw">let mut</span> s2 = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello"</span>);
+s2.<span class="fn">push_str</span>(<span class="str">", world!"</span>);    <span class="cm">// ✅ can grow — heap allocation can resize</span>
+<span class="fn">println!</span>(<span class="str">"{s2}"</span>);             <span class="cm">// "hello, world!"</span></pre>
+    <h3>Memory and allocation</h3>
+    <table>
+      <thead><tr><th>Language</th><th>How memory is freed</th></tr></thead>
+      <tbody>
+        <tr><td>Python, Java, Go</td><td>Garbage collector finds and frees unused memory at runtime</td></tr>
+        <tr><td>C, C++</td><td>You manually call <code>free()</code></td></tr>
+        <tr><td>Rust</td><td>Memory freed automatically when the owner goes out of scope</td></tr>
+      </tbody>
+    </table>
+    <pre>{
+    <span class="kw">let</span> s = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello"</span>);   <span class="cm">// heap memory allocated</span>
+    <span class="cm">// use s...</span>
+}   <span class="cm">// s goes out of scope → drop() called → memory freed</span></pre>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      <code>String</code> lives on the heap and can grow. When its owner goes out of scope, Rust frees the memory. No manual free, no GC.
+    </div>
+  </section>
+
+  <!-- 05 -->
+  <section class="lesson-section" id="s05">
+    <div class="section-number">05</div>
+    <h2 class="section-title">Move Semantics</h2>
+    <p class="section-subtitle">What happens when you assign one variable to another</p>
+    <p>This is where Rust will surprise you. Watch carefully:</p>
+    <h3>With simple types — copying happens</h3>
+    <pre><span class="kw">let</span> x = <span class="ty">5</span>;
+<span class="kw">let</span> y = x;       <span class="cm">// copies the value — both x and y are 5</span>
+<span class="fn">println!</span>(<span class="str">"{x}"</span>);  <span class="cm">// ✅ works fine</span></pre>
+    <h3>With String — a move happens</h3>
+    <pre><span class="kw">let</span> s1 = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello"</span>);
+<span class="kw">let</span> s2 = s1;      <span class="cm">// s1 is MOVED into s2</span>
+<span class="fn">println!</span>(<span class="str">"{s1}"</span>); <span class="cm">// ❌ COMPILER ERROR — s1 is no longer valid</span></pre>
+    <p><strong>This is the most important concept in this chapter.</strong> Rust copies the pointer/length/capacity on the stack, then <strong>invalidates <code>s1</code></strong>. Ownership moves to <code>s2</code>.</p>
+    <div class="diagram">
+      <div class="diagram-label">After <code>let s2 = s1</code></div>
+      <pre>STACK                              HEAP
+┌──────────────┐
+│ s1 (INVALID) │                   ┌───────────────────┐
+│ ptr ───╳     │                   │ h  e  l  l  o     │
+│ len: 5       │                   └───────────────────┘
+└──────────────┘                             ▲
+┌──────────────┐                             │
+│ s2 (valid)   │                             │
+│ ptr ─────────│─────────────────────────────┘
+│ len: 5       │
+└──────────────┘
+
+s1 is invalidated. Only s2 can access the heap data.</pre>
+    </div>
+    <p>Why? If both tried to free the same heap data when they go out of scope, that's a <strong>double free</strong> bug. Rust prevents this by ensuring only one owner exists.</p>
+    <details class="python">
+      <summary>🐍 How Python handles this</summary>
+      <div class="dropdown-body">
+        <pre>s1 = <span class="str">"hello"</span>
+s2 = s1
+<span class="fn">print</span>(s1)    <span class="cm"># ✅ works — both point to the same object, refcount = 2</span></pre>
+        <p>Python tracks reference counts at runtime. Rust enforces single ownership at compile time — no counter, no GC, no runtime cost.</p>
+      </div>
+    </details>
+    <details class="insight">
+      <summary>💡 Analogy — the physical book</summary>
+      <div class="dropdown-body">
+        <p>Think of a <code>String</code> as a physical book. If you hand it to someone, <em>you</em> no longer have it. You didn't photocopy it — you <em>gave</em> it away. That's a move.</p>
+      </div>
+    </details>
+    <details class="mistake">
+      <summary>⚠️ Common mistake — using a variable after it's been moved</summary>
+      <div class="dropdown-body">
+        <pre><span class="kw">let</span> s1 = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello"</span>);
+<span class="kw">let</span> s2 = s1;
+<span class="fn">println!</span>(<span class="str">"{s1}"</span>);   <span class="cm">// ❌ error[E0382]: borrow of moved value: `s1`</span></pre>
+        <p>Fix: use <code>s2</code> instead, or use <code>.clone()</code> if you need two copies.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Assigning a heap type to another variable <strong>moves</strong> ownership. The original becomes invalid. This prevents double-free bugs at compile time.
+    </div>
+  </section>
+
+  <!-- 06 -->
+  <section class="lesson-section" id="s06">
+    <div class="section-number">06</div>
+    <h2 class="section-title">Clone and Copy</h2>
+    <p class="section-subtitle">When you actually want to duplicate data</p>
+    <h3>Clone — explicit deep copy</h3>
+    <pre><span class="kw">let</span> s1 = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello"</span>);
+<span class="kw">let</span> s2 = s1.<span class="fn">clone</span>();           <span class="cm">// deep copy — heap data duplicated</span>
+
+<span class="fn">println!</span>(<span class="str">"{s1}"</span>);               <span class="cm">// ✅ both are valid</span>
+<span class="fn">println!</span>(<span class="str">"{s2}"</span>);               <span class="cm">// ✅ independent copies</span></pre>
+    <div class="diagram">
+      <div class="diagram-label">After <code>s1.clone()</code></div>
+      <pre>STACK                              HEAP
+┌──────────────┐                   ┌───────────────────┐
+│ s1           │──────────────────►│ h  e  l  l  o     │  ← s1's copy
+└──────────────┘                   └───────────────────┘
+┌──────────────┐                   ┌───────────────────┐
+│ s2           │──────────────────►│ h  e  l  l  o     │  ← s2's copy
+└──────────────┘                   └───────────────────┘
+
+Two separate copies. Fully independent.</pre>
+    </div>
+    <h3>Copy — implicit, stack-only</h3>
+    <p>Types that are cheap to copy do so automatically — no move, no <code>.clone()</code>:</p>
+    <table>
+      <thead><tr><th>Copy types</th><th>Examples</th></tr></thead>
+      <tbody>
+        <tr><td>All integers</td><td><code>i32</code>, <code>u64</code>, <code>usize</code></td></tr>
+        <tr><td>Floating point</td><td><code>f32</code>, <code>f64</code></td></tr>
+        <tr><td>Booleans</td><td><code>bool</code></td></tr>
+        <tr><td>Characters</td><td><code>char</code></td></tr>
+        <tr><td>Tuples of Copy types</td><td><code>(i32, f64)</code> but NOT <code>(i32, String)</code></td></tr>
+      </tbody>
+    </table>
+    <details class="python">
+      <summary>🐍 Python comparison</summary>
+      <div class="dropdown-body">
+        <pre>a = [<span class="ty">1</span>, <span class="ty">2</span>, <span class="ty">3</span>]
+b = a             <span class="cm"># shared reference — NOT a copy</span>
+b.<span class="fn">append</span>(<span class="ty">4</span>)
+<span class="fn">print</span>(a)          <span class="cm"># [1, 2, 3, 4] — surprise!</span>
+
+b = a.<span class="fn">copy</span>()      <span class="cm"># explicit shallow copy</span></pre>
+        <p>Python defaults to shared references (aliasing). Rust defaults to <strong>moves</strong>. Both require explicit action to deep-copy.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      <code>.clone()</code> explicitly deep-copies heap data. Stack-only types (<code>i32</code>, <code>bool</code>) are <code>Copy</code> — they duplicate automatically.
+    </div>
+  </section>
+
+  <!-- 07 -->
+  <section class="lesson-section" id="s07">
+    <div class="section-number">07</div>
+    <h2 class="section-title">Ownership and Functions</h2>
+    <p class="section-subtitle">Passing values in and getting them back</p>
+    <p>Passing a value to a function follows the same rules — it either <strong>moves</strong> or <strong>copies</strong>:</p>
+    <pre><span class="kw">fn</span> <span class="fn">takes_ownership</span>(s: <span class="ty">String</span>) {
+    <span class="fn">println!</span>(<span class="str">"{s}"</span>);
+}   <span class="cm">// s dropped here — memory freed</span>
+
+<span class="kw">fn</span> <span class="fn">makes_copy</span>(n: <span class="ty">i32</span>) {
+    <span class="fn">println!</span>(<span class="str">"{n}"</span>);
+}   <span class="cm">// n goes out of scope — nothing special</span>
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> s = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello"</span>);
+    <span class="fn">takes_ownership</span>(s);         <span class="cm">// s is MOVED into the function</span>
+    <span class="cm">// println!("{s}");          // ❌ s was moved — can't use it</span>
+
+    <span class="kw">let</span> x = <span class="ty">5</span>;
+    <span class="fn">makes_copy</span>(x);              <span class="cm">// x is COPIED</span>
+    <span class="fn">println!</span>(<span class="str">"{x}"</span>);             <span class="cm">// ✅ still valid</span>
+}</pre>
+    <h3>Return values transfer ownership too</h3>
+    <pre><span class="kw">fn</span> <span class="fn">gives_ownership</span>() -&gt; <span class="ty">String</span> {
+    <span class="kw">let</span> s = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello"</span>);
+    s   <span class="cm">// ownership moves to the caller</span>
+}
+
+<span class="kw">fn</span> <span class="fn">takes_and_gives_back</span>(s: <span class="ty">String</span>) -&gt; <span class="ty">String</span> {
+    s   <span class="cm">// returns the same String</span>
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> s1 = <span class="fn">gives_ownership</span>();
+    <span class="kw">let</span> s2 = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello"</span>);
+    <span class="kw">let</span> s3 = <span class="fn">takes_and_gives_back</span>(s2);
+    <span class="cm">// s2 invalid, s3 valid</span>
+}</pre>
+    <p>This works but is tedious. Having to return a value just so the caller keeps access is clunky. <strong>References fix this — Part B.</strong></p>
+    <details class="python">
+      <summary>🐍 Python comparison</summary>
+      <div class="dropdown-body">
+        <pre><span class="kw">def</span> <span class="fn">process</span>(s):
+    <span class="fn">print</span>(s)
+
+my_string = <span class="str">"hello"</span>
+<span class="fn">process</span>(my_string)
+<span class="fn">print</span>(my_string)     <span class="cm"># ✅ obviously works — Python doesn't move anything</span></pre>
+        <p>In Python, passing to a function just passes a reference. In Rust, it <strong>moves</strong>. That's why references (Part B) are essential.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Passing a value to a function moves it (heap types) or copies it (stack types). Return values move ownership back. Clunky — references fix it.
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PART B — REFERENCES & BORROWING
+       ═══════════════════════════════════════════════════════════ -->
+
+  <div class="part-divider" id="partB">
+    <div class="part-label">Part B · Chapter 4.2</div>
+    <h2 class="part-title">References and Borrowing</h2>
+    <p class="part-subtitle">Looking at data without taking ownership — and the rules that make it safe</p>
+  </div>
+
+  <!-- 08 -->
+  <section class="lesson-section" id="s08">
+    <div class="section-number">08</div>
+    <h2 class="section-title">References</h2>
+    <p class="section-subtitle">Looking at data without taking ownership</p>
+    <p>Instead of taking ownership, a function can <strong>borrow</strong> a value by taking a <strong>reference</strong>:</p>
+    <pre><span class="kw">fn</span> <span class="fn">calculate_length</span>(s: &amp;<span class="ty">String</span>) -&gt; <span class="ty">usize</span> {   <span class="cm">// s is a reference</span>
+    s.<span class="fn">len</span>()
+}   <span class="cm">// s goes out of scope — but doesn't own the data, so nothing freed</span>
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> s1 = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello"</span>);
+    <span class="kw">let</span> len = <span class="fn">calculate_length</span>(&amp;s1);        <span class="cm">// pass a reference — no move</span>
+    <span class="fn">println!</span>(<span class="str">"'{s1}' is {len} long"</span>);       <span class="cm">// ✅ s1 still valid</span>
+}</pre>
+    <div class="diagram">
+      <div class="diagram-label">Reference in memory</div>
+      <pre>        s (reference)            s1 (owner)              HEAP
+       ┌───────────┐           ┌──────────────┐         ┌─────────────┐
+       │ ptr ──────│──────────►│ ptr ─────────│────────►│ h e l l o   │
+       └───────────┘           │ len: 5       │         └─────────────┘
+                               └──────────────┘
+
+s borrows s1. s1 still owns the heap data.</pre>
+    </div>
+    <p>The <code>&amp;</code> creates a reference. The function <em>borrows</em> — it can read but doesn't own. When the function ends, nothing is freed.</p>
+    <details class="python">
+      <summary>🐍 Python comparison</summary>
+      <div class="dropdown-body">
+        <p>In Python, everything is passed by reference naturally. In Rust, you explicitly say "I'm lending this, not giving it" with <code>&amp;</code>. The tradeoff: Rust catches bugs at compile time that Python misses.</p>
+      </div>
+    </details>
+    <details class="mistake">
+      <summary>⚠️ Common mistake — trying to modify a borrowed value</summary>
+      <div class="dropdown-body">
+        <pre><span class="kw">fn</span> <span class="fn">change</span>(s: &amp;<span class="ty">String</span>) {
+    s.<span class="fn">push_str</span>(<span class="str">", world"</span>);   <span class="cm">// ❌ can't modify through an immutable reference</span>
+}</pre>
+        <p>References are <strong>immutable by default</strong>. You can look, but you can't touch. To modify, use a mutable reference (next section).</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      <code>&amp;</code> creates a reference — a borrow. You can read but can't modify. The original owner keeps the value.
+    </div>
+  </section>
+
+  <!-- 09 -->
+  <section class="lesson-section" id="s09">
+    <div class="section-number">09</div>
+    <h2 class="section-title">Mutable References</h2>
+    <p class="section-subtitle">Modifying borrowed data, with strict rules</p>
+    <p>Both the variable <strong>and</strong> the reference must be mutable:</p>
+    <pre><span class="kw">fn</span> <span class="fn">change</span>(s: &amp;<span class="kw">mut</span> <span class="ty">String</span>) {
+    s.<span class="fn">push_str</span>(<span class="str">", world"</span>);
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let mut</span> s = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello"</span>);
+    <span class="fn">change</span>(&amp;<span class="kw">mut</span> s);
+    <span class="fn">println!</span>(<span class="str">"{s}"</span>);     <span class="cm">// "hello, world"</span>
+}</pre>
+    <h3>The big restriction: one mutable reference at a time</h3>
+    <pre><span class="kw">let mut</span> s = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello"</span>);
+
+<span class="kw">let</span> r1 = &amp;<span class="kw">mut</span> s;
+<span class="kw">let</span> r2 = &amp;<span class="kw">mut</span> s;    <span class="cm">// ❌ can't have two &amp;mut to the same data</span>
+<span class="fn">println!</span>(<span class="str">"{r1}, {r2}"</span>);</pre>
+    <pre><span class="err">error[E0499]: cannot borrow `s` as mutable more than once at a time</span></pre>
+    <p>If two parts of code could modify the same data simultaneously, they'd interfere — a <strong>data race</strong>. Rust prevents this at compile time.</p>
+    <h3>Non-overlapping borrows are fine</h3>
+    <pre><span class="kw">let mut</span> s = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello"</span>);
+{
+    <span class="kw">let</span> r1 = &amp;<span class="kw">mut</span> s;
+    <span class="fn">println!</span>(<span class="str">"{r1}"</span>);
+}   <span class="cm">// r1's borrow ends here</span>
+
+<span class="kw">let</span> r2 = &amp;<span class="kw">mut</span> s;      <span class="cm">// ✅ no overlap</span>
+<span class="fn">println!</span>(<span class="str">"{r2}"</span>);</pre>
+    <h3>Can't mix mutable and immutable</h3>
+    <pre><span class="kw">let mut</span> s = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello"</span>);
+
+<span class="kw">let</span> r1 = &amp;s;            <span class="cm">// ✅ immutable</span>
+<span class="kw">let</span> r2 = &amp;s;            <span class="cm">// ✅ another immutable — fine</span>
+<span class="kw">let</span> r3 = &amp;<span class="kw">mut</span> s;       <span class="cm">// ❌ can't mix with active immutable borrows</span>
+
+<span class="fn">println!</span>(<span class="str">"{r1}, {r2}, {r3}"</span>);</pre>
+    <p>However, a reference's scope ends at its <strong>last use</strong>, not the closing <code>}</code>:</p>
+    <pre><span class="kw">let mut</span> s = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello"</span>);
+
+<span class="kw">let</span> r1 = &amp;s;
+<span class="kw">let</span> r2 = &amp;s;
+<span class="fn">println!</span>(<span class="str">"{r1}, {r2}"</span>);   <span class="cm">// r1 and r2 last used here — borrows end</span>
+
+<span class="kw">let</span> r3 = &amp;<span class="kw">mut</span> s;         <span class="cm">// ✅ fine — no active immutable borrows</span>
+<span class="fn">println!</span>(<span class="str">"{r3}"</span>);</pre>
+    <details class="python">
+      <summary>🐍 How Python handles concurrent modification</summary>
+      <div class="dropdown-body">
+        <pre>my_list = [<span class="ty">1</span>, <span class="ty">2</span>, <span class="ty">3</span>]
+<span class="kw">for</span> item <span class="kw">in</span> my_list:
+    <span class="kw">if</span> item == <span class="ty">2</span>:
+        my_list.<span class="fn">remove</span>(item)   <span class="cm"># modifying while iterating — silent bug!</span>
+<span class="fn">print</span>(my_list)               <span class="cm"># [1, 3] — but skipped checking 3</span></pre>
+        <p>Python lets this run and silently produces wrong results. Rust's borrow rules catch this at compile time.</p>
+      </div>
+    </details>
+    <details class="insight">
+      <summary>💡 Analogy — the library book</summary>
+      <div class="dropdown-body">
+        <p><strong>Immutable references:</strong> multiple people reading the same book at a table. Fine.</p>
+        <p><strong>Mutable reference:</strong> taking the book to a private room to write in it. Only one person, and nobody else reads it while you're writing.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Many <code>&amp;</code> OR one <code>&amp;mut</code> — never both simultaneously. This prevents data races at compile time.
+    </div>
+  </section>
+
+  <!-- 10 -->
+  <section class="lesson-section" id="s10">
+    <div class="section-number">10</div>
+    <h2 class="section-title">The Rules of References</h2>
+    <p class="section-subtitle">Rust's two-rule system, summarized</p>
+    <div class="rules-box">
+      <div class="rules-title">Reference rules</div>
+      <ol>
+        <li>At any given time, you can have <strong>either</strong> one mutable reference <strong>or</strong> any number of immutable references.</li>
+        <li>References must always be <strong>valid</strong> (no dangling references).</li>
+      </ol>
+    </div>
+    <p>Rule 1 prevents data races. Rule 2 prevents use-after-free. Together, they eliminate two of the most dangerous bug classes in systems programming — at compile time, zero runtime cost.</p>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Two rules. Many readers OR one writer. References must always be valid. Memorize these.
+    </div>
+  </section>
+
+  <!-- 11 -->
+  <section class="lesson-section" id="s11">
+    <div class="section-number">11</div>
+    <h2 class="section-title">Dangling References</h2>
+    <p class="section-subtitle">A bug Rust makes impossible</p>
+    <p>A dangling reference points to freed memory — like an address to a demolished building:</p>
+    <pre><span class="kw">fn</span> <span class="fn">dangle</span>() -&gt; &amp;<span class="ty">String</span> {
+    <span class="kw">let</span> s = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello"</span>);
+    &amp;s                 <span class="cm">// ❌ returning a reference to s</span>
+}   <span class="cm">// s is freed here — the reference would dangle!</span></pre>
+    <pre><span class="err">error[E0106]: missing lifetime specifier
+help: this function's return type contains a borrowed value,
+      but there is no value for it to be borrowed from</span></pre>
+    <h3>The fix: return the value, not a reference</h3>
+    <pre><span class="kw">fn</span> <span class="fn">no_dangle</span>() -&gt; <span class="ty">String</span> {
+    <span class="kw">let</span> s = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello"</span>);
+    s   <span class="cm">// ✅ ownership moves to the caller</span>
+}</pre>
+    <details class="python">
+      <summary>🐍 Why Python never has this problem</summary>
+      <div class="dropdown-body">
+        <p>Python's GC keeps objects alive as long as any reference exists. Dangling references are impossible — but the GC works at runtime. Rust proves the same guarantee at compile time.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      The compiler guarantees every reference points to valid data. Dangling references are impossible in safe Rust.
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PART C — THE SLICE TYPE
+       ═══════════════════════════════════════════════════════════ -->
+
+  <div class="part-divider" id="partC">
+    <div class="part-label">Part C · Chapter 4.3</div>
+    <h2 class="part-title">The Slice Type</h2>
+    <p class="part-subtitle">Referencing a portion of data — the finishing piece of the ownership puzzle</p>
+  </div>
+
+  <!-- 12 -->
+  <section class="lesson-section" id="s12">
+    <div class="section-number">12</div>
+    <h2 class="section-title">The Problem With Indices</h2>
+    <p class="section-subtitle">Why returning a number is fragile</p>
+    <p>Without slices, finding the first word means returning a position:</p>
+    <pre><span class="kw">fn</span> <span class="fn">first_word</span>(s: &amp;<span class="ty">String</span>) -&gt; <span class="ty">usize</span> {
+    <span class="kw">let</span> bytes = s.<span class="fn">as_bytes</span>();
+    <span class="kw">for</span> (i, &amp;item) <span class="kw">in</span> bytes.<span class="fn">iter</span>().<span class="fn">enumerate</span>() {
+        <span class="kw">if</span> item == <span class="str">b' '</span> { <span class="kw">return</span> i; }
+    }
+    s.<span class="fn">len</span>()
+}</pre>
+    <details class="python">
+      <summary>🐍 Python equivalent</summary>
+      <div class="dropdown-body">
+        <pre><span class="kw">def</span> <span class="fn">first_word</span>(s: <span class="ty">str</span>) -> <span class="ty">int</span>:
+    <span class="kw">for</span> i, char <span class="kw">in</span> <span class="fn">enumerate</span>(s):
+        <span class="kw">if</span> char == <span class="str">' '</span>:
+            <span class="kw">return</span> i
+    <span class="kw">return</span> <span class="fn">len</span>(s)</pre>
+      </div>
+    </details>
+    <h3>The bug:</h3>
+    <pre><span class="kw">let mut</span> s = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello world"</span>);
+<span class="kw">let</span> word = <span class="fn">first_word</span>(&amp;s);   <span class="cm">// word = 5</span>
+s.<span class="fn">clear</span>();                    <span class="cm">// s is now ""</span>
+<span class="cm">// word is still 5 — pointing at nothing. This compiles.</span></pre>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Returning indices creates data that can silently go out of sync. The compiler can't catch it.
+    </div>
+  </section>
+
+  <!-- 13 -->
+  <section class="lesson-section" id="s13">
+    <div class="section-number">13</div>
+    <h2 class="section-title">String Slices</h2>
+    <p class="section-subtitle">Referencing a portion of a String</p>
+    <pre><span class="kw">let</span> s = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello world"</span>);
+
+<span class="kw">let</span> hello = &amp;s[<span class="ty">0</span>..<span class="ty">5</span>];     <span class="cm">// type: &amp;str — "hello"</span>
+<span class="kw">let</span> world = &amp;s[<span class="ty">6</span>..<span class="ty">11</span>];    <span class="cm">// type: &amp;str — "world"</span></pre>
+    <p>A slice is a pointer + length. It <em>borrows</em> from the original <code>String</code> — no copy.</p>
+    <div class="diagram">
+      <div class="diagram-label">Slice in memory</div>
+      <pre>s (String):
+  ptr ──────► [ h | e | l | l | o |   | w | o | r | l | d ]
+  len: 11       0   1   2   3   4   5   6   7   8   9  10
+
+hello (&amp;str):              world (&amp;str):
+  ptr ──► index 0              ptr ──► index 6
+  len: 5                       len: 5</pre>
+    </div>
+    <details class="python">
+      <summary>🐍 Python comparison</summary>
+      <div class="dropdown-body">
+        <pre>s = <span class="str">"hello world"</span>
+hello = s[<span class="ty">0</span>:<span class="ty">5</span>]   <span class="cm"># Python copies. Rust points.</span></pre>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      A string slice (<code>&amp;str</code>) is a lightweight view into a <code>String</code>. Pointer + length, zero copy.
+    </div>
+  </section>
+
+  <!-- 14 -->
+  <section class="lesson-section" id="s14">
+    <div class="section-number">14</div>
+    <h2 class="section-title">Slice Syntax Shortcuts</h2>
+    <p class="section-subtitle">Range expressions made concise</p>
+    <pre><span class="kw">let</span> s = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello world"</span>);
+
+<span class="kw">let</span> hello = &amp;s[..<span class="ty">5</span>];       <span class="cm">// same as &amp;s[0..5]</span>
+<span class="kw">let</span> world = &amp;s[<span class="ty">6</span>..];      <span class="cm">// same as &amp;s[6..11]</span>
+<span class="kw">let</span> whole = &amp;s[..];        <span class="cm">// same as &amp;s[0..11]</span></pre>
+    <details class="python">
+      <summary>🐍 Python equivalent</summary>
+      <div class="dropdown-body">
+        <pre>s[:<span class="ty">5</span>]   s[<span class="ty">6</span>:]   s[:]</pre>
+        <p>Identical shortcuts. Rust uses <code>..</code> where Python uses <code>:</code>.</p>
+      </div>
+    </details>
+    <div class="note">
+      <strong>Note:</strong> String slices must land on valid UTF-8 boundaries. Slicing mid-character panics at runtime.
+    </div>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Drop the start, end, or both from range expressions for concise slicing.
+    </div>
+  </section>
+
+  <!-- 15 -->
+  <section class="lesson-section" id="s15">
+    <div class="section-number">15</div>
+    <h2 class="section-title">The Compiler Saves You</h2>
+    <p class="section-subtitle">How slices prevent stale-reference bugs</p>
+    <p>Rewrite <code>first_word</code> to return a slice:</p>
+    <pre><span class="kw">fn</span> <span class="fn">first_word</span>(s: &amp;<span class="ty">str</span>) -&gt; &amp;<span class="ty">str</span> {
+    <span class="kw">let</span> bytes = s.<span class="fn">as_bytes</span>();
+    <span class="kw">for</span> (i, &amp;item) <span class="kw">in</span> bytes.<span class="fn">iter</span>().<span class="fn">enumerate</span>() {
+        <span class="kw">if</span> item == <span class="str">b' '</span> { <span class="kw">return</span> &amp;s[..i]; }
+    }
+    &amp;s[..]
+}</pre>
+    <p>Now the bug from Section 12 becomes a compiler error:</p>
+    <pre><span class="kw">let mut</span> s = <span class="ty">String</span>::<span class="fn">from</span>(<span class="str">"hello world"</span>);
+<span class="kw">let</span> word = <span class="fn">first_word</span>(&amp;s);   <span class="cm">// immutable borrow</span>
+s.<span class="fn">clear</span>();                    <span class="cm">// ❌ mutable borrow while immutable exists</span>
+<span class="fn">println!</span>(<span class="str">"{word}"</span>);</pre>
+    <pre><span class="err">error[E0502]: cannot borrow `s` as mutable because it is also borrowed as immutable</span></pre>
+    <details class="python">
+      <summary>🐍 How Python sidesteps this</summary>
+      <div class="dropdown-body">
+        <p>Python copies data on slice, so there's no shared reference to go stale. Rust prevents it at zero cost — no copies, just compile-time rules.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Slices are enforced borrows. The compiler prevents modifying source data while a slice exists.
+    </div>
+  </section>
+
+  <!-- 16 -->
+  <section class="lesson-section" id="s16">
+    <div class="section-number">16</div>
+    <h2 class="section-title">String Literals Are Slices</h2>
+    <p class="section-subtitle">Where <code>"hello"</code> actually lives</p>
+    <pre><span class="kw">let</span> s = <span class="str">"hello world"</span>;    <span class="cm">// type: &amp;str — a slice into the binary</span></pre>
+    <p>The text is baked into your compiled executable. <code>s</code> is a pointer to that spot. That's why it's immutable.</p>
+    <div class="note">
+      <strong>Lifetime:</strong> String literals have the type <code>&amp;'static str</code> — they live for the entire program.
+    </div>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      String literals are already <code>&amp;str</code> slices baked into the binary. Immutable, eternal.
+    </div>
+  </section>
+
+  <!-- 17 -->
+  <section class="lesson-section" id="s17">
+    <div class="section-number">17</div>
+    <h2 class="section-title"><code>&amp;str</code> vs <code>&amp;String</code></h2>
+    <p class="section-subtitle">Why functions should take <code>&amp;str</code></p>
+    <table>
+      <thead><tr><th>Caller passes</th><th><code>&amp;str</code>?</th><th><code>&amp;String</code>?</th></tr></thead>
+      <tbody>
+        <tr><td><code>&amp;my_string</code></td><td>✅</td><td>✅</td></tr>
+        <tr><td><code>&amp;my_string[0..5]</code></td><td>✅</td><td>❌</td></tr>
+        <tr><td><code>"hello"</code></td><td>✅</td><td>❌</td></tr>
+      </tbody>
+    </table>
+    <details class="python">
+      <summary>🐍 Python analogy</summary>
+      <div class="dropdown-body">
+        <p>Like accepting only <code>list</code> when you could accept any <code>Iterable</code>. Same logic, narrower compatibility.</p>
+      </div>
+    </details>
+    <details class="mistake">
+      <summary>⚠️ Common mistake — <code>&amp;String</code> in function signatures</summary>
+      <div class="dropdown-body">
+        <p>Clippy flags this as <em>"needless borrow of owned type."</em> Always prefer <code>&amp;str</code> for read-only string parameters.</p>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Read-only string functions should take <code>&amp;str</code>. It accepts everything.
+    </div>
+  </section>
+
+  <!-- 18 -->
+  <section class="lesson-section" id="s18">
+    <div class="section-number">18</div>
+    <h2 class="section-title">Array Slices</h2>
+    <p class="section-subtitle">The same concept beyond strings</p>
+    <pre><span class="kw">let</span> a = [<span class="ty">1</span>, <span class="ty">2</span>, <span class="ty">3</span>, <span class="ty">4</span>, <span class="ty">5</span>];
+<span class="kw">let</span> slice = &amp;a[<span class="ty">1</span>..<span class="ty">3</span>];      <span class="cm">// type: &amp;[i32] — value: [2, 3]</span></pre>
+    <pre><span class="kw">fn</span> <span class="fn">sum_slice</span>(numbers: &amp;[<span class="ty">i32</span>]) -&gt; <span class="ty">i32</span> {
+    <span class="kw">let mut</span> total = <span class="ty">0</span>;
+    <span class="kw">for</span> &amp;n <span class="kw">in</span> numbers { total += n; }
+    total
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() {
+    <span class="kw">let</span> a = [<span class="ty">1</span>, <span class="ty">2</span>, <span class="ty">3</span>, <span class="ty">4</span>, <span class="ty">5</span>];
+    <span class="fn">println!</span>(<span class="str">"{}"</span>, <span class="fn">sum_slice</span>(&amp;a[<span class="ty">1</span>..<span class="ty">4</span>]));   <span class="cm">// 9</span>
+    <span class="fn">println!</span>(<span class="str">"{}"</span>, <span class="fn">sum_slice</span>(&amp;a));          <span class="cm">// 15</span>
+}</pre>
+    <details class="python">
+      <summary>🐍 Python equivalent</summary>
+      <div class="dropdown-body">
+        <pre>a = [<span class="ty">1</span>, <span class="ty">2</span>, <span class="ty">3</span>, <span class="ty">4</span>, <span class="ty">5</span>]
+<span class="fn">sum</span>(a[<span class="ty">1</span>:<span class="ty">4</span>])    <span class="cm"># 9 — Python copies the sublist first</span></pre>
+      </div>
+    </details>
+    <div class="takeaway">
+      <div class="takeaway-label">Key takeaway</div>
+      Array slices (<code>&amp;[T]</code>) follow the same rules as string slices. Same borrowing, same safety, zero copy.
+    </div>
+  </section>
+
+
+  <!-- ═══════════ SUMMARY ═══════════ -->
+  <div class="chapter-summary-section" id="summary">
+    <div class="agenda-title">Chapter 4 Summary</div>
+    <ul class="summary-list">
+      <li>Every value has exactly one owner. When the owner leaves scope, the value is freed.</li>
+      <li>Assigning a heap type moves ownership — the original becomes invalid.</li>
+      <li><code>.clone()</code> for explicit deep copies. Stack types are <code>Copy</code> and duplicate automatically.</li>
+      <li>Passing to a function moves it. Returning moves ownership back.</li>
+      <li>References (<code>&amp;</code>) borrow without taking ownership.</li>
+      <li>Mutable references (<code>&amp;mut</code>) allow modification — but only one at a time.</li>
+      <li>Many <code>&amp;</code> OR one <code>&amp;mut</code> — never both. Prevents data races at compile time.</li>
+      <li>Dangling references are impossible — the compiler won't let it happen.</li>
+      <li>Slices (<code>&amp;str</code>, <code>&amp;[T]</code>) are lightweight views — pointer + length, zero copy.</li>
+      <li>Read-only string functions should take <code>&amp;str</code> for maximum flexibility.</li>
+      <li>Rust replaces Python's garbage collector with compile-time ownership rules — same safety, zero runtime cost.</li>
+    </ul>
+  </div>
+
+  <div class="next-chapter">
+    <div>
+      <div class="next-chapter-label">Next up →</div>
+      <div class="next-chapter-text">
+        <strong>Chapter 5: Structs</strong> — Rust's way of grouping related data together.
+        Think of them as Python's dataclasses, but with ownership baked in.
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+// ── Progress Bar ──
+const progressFill = document.getElementById('progressFill');
+const sidebarProgress = document.getElementById('sidebarProgress');
+
+function updateProgress() {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const pct = docHeight > 0 ? Math.min(Math.round((scrollTop / docHeight) * 100), 100) : 0;
+  progressFill.style.width = pct + '%';
+  sidebarProgress.textContent = pct + '%';
+}
+
+// ── Active Section Highlighting ──
+const sections = document.querySelectorAll('.lesson-section');
+const sidebarLinks = document.querySelectorAll('.sidebar-link');
+
+function updateActiveSection() {
+  let current = '';
+  const offset = window.innerHeight * 0.3;
+
+  sections.forEach(section => {
+    const rect = section.getBoundingClientRect();
+    if (rect.top <= offset) {
+      current = section.id;
+    }
+  });
+
+  sidebarLinks.forEach(link => {
+    link.classList.toggle('active', link.dataset.section === current);
+  });
+}
+
+// ── Back to Top ──
+const backToTop = document.getElementById('backToTop');
+
+function updateBackToTop() {
+  backToTop.classList.toggle('visible', window.scrollY > 400);
+}
+
+backToTop.addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+// ── Scroll Listener (debounced) ──
+let ticking = false;
+window.addEventListener('scroll', () => {
+  if (!ticking) {
+    requestAnimationFrame(() => {
+      updateProgress();
+      updateActiveSection();
+      updateBackToTop();
+      ticking = false;
+    });
+    ticking = true;
+  }
+});
+
+// ── Sidebar Toggle ──
+const sidebar = document.getElementById('sidebar');
+const sidebarToggle = document.getElementById('sidebarToggle');
+const sidebarOverlay = document.getElementById('sidebarOverlay');
+const isMobile = () => window.innerWidth <= 900;
+
+sidebarToggle.addEventListener('click', () => {
+  if (isMobile()) {
+    sidebar.classList.toggle('mobile-open');
+  } else {
+    sidebar.classList.toggle('collapsed');
+  }
+});
+
+sidebarOverlay.addEventListener('click', () => {
+  sidebar.classList.remove('mobile-open');
+});
+
+// Close sidebar on link click (mobile)
+sidebarLinks.forEach(link => {
+  link.addEventListener('click', () => {
+    if (isMobile()) {
+      sidebar.classList.remove('mobile-open');
+    }
+  });
+});
+
+// ── Dark Mode Toggle ──
+const themeToggle = document.getElementById('themeToggle');
+const sunIcon = document.getElementById('sunIcon');
+const moonIcon = document.getElementById('moonIcon');
+
+function setTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  sunIcon.style.display = dark ? 'none' : 'block';
+  moonIcon.style.display = dark ? 'block' : 'none';
+}
+
+// Check system preference
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+setTheme(prefersDark);
+
+themeToggle.addEventListener('click', () => {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  setTheme(!isDark);
+});
+
+// ── Smooth scroll for sidebar links ──
+sidebarLinks.forEach(link => {
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    const target = document.getElementById(link.dataset.section);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+});
+
+// Init
+updateProgress();
+updateActiveSection();
+</script>
+
+</body>
+</html>
