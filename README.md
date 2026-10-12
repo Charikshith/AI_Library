@@ -58,7 +58,7 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 
 | Tool | Description | Tags | Added |
 |------|-------------|------|-------|
-| [VibeSec-Skill](https://github.com/BehiSecc/VibeSec-Skill)<br>⭐ 1,120 | A Claude Code skill that helps Claude write secure code and prevent common vulnerabilities. Covers 60-70% of common vulnerability classes. | `#security` `#vulnerable-code` `#claude-code` `#skill` | 2026-07-04 |
+| [VibeSec-Skill](https://github.com/BehiSecc/VibeSec-Skill)<br>⭐ 1,316 | A Claude Code skill that helps Claude write secure code and prevent common vulnerabilities. Covers 60-70% of common vulnerability classes. | `#security` `#vulnerable-code` `#claude-code` `#skill` | 2026-07-04 |
 ## AI Guides
 
 | Tool | Description | Tags | Added |
