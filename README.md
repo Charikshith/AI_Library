@@ -11,6 +11,7 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 - [AI SDE Skills](#ai-sde-skills)
 - [AI Guides](#ai-guides)
 - [Graphs](#graphs)
+- [Misc](#misc)
 - [Text to Speech](#text-to-speech)
 
 <!-- TOOLS:START -->
@@ -41,14 +42,16 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 | Tool | Description | Tags | Added |
 |------|-------------|------|-------|
 | [ECC](https://github.com/affaan-m/ecc)<br>⭐ 236,766 | An agent harness performance optimization system — skills, instincts, memory, security, and research-first development for Claude Code, Codex, Opencode, Cursor, and beyond. | `#agent-harness` `#performance` `#security` `#claude-code` | 2026-06-21 |
-| [gstack](https://github.com/garrytan/gstack)<br>⭐ 125,685 | Garry Tan's exact Claude Code setup — 23 opinionated tools that serve as CEO, Designer, Eng Manager, Release Manager, Doc Engineer, and QA. 112k stars. | `#agent-framework` `#workflow` `#opinionated` `#claude-code` | 2026-06-21 |
+| [gstack](https://github.com/garrytan/gstack)<br>⭐ 136,122 | Garry Tan's exact Claude Code setup — 23 opinionated tools that serve as CEO, Designer, Eng Manager, Release Manager, Doc Engineer, and QA. | `#agent-framework` `#workflow` `#opinionated` `#claude-code` | 2026-06-21 |
 | [Superpowers](https://github.com/obra/superpowers)<br>⭐ 264,692 | An agentic skills framework and software development methodology for Claude Code. Structured skills, planning, and execution flow. | `#skills-framework` `#methodology` `#planning` `#claude-code` | 2026-06-21 |
 ### Agent Utilities
 
 | Tool | Description | Tags | Added |
 |------|-------------|------|-------|
 | [claude-mem](https://github.com/thedotmack/claude-mem)<br>⭐ 89,229 | Persistent context across sessions for every agent — captures everything your agent does, compresses it with AI, and injects relevant context back into future sessions. Works with Claude Code, Codex, Gemini, Copilot, and more. | `#persistent-memory` `#context-injection` `#session-compression` `#agent-plugin` | 2026-07-04 |
+| [claude-video](https://github.com/bradautomates/claude-video)<br>⭐ 18,411 | Adds a `/watch` skill that downloads a video, extracts timestamped frames, transcribes it, and hands both to the agent. Works with Claude Code, Codex, and other Agent Skills hosts. | `#video` `#transcription` `#agent-plugin` `#claude-code` | 2026-10-12 |
 | [Headroom](https://github.com/chopratejas/headroom)<br>⭐ 63,793 | Compress tool outputs, logs, files, and RAG chunks before they reach the LLM. 60-95% fewer tokens, same answers. Library, proxy, MCP server. | `#context-compression` `#token-optimization` `#proxy` `#agent-plugin` | 2026-06-21 |
+| [Hindsight](https://github.com/vectorize-io/hindsight)<br>⭐ 48,762 | Agent memory system that retains, recalls, and reflects on experience so agents learn over time, rather than only replaying conversation history. Python server with clients, an MCP server, and an LLM wrapper. | `#persistent-memory` `#agent-memory` `#mcp` `#open-source` | 2026-10-12 |
 | [pi-intercom](https://github.com/nicobailon/pi-intercom)<br>⭐ 274 | Inter-session communication extension for the pi coding agent — lets sessions talk to each other so context carries across. | `#inter-session` `#persistent-memory` `#agent-plugin` `#pi` | 2026-08-01 |
 | [Ponytail](https://github.com/DietrichGebert/ponytail)<br>⭐ 93,376 | Makes your AI agent think like the laziest senior dev in the room. ~54% less code, ~20% cheaper, ~27% faster — 100% safety. Plugs into 14 agents (Claude Code, Codex, Cursor, Copilot, and more). | `#yagni` `#code-reduction` `#lazy-dev` `#agent-plugin` | 2026-06-20 |
 ### Security Skills
@@ -70,6 +73,11 @@ A living, curated catalogue of open-source AI tools & resources worth rememberin
 | [code-review-graph](https://github.com/tirth8205/code-review-graph)<br>⭐ 27,952 | Local-first code intelligence graph for MCP and CLI — builds a persistent map of your codebase so AI coding tools read only what matters, with benchmarked context reductions on reviews and large-repo workflows. | `#code-intelligence` `#knowledge-graph` `#mcp` `#context-reduction` | 2026-08-01 |
 | [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)<br>⭐ 36,929 | High-performance code intelligence MCP server in C — indexes codebases into a persistent knowledge graph (average repo in milliseconds), 158 languages, sub-ms queries, 99% fewer tokens, single static binary with zero dependencies. | `#knowledge-graph` `#mcp` `#code-intelligence` `#performance` `#c` | 2026-08-01 |
 | [Graphify](https://github.com/Graphify-Labs/graphify)<br>⭐ 100,066 | Turns any codebase — docs, SQL schemas, configs, PDFs included — into a queryable knowledge graph via a `/graphify` skill for Claude Code, Cursor, Codex, and Gemini CLI. Local deterministic AST parsing, every edge explained, no vector store. | `#knowledge-graph` `#code-intelligence` `#skill` `#rag` | 2026-08-01 |
+## Misc
+
+| Tool | Description | Tags | Added |
+|------|-------------|------|-------|
+| [disktree](https://github.com/tobi/disktree)<br>⭐ 2,844 | A treemap for finding and removing what fills your disk. Scans a directory or whole disk, marks files for review before anything is deleted. Rust + GPUI, for Omarchy, with Windows builds. | `#disk-usage` `#treemap` `#rust` `#open-source` | 2026-10-12 |
 ## Text to Speech
 
 | Tool | Description | Tags | Added |
