@@ -15,6 +15,7 @@ After reading this chapter, you'll be able to:
 3. Choose **strong vs eventual consistency** and name the spectrum in between (read-your-writes, monotonic reads, etc.).
 4. Understand the difference between **B-tree** and **LSM-tree** storage engines — and which DB uses which.
 5. Decide when to use **object storage, block storage, or file storage** — they're not interchangeable.
+6. Name the transaction isolation levels, the anomalies each one allows (dirty read, non-repeatable read, phantom, lost update, write skew), and fix a lost update with an atomic update, `SELECT ... FOR UPDATE`, or a version column.
 
 ---
 
@@ -23,6 +24,7 @@ After reading this chapter, you'll be able to:
 1. [Why Storage Matters](#why-storage-matters)
 2. [Structured vs. Unstructured Data](#structured-vs-unstructured-data)
 3. [Storage Categories and Properties](#storage-categories-and-properties)
+   - [Transaction Isolation Levels & Anomalies](#transaction-isolation-levels--anomalies)
 4. [Trade-offs: Scalability, Reliability, and Performance](#trade-offs-scalability-reliability-and-performance)
 5. [The CAP Theorem](#the-cap-theorem)
 6. [Database Models — SQL vs. NoSQL](#database-models--sql-vs-nosql)
@@ -126,6 +128,69 @@ graph TD
 | Consistency | Data must always be valid according to all defined rules/constraints.|
 | Isolation   | Transactions do not interfere with each other.                       |
 | Durability  | Once committed, data survives crashes/failures.                      |
+
+### Transaction Isolation Levels & Anomalies
+
+"Isolation" in ACID is not on/off. Full isolation (every transaction behaves as if it ran alone, one after another) is expensive, so databases offer **isolation levels**: weaker levels allow more concurrency but let certain **anomalies** through.
+
+**The anomalies:**
+
+| Anomaly | What goes wrong | Example |
+|---------|-----------------|---------|
+| **Dirty read** | You read another transaction's change before it commits, and it then rolls back | A report counts a €500 deposit that is later cancelled |
+| **Non-repeatable read** | You read the same row twice in one transaction and get different values, because another transaction committed in between | An invoice total changes between the line that shows it and the line that charges it |
+| **Phantom read** | You re-run a range query and rows have appeared or vanished | `COUNT(*) WHERE status = 'pending'` returns 10, then 11 |
+| **Lost update** | Two transactions read the same value, both modify it, and the second write silently overwrites the first | Two clerks each add 1 to stock of 5; the result is 6, not 7 |
+| **Write skew** | Two transactions read overlapping data, each updates a *different* row, and together they break a rule neither broke alone | Two on-call doctors each check "someone else is on call" and both sign off, leaving nobody |
+
+**What each level prevents** (✓ = prevented). The SQL standard only defines the first three anomalies; the last two columns show how PostgreSQL behaves, and other engines differ:
+
+| Isolation level | Dirty read | Non-repeatable read | Phantom | Lost update | Write skew |
+|-----------------|:----------:|:-------------------:|:-------:|:-----------:|:----------:|
+| **Read Uncommitted** | ✗ (✓ in PostgreSQL, which treats it as Read Committed) | ✗ | ✗ | ✗ | ✗ |
+| **Read Committed** (default in PostgreSQL, Oracle, SQL Server) | ✓ | ✗ | ✗ | ✗ | ✗ |
+| **Repeatable Read** (default in MySQL InnoDB; snapshot isolation in PostgreSQL) | ✓ | ✓ | ✓ in PostgreSQL; the standard allows phantoms | ✓ in PostgreSQL (one transaction aborts) | ✗ |
+| **Serializable** | ✓ | ✓ | ✓ | ✓ | ✓ (one transaction aborts) |
+
+At Repeatable Read and Serializable, the database may abort a transaction with a **serialization failure** instead of letting an anomaly through. Application code must catch that error and **retry the whole transaction**. Also note that MySQL's Repeatable Read does *not* detect lost updates the way PostgreSQL's does; check your engine's documentation rather than assuming the level name means the same thing everywhere.
+
+**How databases implement it — MVCC.** Most modern engines (PostgreSQL, MySQL InnoDB, Oracle, SQL Server with snapshot isolation) use **multi-version concurrency control**: an update writes a *new version* of the row rather than overwriting it in place. Each transaction reads from a **snapshot**, the set of versions that were committed when its statement (Read Committed) or the transaction itself (Repeatable Read) began. Readers never block writers and writers never block readers; the cost is that old versions pile up and must be cleaned out later (`VACUUM` in PostgreSQL, purge threads in InnoDB).
+
+**Example — fixing a lost update.** Two requests reserve a seat at the same moment, both under Read Committed:
+
+```sql
+-- Both transactions run this and both see seats_left = 1
+SELECT seats_left FROM flights WHERE id = 42;
+-- Application checks seats_left > 0, then both run:
+UPDATE flights SET seats_left = 0 WHERE id = 42;
+-- Result: two bookings, one seat. The second write overwrote the first.
+```
+
+Four standard fixes, from simplest to heaviest:
+
+1. **Atomic update** — let the database do the read-modify-write in one statement, with the check in the `WHERE` clause:
+   ```sql
+   UPDATE flights SET seats_left = seats_left - 1 WHERE id = 42 AND seats_left > 0;
+   -- 0 rows affected = sold out
+   ```
+2. **Pessimistic lock** — `SELECT ... FOR UPDATE` locks the row, so the second transaction waits until the first commits and then sees the new value:
+   ```sql
+   BEGIN;
+   SELECT seats_left FROM flights WHERE id = 42 FOR UPDATE;
+   -- check, then UPDATE ...
+   COMMIT;
+   ```
+3. **Optimistic concurrency with a version column** — no lock is held; the write only succeeds if nobody changed the row since it was read. This is the database half of the HTTP `ETag` / `If-Match` pattern from the Protocols chapter:
+   ```sql
+   UPDATE flights SET seats_left = 0, version = version + 1
+   WHERE id = 42 AND version = 17;
+   -- 0 rows affected = someone else won; re-read and retry
+   ```
+4. **Raise the isolation level** to Repeatable Read or Serializable and retry on serialization failures. Serializable is the only level that also stops write skew without extra locking; the alternative is to lock the rows the decision depends on with `FOR UPDATE`.
+
+**Keep transactions short.** A long transaction holds its locks longer, raises the odds of conflicts and aborts, and (under MVCC) stops old row versions from being cleaned up, which bloats tables. Never wait for user input, call a slow external API, or send email inside a transaction: gather everything first, then open the transaction, write, and commit.
+
+**Interview angle:** when a design involves counters, balances, inventory, or booking, say which anomaly you are guarding against and which fix you'd use. Atomic updates or optimistic versions are the usual default for high-traffic paths; `FOR UPDATE` suits short, high-contention critical sections.
 
 ---
 

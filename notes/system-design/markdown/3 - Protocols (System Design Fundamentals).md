@@ -15,6 +15,10 @@ After reading this chapter, you'll be able to:
 3. Compare REST, gRPC, and GraphQL on serialization, transport, performance, browser support, and use case.
 4. Pick between WebSockets, Server-Sent Events (SSE), and long polling for a real-time feature.
 5. Explain HTTP/1.1 vs HTTP/2 vs HTTP/3 in one sentence each.
+6. Use 409, 412, 422, and 429 correctly, and prevent lost updates with ETags and `If-Match`.
+7. Design an API around the four principles (consistent, simple, secure, performant) and plan its lifecycle from design to retirement.
+8. Define data conventions, a standard error shape, cursor pagination, and a versioning and deprecation policy for a public API.
+9. Explain how GraphQL reports errors and when JSON-RPC is the simpler choice.
 
 ---
 
@@ -23,9 +27,19 @@ After reading this chapter, you'll be able to:
 1. [The Protocol Landscape](#the-protocol-landscape)
 2. [TCP & UDP — Transport Layer Foundations](#tcp--udp--transport-layer-foundations)
 3. [HTTP — The Backbone of the Web](#http--the-backbone-of-the-web)
+   - [Status Codes Beyond the Basics](#status-codes-beyond-the-basics)
+   - [Conditional Requests & ETag Optimistic Concurrency](#conditional-requests--etag-optimistic-concurrency)
 4. [REST & RESTfulness — API Design Principles](#rest--restfulness--api-design-principles)
+   - [Four Principles of a Good API](#four-principles-of-a-good-api)
+   - [API Design Approaches & Lifecycle](#api-design-approaches--lifecycle)
+   - [API Data Conventions](#api-data-conventions)
+   - [Standard Error Response Shape](#standard-error-response-shape)
+   - [Pagination — Offset vs Cursor](#pagination--offset-vs-cursor)
+   - [Versioning Strategies & Deprecation](#versioning-strategies--deprecation)
 5. [Real-Time Communication Protocols](#real-time-communication-protocols)
 6. [Modern API Protocols — gRPC & GraphQL](#modern-api-protocols--grpc--graphql)
+   - [GraphQL Errors & Partial Data](#graphql-errors--partial-data)
+   - [JSON-RPC — Calling Named Methods](#json-rpc--calling-named-methods)
 7. [Combined Tips & Tricks](#combined-tips--tricks)
 8. [Sample Interview Questions](#sample-interview-questions)
 9. [Quick Reference Table](#quick-reference-table)
@@ -407,6 +421,57 @@ Content-Type: application/json
 - **404 Not Found:** Resource missing
 - **500 Internal Server Error:** Server crashed
 
+### Status Codes Beyond the Basics
+
+A handful of less common codes carry precise meanings that clients can act on. Using them correctly saves every client from parsing message strings to guess what went wrong.
+
+| Code | Meaning | Typical trigger | What the client should do |
+|------|---------|-----------------|---------------------------|
+| **409 Conflict** | The request clashes with the resource's current state | Creating a user whose email already exists; a state transition that is no longer allowed (cancelling a shipped order) | Re-read the resource, then decide; retrying the same request will fail again |
+| **412 Precondition Failed** | A condition header such as `If-Match` did not hold | The client's ETag is stale: someone else changed the resource since it was read | Fetch the latest version, re-apply the change, and send it with the new ETag |
+| **422 Unprocessable Content** | The body parsed fine but its values are invalid | `quantity: -3`, an end date before the start date | Fix the named fields; do not retry unchanged |
+| **429 Too Many Requests** | The caller hit a rate limit | Too many calls per second for this API key | Wait for the number of seconds in `Retry-After`, then retry |
+
+**400 vs 422:** use `400` when the request cannot even be read (malformed JSON, wrong content type) and `422` when it can be read but breaks a business or validation rule. Many APIs use `400` for both; pick one convention and apply it everywhere.
+
+```http
+HTTP/1.1 429 Too Many Requests
+Retry-After: 30
+Content-Type: application/json
+
+{ "error": { "code": "rate_limited", "message": "Limit of 100 requests per minute exceeded." } }
+```
+
+### Conditional Requests & ETag Optimistic Concurrency
+
+An **ETag** is a version tag the server attaches to a resource (a hash of the content, or a row version number). Clients send it back in a *conditional request* header, and the server only acts if the condition still holds.
+
+| Header pair | Used with | Purpose | Outcome when the condition fails |
+|-------------|-----------|---------|----------------------------------|
+| `ETag` → `If-None-Match` | `GET` | Cache revalidation: "send the body only if it changed" | `304 Not Modified`, no body |
+| `ETag` → `If-Match` | `PUT`, `PATCH`, `DELETE` | Optimistic concurrency: "apply my write only if nobody else wrote first" | `412 Precondition Failed` |
+| `Last-Modified` → `If-Modified-Since` | `GET` | Date-based revalidation (coarser than ETags) | `304 Not Modified` |
+
+**Why it matters — the lost update.** Two people open the same document at version 7. Without a check, whoever saves last silently wipes out the other's edit. With `If-Match`, the second save is rejected and that client knows to reload and merge:
+
+```mermaid
+sequenceDiagram
+    participant A as Client A
+    participant API as API
+    participant B as Client B
+    A->>API: GET /docs/42
+    API-->>A: 200 OK, ETag "v7"
+    B->>API: GET /docs/42
+    API-->>B: 200 OK, ETag "v7"
+    A->>API: PUT /docs/42 (If-Match "v7")
+    API-->>A: 200 OK, ETag "v8"
+    B->>API: PUT /docs/42 (If-Match "v7")
+    API-->>B: 412 Precondition Failed
+    Note over B: re-fetch v8, merge, retry with If-Match "v8"
+```
+
+This is called *optimistic* concurrency because nothing is locked while the user edits; conflicts are detected at write time instead. On the server, the check usually becomes a conditional update such as `UPDATE docs SET ..., version = 8 WHERE id = 42 AND version = 7`, where zero affected rows means a `412` (see the isolation section of the Storage chapter for the database side). An API can also return `428 Precondition Required` to insist that clients always send `If-Match` on writes.
+
 ### The Stateless Nature of HTTP
 
 **Stateless** means each HTTP request is an independent transaction — no memory of previous requests.
@@ -612,6 +677,45 @@ Or, in simple ASCII:
                  HTTP Response
 ```
 
+### Four Principles of a Good API
+
+Before the REST mechanics, a frame that applies to any API style (REST, GraphQL, gRPC). A useful test: a good API is one a developer can use correctly without opening the docs.
+
+| Principle | What it means | In practice |
+|-----------|---------------|-------------|
+| **Consistent** | The same conventions everywhere, and every endpoint does exactly what its name says | One casing style for all fields; one error shape; `GET /users/{id}` never has side effects such as updating follower counts |
+| **Simple** | Covers the core use cases with the fewest concepts | Start from real user stories; leave rare edge cases out of v1 rather than adding knobs nobody needs |
+| **Secure** | Every caller is identified, checked, and limited | Authentication and authorization on every endpoint, input validation, rate limits, HTTPS only |
+| **Performant** | Clients get what they need in few, small round trips | Pagination, caching headers, lean payloads, optionally embedding small related data the client always needs next |
+
+The sections that follow are mostly ways of delivering these four: naming and methods (consistent), resource modelling (simple), auth and rate limits (secure), pagination and caching (performant).
+
+### API Design Approaches & Lifecycle
+
+**Three ways to start a design:**
+
+| Approach | Starting point | Where it fits |
+|----------|----------------|---------------|
+| **Top-down** | User workflows and high-level requirements, worked down to endpoints | Interviews and greenfield products: "a user browses products, adds to cart, checks out" becomes the endpoint list |
+| **Bottom-up** | Existing data models and system capabilities, exposed upward as an API | Inside established companies, where the database and services already exist |
+| **Contract-first** | The request and response shapes (often an OpenAPI or protobuf file) are written and agreed before any code | Teams working in parallel: frontend and backend both build against the agreed contract; also a strong interview habit |
+
+Whichever approach you choose, start by pinning down the requirements: the core use cases, what is explicitly out of scope, expected load and performance hot spots, and security constraints such as who may call what.
+
+**An API lives longer than the code behind it.** Plan for the whole lifecycle, not just the first release:
+
+```mermaid
+flowchart LR
+    A[Design<br/>requirements + contract] --> B[Develop<br/>+ local testing]
+    B --> C[Deploy & monitor<br/>staging → production]
+    C --> D[Maintain<br/>additive changes, fixes]
+    D --> E[Deprecate<br/>announce, Sunset header]
+    E --> F[Retire<br/>v1 removed, v2 remains]
+    D -.->|breaking change needed| A
+```
+
+Deprecation and retirement are part of the design: decide up front how you will version, how much notice clients get, and how you will see who still calls the old version (see [Versioning Strategies & Deprecation](#versioning-strategies--deprecation) below).
+
 ### RESTful API Design Principles
 
 #### 1. Resource-Based Approach
@@ -734,6 +838,134 @@ Accept: application/xml
 ```
 
 Server returns the requested format if supported.
+
+### API Data Conventions
+
+Small choices about data types are hard to change once clients depend on them. These defaults avoid the common traps:
+
+| Area | Convention | Example | Why |
+|------|------------|---------|-----|
+| **Money** | Integer in minor units plus an explicit currency | `{"amount": 1999, "currency": "EUR"}` means €19.99 | Floats cannot represent most decimal amounts exactly; an amount without a currency is ambiguous |
+| **Timestamps** | ISO-8601 strings in UTC | `"created_at": "2026-03-14T09:30:00Z"` | Unambiguous, sortable as text, no guessing about time zones or seconds vs milliseconds |
+| **Enums** | Strings, not integers | `"status": "shipped"` rather than `"status": 3` | Readable in logs; new values can be added without renumbering |
+| **Naming** | One casing style across every endpoint | always `created_at`, never `createdAt` in one place and `creation_date` in another | Consistency principle; clients can map fields mechanically |
+| **Expansion** | Related objects as IDs by default; clients opt in to embedding | `GET /orders/9?expand=customer` | Keeps default payloads small without forcing a second round trip |
+| **Filtering & sorting** | Explicit query parameters, checked against an allow-list of fields | `?status=paid&created_after=2026-01-01&sort=-created_at` | Prevents clients from filtering or sorting on unindexed columns, which would turn one request into a full table scan |
+| **Unknown fields** | Clients must ignore fields they don't recognise | A new `tracking_url` field appears in the response | This rule is what makes adding response fields a safe change |
+
+### Standard Error Response Shape
+
+Status codes say *which class* of failure happened; the body must say *exactly what* went wrong, in a form code can branch on. Use **one error shape for every endpoint**:
+
+```json
+{
+  "error": {
+    "code": "validation_failed",
+    "message": "One or more fields are invalid.",
+    "request_id": "req_8f2c1a",
+    "details": [
+      {
+        "field": "quantity",
+        "code": "must_be_positive",
+        "message": "quantity must be greater than 0"
+      },
+      {
+        "field": "shipping_address.postcode",
+        "code": "invalid_format",
+        "message": "postcode is not valid for country GB"
+      }
+    ]
+  }
+}
+```
+
+| Field | Audience | Rule |
+|-------|----------|------|
+| `code` | Client code | Stable, machine-readable string; clients branch on it, so treat changing it as a breaking change |
+| `message` | Developers | Human-readable explanation; may be reworded at any time, so clients must not parse it |
+| `details[]` | Client code and UI | One entry per problem, each naming the offending `field` so a form can highlight it |
+| `request_id` | Support and debugging | Ties the response to server logs and traces |
+
+Never leak stack traces, SQL, or internal hostnames in `message`. If you want a published standard instead of a home-grown shape, RFC 9457 "Problem Details" (`application/problem+json`) defines similar fields (`type`, `title`, `status`, `detail`).
+
+### Pagination — Offset vs Cursor
+
+Any endpoint that returns a list needs a page size limit (with a server-enforced maximum) and a way to fetch the next page. There are two main designs:
+
+**Offset pagination** — the client asks for page *N*:
+
+```http
+GET /products?limit=25&offset=50
+```
+
+```sql
+SELECT * FROM products ORDER BY id LIMIT 25 OFFSET 50;
+```
+
+**Cursor (keyset) pagination** — the server returns an opaque token pointing just past the last item, and the client sends it back:
+
+```http
+GET /products?limit=25&cursor=eyJpZCI6MTI1fQ
+```
+
+```json
+{
+  "data": [ { "id": 126, "name": "..." } ],
+  "has_more": true,
+  "next_cursor": "eyJpZCI6MTUwfQ"
+}
+```
+
+```sql
+-- the cursor decodes to "last id seen = 125"
+SELECT * FROM products WHERE id > 125 ORDER BY id LIMIT 25;
+```
+
+| | Offset (`?page=3` / `?offset=50`) | Cursor (`?cursor=<opaque>`) |
+|-|-----------------------------------|-----------------------------|
+| **Deep pages** | Slow: `OFFSET 100000` makes the database read and discard 100,000 rows | Fast: an index seek straight to the cursor position, same cost on page 1 or page 10,000 |
+| **Rows inserted or deleted while paging** | Items shift between pages, so the client sees duplicates or misses items | Stable: each page continues from a fixed position |
+| **Jump to an arbitrary page** | Yes ("go to page 57") | No, only next (and sometimes previous) |
+| **Total count** | Easy to show "page 3 of 40" | Usually omitted; counting is expensive on large tables |
+| **Best for** | Small admin tables and search results with page numbers | Feeds, timelines, large or fast-changing lists, public APIs |
+
+**Keep cursors opaque.** Encode the position (for example base64 of `{"id":125}`, or of a `(created_at, id)` pair when sorting by time) so clients treat it as a token rather than building it themselves. That leaves you free to change the sort key or encoding later. The sort must be on a unique, indexed key; add `id` as a tie-breaker when sorting by a non-unique column.
+
+### Versioning Strategies & Deprecation
+
+**First, avoid needing a new version.** Most changes can be made additively, so existing clients keep working:
+
+| Safe (additive) | Breaking |
+|-----------------|----------|
+| Add an optional request field | Add a *required* request field |
+| Add a field to a response | Remove or rename a field |
+| Add a new endpoint | Change a field's type or format (`"12.50"` → `1250`) |
+| Add a new enum value, *if* clients were told to tolerate unknown values | Change what an existing value means |
+| Relax validation | Tighten validation, change a default, or change an error `code` |
+
+**When a breaking change is unavoidable,** clients need a way to say which version they expect:
+
+| Strategy | Example | Pros | Cons |
+|----------|---------|------|------|
+| **URI path** | `/v2/orders` | Obvious, easy to route, cache, and test in a browser | Coarse-grained: one breaking change bumps the whole API, and clients must change every URL |
+| **Header** | `Accept: application/vnd.shop.v2+json` or `Api-Version: 2` | Clean, stable URLs; version chosen per request | Less visible; harder to try in a browser or share as a link |
+| **Date-pinned per account** | An account is pinned to `2026-03-01` on first use; a header can override it per request | Many small breaking changes, each with its own migration; old clients never move unless they choose to | The server needs a translation layer for every dated version |
+| **Query parameter** | `/orders?version=2` | Simple to add | Easy to forget; complicates caching and logs |
+
+**Deprecation policy.** Removing a version is a process, not a deploy:
+
+1. **Announce** the change and the timeline in the changelog and by email to registered developers.
+2. **Mark responses** from the old version with headers so clients and tooling can detect it automatically:
+   ```http
+   Deprecation: @1767225600
+   Sunset: Thu, 30 Sep 2027 23:59:59 GMT
+   Link: <https://api.example.com/docs/migrate-v2>; rel="deprecation"
+   ```
+   `Deprecation` (RFC 9745) says the endpoint is deprecated (the value is the date it happened, as a Unix timestamp); `Sunset` (RFC 8594) says when it will stop working.
+3. **Measure** who still calls the old version, per API key, and contact the heavy users directly.
+4. **Retire** it after the published notice period (often 6–12 months for public APIs), returning `410 Gone` afterwards rather than a confusing `404`.
+
+Keep every supported version under automated tests until the day it is removed.
 
 ### Real-World REST API Examples
 
@@ -1782,6 +2014,53 @@ const resolvers = {
 };
 ```
 
+#### GraphQL Errors & Partial Data
+
+GraphQL does not use HTTP status codes to report most failures. A query that reached the server and was executed normally returns **`200 OK`**, and problems are listed in a top-level **`errors`** array next to whatever **`data`** could still be resolved:
+
+```json
+{
+  "data": {
+    "user": null,
+    "orders": [ { "id": "o_1", "total": 4200 } ]
+  },
+  "errors": [
+    {
+      "message": "User not found",
+      "path": ["user"],
+      "extensions": { "code": "NOT_FOUND" }
+    }
+  ]
+}
+```
+
+- **`path`** says which field failed, so the client knows `user` is missing but `orders` is good. This *partial data* is a feature: one failing resolver does not sink the whole page.
+- **`extensions.code`** is where a machine-readable code goes; the spec leaves its contents to you, so define a fixed set of codes just as you would for REST.
+- **Consequences:** clients must check `errors` even on a `200`, and monitoring that only counts HTTP 5xx rates will miss GraphQL failures. Count errors per operation instead. Non-2xx statuses still appear for failures before execution, such as a malformed request body or an auth gateway rejecting the call.
+
+**Mutations take input types.** Instead of a long list of scalar arguments, group a mutation's arguments into one `input` type. It is easier to evolve (add an optional field without touching the signature) and to validate:
+
+```graphql
+input CreatePostInput {
+  title: String!
+  body: String!
+  tags: [String!]
+}
+
+type Mutation {
+  createPost(input: CreatePostInput!): Post!
+}
+```
+
+```graphql
+mutation {
+  createPost(input: { title: "New Post", body: "Hello" }) {
+    id
+    title
+  }
+}
+```
+
 #### When to Use GraphQL
 
 - **Frontend optimization:** Mobile/web clients fetch only what they need.
@@ -1791,6 +2070,34 @@ const resolvers = {
 - **When frontend teams change frequently or need agility.**
 
 **Not for:** Simple CRUD APIs (REST is enough); scenarios with complex authorization rules can be harder.
+
+### JSON-RPC — Calling Named Methods
+
+**JSON-RPC 2.0** is the minimal option: there are no resources and no schema language, just a request that names a method and passes parameters as JSON. Everything goes to **one endpoint** (or over a single socket or stdio stream), and the `id` matches each response to its request.
+
+**Request:**
+
+```json
+{ "jsonrpc": "2.0", "id": 7, "method": "orders.cancel", "params": { "order_id": "o_123", "reason": "duplicate" } }
+```
+
+**Success:**
+
+```json
+{ "jsonrpc": "2.0", "id": 7, "result": { "status": "cancelled" } }
+```
+
+**Failure** (an error object instead of an HTTP status):
+
+```json
+{ "jsonrpc": "2.0", "id": 7, "error": { "code": -32602, "message": "Invalid params", "data": { "field": "order_id" } } }
+```
+
+- **Errors** come back as an `error` object with a numeric `code` (the spec reserves codes such as `-32601` method not found and `-32602` invalid params) rather than through HTTP status codes.
+- **Notifications** are requests without an `id`; the receiver sends no reply. **Batches** send an array of requests in one message.
+- **Transport-agnostic:** it runs over HTTP, WebSockets, or a process's stdin/stdout equally well.
+- **Where you meet it:** the **Language Server Protocol (LSP)** between editors and language tools, the **Model Context Protocol (MCP)** between AI apps and tool servers, and Ethereum and other blockchain node APIs.
+- **Trade-offs:** very simple to implement and a natural fit for actions ("run this command") rather than resources, but every call is a `POST` to the same URL, so HTTP caching does not help, and there is no standard schema or tooling comparable to OpenAPI or GraphQL introspection.
 
 ### REST vs. gRPC vs. GraphQL — Comparison
 
