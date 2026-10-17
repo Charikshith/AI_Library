@@ -87,6 +87,17 @@ rebuild. To keep ordering clean, zero-pad numbers (`02`, not `2`).
 **Style:** both the Notes index (subjects) and subject pages (chapters) use the flat
 "editorial list" — numbered rows with hairline rules, no boxes. Keep it that way.
 
+**Exception — System Design (`notes/system-design/`):** its `_subject.json` sets
+`"layout": "course"`, so the build generates it in its own course look (phase-grouped
+chapter cards, stats, "what you'll learn", SD reading layout with mermaid diagrams) via
+`render_course` in `scripts/build.py`. Output is `notes/system-design/index.html` +
+`chapters/<md filename>.html` (not `html/`), styled by the subject's own
+`assets/system-design.css`, `assets/home.css` and `assets/system-design.js`. Per-chapter
+card data (icon, short title, summary, hero subtitle, phase) lives in `_subject.json`
+`"chapters"`, keyed by chapter title, so renumbering keeps it; a new chapter without an
+entry still builds with defaults (the build prints a note). Chapter pages whose markdown
+no longer exists are deleted by the build.
+
 ## Design / landing page
 
 - The HTML template (structure + layout) lives inside `scripts/build.py`. Edit it there,

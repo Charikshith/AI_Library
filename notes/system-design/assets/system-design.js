@@ -30,20 +30,21 @@
 (function () {
   const tocLinks = document.querySelectorAll('#tocList a');
   if (!tocLinks.length) return;
-  const sections = Array.from(tocLinks)
-    .map(a => document.querySelector(a.getAttribute('href')))
-    .filter(Boolean);
+  const linkFor = new Map();
+  tocLinks.forEach(a => {
+    const target = document.getElementById(decodeURIComponent(a.getAttribute('href').slice(1)));
+    if (target) linkFor.set(target, a);
+  });
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      const id = entry.target.id;
-      const link = document.querySelector(`#tocList a[href="#${id}"]`);
+      const link = linkFor.get(entry.target);
       if (entry.isIntersecting && link) {
         tocLinks.forEach(l => l.classList.remove('active'));
         link.classList.add('active');
       }
     });
   }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
-  sections.forEach(s => observer.observe(s));
+  linkFor.forEach((_, s) => observer.observe(s));
 })();
 
 // ============================== MOBILE MENU ==============================
