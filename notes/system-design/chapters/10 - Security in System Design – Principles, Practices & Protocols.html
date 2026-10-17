@@ -26,6 +26,8 @@ m.querySelectorAll(":scope > h2").forEach(function(hd){
   var s=document.createElement("span");s.innerHTML=li.innerHTML;li.innerHTML="";
   var k=document.createElement("span");k.className="outcome-num";k.textContent=i+1;
   li.appendChild(k);li.appendChild(s);});});
+m.querySelectorAll("a[href]").forEach(function(a){var u=a.getAttribute("href");
+ if(!/^[a-z][a-z0-9+.-]*:|^\/\//i.test(u))a.setAttribute("href",u.replace(/\.md(?=[?#]|$)/i,".html"));});
 m.querySelectorAll('a[href^="http"]').forEach(function(a){a.target="_blank";a.rel="noopener";});
 var dia=[];
 m.querySelectorAll("pre > code.language-mermaid").forEach(function(c){
