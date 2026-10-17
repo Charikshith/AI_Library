@@ -2,7 +2,7 @@
 
 Welcome to the **capstone of the foundational chapters** of our system design series. In this chapter, we shift gears from core theory to practical application. We'll break down a proven **4-step system design approach** — a blueprint you can follow to tackle any real-world system design problem, from initial requirements to strategic technical decisions.
 
-This is the framework we'll use for every case study (Chapters 12 onwards).
+This is the framework we'll use for every case study (Chapters 16 onwards).
 
 ---
 
@@ -279,4 +279,4 @@ By following this four-step process, you'll build systems that are robust, relia
 
 ---
 
-**Next Up:** [Chapter 12 — Design a URL Shortener (TinyURL) →](./12%20-%20Design%20a%20URL%20Shortener%20(TinyURL).md) — applying this blueprint to our first real-world case study.
+**Next Up:** [Chapter 16 — Design a URL Shortener (TinyURL) →](./16%20-%20Design%20a%20URL%20Shortener%20(TinyURL).md) — applying this blueprint to our first real-world case study.

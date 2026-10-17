@@ -20,8 +20,8 @@
     "Recognize anti-patterns before they cost you"
   ],
   "phases": [
-    { "icon": "📚", "title": "Foundations", "from": 1, "to": 11, "range": "Chapters 1–11" },
-    { "icon": "🏗️", "title": "Case Studies", "from": 12, "to": 24, "range": "Chapters 12–24" },
-    { "icon": "🎯", "title": "Final Prep", "from": 25, "to": 999, "range": "Chapter 25 + Resources" }
+    { "icon": "📚", "title": "Foundations", "from": 1, "to": 15, "range": "Chapters 1–15" },
+    { "icon": "🏗️", "title": "Case Studies", "from": 16, "to": 28, "range": "Chapters 16–28" },
+    { "icon": "🎯", "title": "Final Prep", "from": 29, "to": 999, "range": "Chapter 29 + Resources" }
   ]
 }

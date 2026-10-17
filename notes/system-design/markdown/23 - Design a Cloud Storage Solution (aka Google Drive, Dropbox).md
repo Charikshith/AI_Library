@@ -838,4 +838,4 @@ Designing a cloud storage backend is a challenging, rewarding system design exer
 
 ---
 
-**Next Up:** [Chapter 20 — Design a Video Sharing Platform (YouTube) →](./20%20-%20Design%20a%20Video%20Sharing%20Platform%20(aka%20YouTube).md)
+**Next Up:** [Chapter 24 — Design a Video Sharing Platform (YouTube) →](./24%20-%20Design%20a%20Video%20Sharing%20Platform%20(aka%20YouTube).md)

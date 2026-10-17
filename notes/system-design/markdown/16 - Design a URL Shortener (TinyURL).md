@@ -1,6 +1,6 @@
 # Designing a URL Shortener (TinyURL) — A System Design Deep Dive
 
-Welcome to our first case study: a comprehensive guide on designing a **URL shortener service** like [TinyURL](https://tinyurl.com/) from the ground up. We'll apply the 4-step blueprint from Chapter 11 to cover everything from **requirements gathering** to **distributed coordination**, with code snippets, diagrams, and practical tips.
+Welcome to our first case study: a comprehensive guide on designing a **URL shortener service** like [TinyURL](https://tinyurl.com/) from the ground up. We'll apply the 4-step blueprint from Chapter 15 to cover everything from **requirements gathering** to **distributed coordination**, with code snippets, diagrams, and practical tips.
 
 URL shorteners like TinyURL and [Bitly](https://bitly.com) are essential for condensing long URLs into compact, shareable links — crucial for platforms with character limits or for branding and analytics.
 
@@ -743,4 +743,4 @@ Designing a scalable, reliable, and high-performance URL shortener requires care
 
 ---
 
-**Next Up:** *(Chapters 13-16 reserved.)* [Chapter 17 — Design an Auction Platform (eBay) →](./17%20-%20Design%20an%20Auction%20Platform%20(aka%20eBay).md)
+**Next Up:** *(Chapters 17-20 reserved.)* [Chapter 21 — Design an Auction Platform (eBay) →](./21%20-%20Design%20an%20Auction%20Platform%20(aka%20eBay).md)

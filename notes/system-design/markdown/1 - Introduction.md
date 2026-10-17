@@ -37,8 +37,8 @@ You **don't need** prior distributed-systems experience, prior cloud experience,
 
 ## How to Use This Course
 
-- **Foundations (Chapters 1–11):** Read in order. Each chapter builds on the previous.
-- **Case studies (Chapters 12–24):** Read in any order after the foundations. Each is self-contained.
+- **Foundations (Chapters 1–15):** Read in order. Each chapter builds on the previous.
+- **Case studies (Chapters 16–28):** Read in any order after the foundations. Each is self-contained.
 - **Expect to revisit.** Caching only fully clicks after you've seen it used in three different case studies. That's normal.
 - **Build a toy project alongside.** A blog, a URL shortener, a chat app — anything. Reading without building is like reading swimming books on dry land.
 - **Read real post-mortems.** [danluu.com/postmortem-lessons](https://danluu.com/postmortem-lessons/) is the best curated list. Real failures teach more than any textbook.
@@ -473,7 +473,7 @@ Each leap brought new challenges and solutions around scalability, reliability, 
 
 ## Course Structure
 
-This 25-chapter course is designed to take you from beginner to confident architect. It is organized into **foundational chapters (1–11)** followed by **deep-dive case studies (12–24)** and **interview preparation (25)**.
+This 29-chapter course is designed to take you from beginner to confident architect. It is organized into **foundational chapters (1–15)** followed by **deep-dive case studies (16–28)** and **interview preparation (29)**.
 
 ### Foundations
 
@@ -487,26 +487,33 @@ This 25-chapter course is designed to take you from beginner to confident archit
 8. **Performance** — Caching, message queues, concurrency, indexing, query optimization
 9. **Reliability, Availability & Disaster Recovery** — Fault tolerance, redundancy, RTO/RPO, backups
 10. **Security** — CIA triad, authentication, authorization, encryption, threat modeling
-11. **The System Design Blueprint** — A 4-step methodology for tackling any design problem
+11. **Distributed Systems Fundamentals** *(coming soon)*
+12. **Cloud Design Patterns** *(coming soon)*
+13. **Multi-Tenancy** *(coming soon)*
+14. **Cloud Architecture & Cost** *(coming soon)*
+15. **The System Design Blueprint** — A 4-step methodology for tackling any design problem
 
 ### Case Studies
 
-12. **URL Shortener** (TinyURL)
-13–16. *(Reserved — case studies to be added later)*
-17. **Auction Platform** (eBay)
-18. *(Reserved — case study to be added later)*
-19. **Cloud Storage** (Google Drive / Dropbox)
-20. **Video Sharing Platform** (YouTube)
-21. **Search Engine** (Google)
-22. **E-Commerce Platform** (Amazon)
-23. **Taxi Hailing App** (Uber)
-24. **Collaborative Document Editor** (Google Docs)
+16. **URL Shortener** (TinyURL)
+17. **Chat / Messaging App** (WhatsApp) *(coming soon)*
+18. **News Feed** (Twitter / Instagram) *(coming soon)*
+19. **Distributed Key-Value Store & Cache** *(coming soon)*
+20. **Payment System** *(coming soon)*
+21. **Auction Platform** (eBay)
+22. **Ticket Booking System** (Ticketmaster) *(coming soon)*
+23. **Cloud Storage** (Google Drive / Dropbox)
+24. **Video Sharing Platform** (YouTube)
+25. **Search Engine** (Google)
+26. **E-Commerce Platform** (Amazon)
+27. **Taxi Hailing App** (Uber)
+28. **Collaborative Document Editor** (Google Docs)
 
-> **About the gaps in numbering:** chapters 13–16 and 18 are intentionally left empty as placeholders for additional case studies (e.g., chat/messaging, news feed, payment processing). They're not missing content — they're TBD slots.
+> **About the gaps in numbering:** chapters 11–14, 17–20 and 22 are reserved for planned chapters that haven't been written yet (marked *coming soon* above). They're not missing content — they're TBD slots.
 
 ### Wrap-Up
 
-25. **Final Prep, Mindset & Moving Forward** — Interview strategies, frameworks, and continuous learning
+29. **Final Prep, Mindset & Moving Forward** — Interview strategies, frameworks, and continuous learning
 
 > **Note on chapter naming:** Earlier drafts of the course used slightly different labels — for example, what is now "The System Design Blueprint" was sometimes called "Putting It All Together" or "Comprehensive Design," and "Networking & Communication" was occasionally folded into "Fundamentals." The structure above reflects the current course as it exists in the repository.
 
@@ -514,7 +521,7 @@ This 25-chapter course is designed to take you from beginner to confident archit
 
 ## The 4-Step Design Framework
 
-When approaching any system design problem — whether in an interview or in real life — use this structured methodology. Each step builds on the previous one. (Chapter 11 expands on this framework in depth; this section is the preview.)
+When approaching any system design problem — whether in an interview or in real life — use this structured methodology. Each step builds on the previous one. (Chapter 15 expands on this framework in depth; this section is the preview.)
 
 ```text
 1. Understand the requirements
@@ -545,7 +552,7 @@ In more detail:
 
 ## Worked Example: A URL Shortener
 
-Let's apply the framework to a simplified example — designing a URL shortener like bit.ly. (Chapter 12 covers this case study in full detail.)
+Let's apply the framework to a simplified example — designing a URL shortener like bit.ly. (Chapter 16 covers this case study in full detail.)
 
 ### Requirements
 
@@ -640,7 +647,7 @@ if __name__ == "__main__":
 - **Partition strategy:** Partition the database based on code prefix for scalability.
 - **High availability:** Run multiple API servers behind a load balancer.
 
-> **A note on the MD5-truncate approach:** Using the first 6 characters of an MD5 hash is fine as a teaching example, but it's collision-prone — two different long URLs can map to the same short code. Production-grade URL shorteners use **base62 encoding of a monotonically increasing counter** (often coordinated via Zookeeper or a similar service) to guarantee uniqueness. We cover this in detail in Chapter 12.
+> **A note on the MD5-truncate approach:** Using the first 6 characters of an MD5 hash is fine as a teaching example, but it's collision-prone — two different long URLs can map to the same short code. Production-grade URL shorteners use **base62 encoding of a monotonically increasing counter** (often coordinated via Zookeeper or a similar service) to guarantee uniqueness. We cover this in detail in Chapter 16.
 
 ---
 

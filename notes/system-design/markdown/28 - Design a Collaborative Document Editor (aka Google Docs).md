@@ -686,7 +686,7 @@ A team meeting's shared doc might have 200 editors simultaneously. Each edit goe
 
 ### Permissions and Sharing
 
-Same as cloud storage (Chapter 19), but with a twist: real-time. If Alice revokes Bob's access *while Bob is editing*, his next op must fail, and his client must immediately show "you no longer have access."
+Same as cloud storage (Chapter 23), but with a twist: real-time. If Alice revokes Bob's access *while Bob is editing*, his next op must fail, and his client must immediately show "you no longer have access."
 
 **Pattern:** push permission changes through the same WebSocket channel; client validates on every op; server rejects ops from users no longer permitted.
 
@@ -764,4 +764,4 @@ By leveraging modern CRDT/OT libraries, scalable WebSocket infrastructure, and m
 
 ---
 
-**Next Up:** [Chapter 25 — Final Prep, Mindset & Moving Forward →](./25%20-%20Final%20Prep%2C%20Mindset%20%26%20Moving%20Forward.md)
+**Next Up:** [Chapter 29 — Final Prep, Mindset & Moving Forward →](./29%20-%20Final%20Prep%2C%20Mindset%20%26%20Moving%20Forward.md)

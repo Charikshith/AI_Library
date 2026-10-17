@@ -822,4 +822,4 @@ With this modular, event-driven architecture, you can build a **robust, scalable
 
 ---
 
-**Next Up:** [Chapter 23 — Design a Taxi Hailing App (Uber) →](./23%20-%20Design%20a%20Taxi%20Hailing%20App%20(aka%20Uber).md)
+**Next Up:** [Chapter 27 — Design a Taxi Hailing App (Uber) →](./27%20-%20Design%20a%20Taxi%20Hailing%20App%20(aka%20Uber).md)
