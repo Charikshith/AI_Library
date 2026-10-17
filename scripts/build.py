@@ -13,8 +13,10 @@ Two content types, both markdown-sourced:
   2. NOTES  — notes/<subject>/markdown/*.md (+ _subject.json). Output: notes.html,
               notes/<subject>/html/index.html (course landing), and
               notes/<subject>/html/<chapter>.html (their reading layout).
-              A subject with "prebuilt": "<file>" ships its own ready-made HTML
-              (e.g. System Design) and is linked as-is instead of generated.
+              A subject with "layout": "course" (System Design) is generated in its
+              own course look instead: notes/<subject>/index.html + chapters/*.html
+              (see render_course). A subject with "prebuilt": "<file>" ships its own
+              ready-made HTML and is linked as-is instead of generated.
 
 Their CSS/JS are linked from /assets (a copy lives in each prebuilt subject too).
 
@@ -25,6 +27,7 @@ import json
 import re
 from datetime import date
 from pathlib import Path
+from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parent.parent
 README = ROOT / "README.md"
@@ -125,7 +128,7 @@ def parse_subjects():
         for md in md_files:
             num, title = chapter_meta(md.stem)
             chapters.append({"num": num, "title": title, "slug": slugify(md.stem),
-                             "text": md.read_text(encoding="utf-8")})
+                             "stem": md.stem, "text": md.read_text(encoding="utf-8")})
         subjects.append({
             "slug": sub.name,
             "title": meta.get("title", sub.name.replace("-", " ").title()),
@@ -133,6 +136,12 @@ def parse_subjects():
             "tags": meta.get("tags", []),
             "added": meta.get("added", ""),
             "prebuilt": meta.get("prebuilt"),
+            # layout "course": the System Design course look (see render_course).
+            "layout": meta.get("layout"),
+            "course_title": meta.get("course_title"),
+            "author": meta.get("author"),
+            "intro": meta.get("intro"),
+            "chapter_info": meta.get("chapters", {}),
             # library: generated like a subject, but surfaced from the Library catalogue
             # (a README entry links to it) and hidden from the Notes index.
             "library": meta.get("library", False),
@@ -173,9 +182,19 @@ def parse_projects():
 def group_phases(s):
     chapters = s["chapters"]
     groups, used = [], set()
-    for ph in s["phases"]:
+    info = s.get("chapter_info", {})
+
+    def in_phase(c, ph):
+        # A chapter's own "phase" (keyed by title, so it survives renumbering) wins
+        # over the phase's numeric from/to range.
+        named = info.get(c["title"], {}).get("phase")
+        if named:
+            return named == ph.get("title")
         frm, to = ph.get("from", 0), ph.get("to", 10**9)
-        items = [c for c in chapters if c["num"].isdigit() and frm <= int(c["num"]) <= to]
+        return c["num"].isdigit() and frm <= int(c["num"]) <= to
+
+    for ph in s["phases"]:
+        items = [c for c in chapters if c["slug"] not in used and in_phase(c, ph)]
         used.update(c["slug"] for c in items)
         groups.append([ph, items])
     leftovers = [c for c in chapters if c["slug"] not in used]
@@ -355,7 +374,7 @@ def tool_card(t):
 
 
 def subject_card(s):
-    entry = s["prebuilt"] or "html/index.html"
+    entry = s["prebuilt"] or ("index.html" if s["layout"] == "course" else "html/index.html")
     n = len(s["chapters"])
     return ("".join([
         f'<a class="chapter-card" href="notes/{h(s["slug"])}/{entry}">',
@@ -583,6 +602,243 @@ def render_chapter(s, idx):
     (out / f'{ch["slug"]}.html').write_text(html, encoding="utf-8")
 
 
+# --------------------------------------------------------------------------- #
+# Course layout — the System Design subject's own look (layout: "course").
+# Writes notes/<subject>/index.html + chapters/<md stem>.html, styled by the
+# subject's assets/system-design.css (+ assets/home.css for the landing page).
+# Per-chapter card data (icon, short title, summary, subtitle, phase) lives in
+# _subject.json "chapters", keyed by chapter title so renumbering keeps it.
+# --------------------------------------------------------------------------- #
+COURSE_FONTS = FONTS.replace("800;900", "800")
+BACK_PILL = ('<a href="{root}notes.html" data-ailib-back style="position:fixed;left:16px;bottom:16px;'
+             'z-index:99999;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600;'
+             'background:#0f172a;color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;'
+             'box-shadow:0 6px 20px rgba(0,0,0,.28)">&#8592; AI Library</a>')
+COURSE_CSS = (".main .mermaid{display:flex;justify-content:center;margin:24px 0;padding:20px;"
+              "background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);"
+              "overflow-x:auto}.main .mermaid svg{max-width:100%;height:auto}")
+MARKED_JS = "https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"
+MERMAID_JS = "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"
+PRISM_AUTOLOADER = ('<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/'
+                    'prism-autoloader.min.js"></script>')
+
+# Runs after marked has rendered the chapter into <main>: GitHub-style heading ids
+# (so in-page links work), sidebar TOC from the H2s, drop the markdown's own
+# "Table of Contents" section (the sidebar replaces it), wrap tables, style the
+# Learning Outcomes list, open external links in a new tab, and turn ```mermaid
+# blocks into diagrams that re-render when the theme is toggled.
+COURSE_RENDER_JS = r"""
+var m=document.getElementById("main"),nav=m.querySelector(":scope > .chapter-nav");
+var tmp=document.createElement("div");tmp.innerHTML=marked.parse(MD,{gfm:true,breaks:false});
+while(tmp.firstChild){m.insertBefore(tmp.firstChild,nav);}
+var seen={};
+m.querySelectorAll("h1,h2,h3,h4,h5,h6").forEach(function(hd){
+ if(hd.closest(".hero"))return;
+ var id=hd.textContent.trim().toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu,"").replace(/\s/g,"-");
+ if(seen[id]!==undefined){id=id+"-"+(++seen[id]);}else{seen[id]=0;}hd.id=id;});
+m.querySelectorAll(":scope > h2").forEach(function(hd){
+ if(!/^table of contents$/i.test(hd.textContent.trim()))return;
+ var n=hd.nextElementSibling;
+ while(n&&n.tagName!=="H2"&&n!==nav){var x=n.nextElementSibling;n.remove();n=x;}
+ var p=hd.previousElementSibling;if(p&&p.tagName==="HR")p.remove();hd.remove();});
+var toc=document.getElementById("tocList");
+m.querySelectorAll(m.querySelector(":scope > h2")?":scope > h2":":scope > h1").forEach(function(hd){
+ var li=document.createElement("li"),a=document.createElement("a");
+ a.href="#"+hd.id;a.textContent=hd.textContent;li.appendChild(a);toc.appendChild(li);});
+m.querySelectorAll("table").forEach(function(t){
+ var w=document.createElement("div");w.className="table-wrapper";t.parentNode.insertBefore(w,t);w.appendChild(t);});
+m.querySelectorAll(":scope > h2").forEach(function(hd){
+ if(!/learning outcomes/i.test(hd.textContent))return;
+ var n=hd.nextElementSibling;while(n&&n.tagName==="P")n=n.nextElementSibling;
+ if(!n||n.tagName!=="OL")return;n.className="outcomes-list";
+ Array.prototype.forEach.call(n.children,function(li,i){
+  var s=document.createElement("span");s.innerHTML=li.innerHTML;li.innerHTML="";
+  var k=document.createElement("span");k.className="outcome-num";k.textContent=i+1;
+  li.appendChild(k);li.appendChild(s);});});
+m.querySelectorAll('a[href^="http"]').forEach(function(a){a.target="_blank";a.rel="noopener";});
+var dia=[];
+m.querySelectorAll("pre > code.language-mermaid").forEach(function(c){
+ var d=document.createElement("div");d.className="mermaid";d.textContent=c.textContent;
+ c.parentNode.replaceWith(d);dia.push([d,c.textContent]);});
+async function drawMermaid(){
+ if(!dia.length||typeof mermaid==="undefined")return;
+ var dark=document.documentElement.getAttribute("data-theme")==="dark";
+ mermaid.initialize({startOnLoad:false,securityLevel:"strict",theme:dark?"dark":"default"});
+ var nodes=[];
+ for(var i=0;i<dia.length;i++){var p=dia[i];
+  if(!p[2]&&!(await mermaid.parse(p[1],{suppressErrors:true}))){
+   // Invalid diagram source: show it as a code block instead of mermaid's error box.
+   var pre=document.createElement("pre"),code=document.createElement("code");
+   code.textContent=p[1];pre.appendChild(code);p[0].replaceWith(pre);dia.splice(i--,1);continue;}
+  p[2]=true;p[0].removeAttribute("data-processed");p[0].textContent=p[1];nodes.push(p[0]);}
+ if(nodes.length)mermaid.run({nodes:nodes});}
+window.addEventListener("load",function(){drawMermaid();
+ new MutationObserver(drawMermaid).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});});
+"""
+
+
+def fill_counts(text, counts):
+    """Expand {chapters} and {count:<phase title>} placeholders in _subject.json text."""
+    return re.sub(r"\{(chapters|count:[^}]+)\}", lambda m: str(counts.get(m.group(1), m.group(0))), text)
+
+
+def course_phase_range(items):
+    nums = [int(c["num"]) for c in items if c["num"]]
+    rng = ""
+    if nums:
+        rng = (f"Chapter {nums[0]}" if len(nums) == 1 else f"Chapters {min(nums)}–{max(nums)}")
+    extras = [c["title"] for c in items if not c["num"]]
+    return " + ".join(([rng] if rng else []) + extras)
+
+
+def course_href(c):
+    return "chapters/" + quote(c["stem"]) + ".html"
+
+
+def course_index(s, groups, counts):
+    title = s["course_title"] or s["title"]
+    info = s["chapter_info"]
+    chapters = s["chapters"]
+    ctas = ""
+    if chapters:
+        ctas += (f'<a class="home-btn home-btn-primary" href="{h(course_href(chapters[0]))}">'
+                 'Start the Course →</a>')
+    sec = s.get("cta_secondary") or {}
+    target = next((c for c in chapters if c["title"] == sec.get("chapter")), None)
+    if target:
+        ctas += (f'<a class="home-btn home-btn-secondary" href="{h(course_href(target))}">'
+                 f'{h(sec["label"])}</a>')
+    stats = [{"num": fill_counts(st["num"], counts), "label": st["label"]} for st in s["stats"]]
+    intro = ""
+    if s["learn"]:
+        items = "".join(f"<li>{h(x)}</li>" for x in s["learn"])
+        para = f'<p>{h(s["intro"])}</p>' if s["intro"] else ""
+        intro = (f'<div class="home-intro-card"><div><h3>What you\'ll learn</h3>{para}</div>'
+                 f'<ul class="home-intro-list">{items}</ul></div>')
+    sections = []
+    for ph, items in groups:
+        if not items:
+            continue
+        cards = []
+        for c in items:
+            ci = info.get(c["title"], {})
+            label = f'CH {int(c["num"]):02d}' if c["num"] else "REF"
+            foot = "Start here →" if c is chapters[0] else ph.get("foot", "Read chapter →")
+            desc = f'<p class="chapter-desc">{h(ci["summary"])}</p>' if ci.get("summary") else ""
+            cards.append("".join([
+                f'<a class="chapter-card" href="{h(course_href(c))}">',
+                f'<div class="chapter-card-head"><span class="chapter-num">{label}</span>',
+                f'<span class="chapter-icon">{h(ci.get("icon", "📄"))}</span></div>',
+                f'<h3 class="chapter-title">{h(ci.get("short") or c["title"])}</h3>', desc,
+                f'<div class="chapter-card-foot">{h(foot)}</div></a>',
+            ]))
+        heading = (ph.get("icon", "") + " " + ph.get("title", "")).strip()
+        style = ' style="margin-top: 64px;"' if sections else ""
+        sections.append(f'<section{style}><div class="home-section-header"><h2>{h(heading)}</h2>'
+                        f'<span class="count">{h(course_phase_range(items))}</span></div>'
+                        f'<div class="chapter-list">{"".join(cards)}</div></section>')
+    footer = (f'<footer class="home-footer"><p>Course content by {h(s["author"])} · '
+              'Built with the system-design HTML framework</p></footer>' if s["author"] else "")
+    return "".join([
+        '<!DOCTYPE html><html lang="en" data-theme="light"><head><meta charset="UTF-8">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
+        f'<title>{h(title)} — Course Home</title><meta name="description" content="{h(s["description"])}">',
+        FONTS, '<link rel="stylesheet" href="assets/system-design.css">',
+        '<link rel="stylesheet" href="assets/home.css"></head><body>',
+        BACK_PILL.format(root="../../"),
+        '<header class="topbar"><a class="brand" href="index.html"><span class="brand-icon">SD</span>',
+        f'<span>{h(title)}</span></a><div class="topbar-actions">',
+        '<button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button></div></header>',
+        f'<section class="home-hero"><span class="home-eyebrow">{h(fill_counts(s["eyebrow"] or "", counts))}</span>',
+        f'<h1>{h(title)}</h1><p class="home-tagline">{h(s["tagline"] or s["description"])}</p>',
+        f'<div class="home-cta-row">{ctas}</div>', stats_block(stats), '</section>',
+        f'<main class="home-container">{intro}{"".join(sections)}</main>', footer,
+        '<script src="assets/system-design.js"></script></body></html>',
+    ])
+
+
+def course_chapter(s, idx, phase_of):
+    title = s["course_title"] or s["title"]
+    chapters = s["chapters"]
+    ch = chapters[idx]
+    ci = s["chapter_info"].get(ch["title"], {})
+    short = ci.get("short") or ch["title"]
+    name = f'Chapter {ch["num"]}' if ch["num"] else short
+    ph = phase_of.get(ch["slug"], {})
+    label = name + (f' · {ph["label"]}' if ch["num"] and ph.get("label") else "")
+    # A numbered chapter's leading "# Heading" becomes the hero title; unnumbered pages
+    # (e.g. Resources) use their short title and keep their headings in the body.
+    text = ch["text"].lstrip("﻿")
+    hm = re.match(r"\s*#\s+(.+?)\s*#*\s*(?:\n|$)", text) if ch["num"] else None
+    heading = hm.group(1) if hm else short
+    if hm:
+        text = text[hm.end():]
+
+    def nav_card(c, cls, word):
+        cname = f'Chapter {c["num"]} — ' if c["num"] else ""
+        cshort = s["chapter_info"].get(c["title"], {}).get("short") or c["title"]
+        return (f'<a class="chapter-nav-card{cls}" href="{h(quote(c["stem"]))}.html">'
+                f'<div class="chapter-nav-label">{word}</div>'
+                f'<div class="chapter-nav-title">{h(cname + cshort)}</div></a>')
+
+    nav = ""
+    if idx > 0:
+        nav += nav_card(chapters[idx - 1], "", "← Previous")
+    if idx < len(chapters) - 1:
+        nav += nav_card(chapters[idx + 1], " next", "Next chapter →")
+    subtitle = f'<p class="hero-subtitle">{h(ci["subtitle"])}</p>' if ci.get("subtitle") else ""
+    author = f'<div class="hero-author">By {h(s["author"])}</div>' if s["author"] else ""
+    toc_head = f"{name} — On This Page" if ch["num"] else "On This Page"
+    return "".join([
+        '<!DOCTYPE html><html lang="en" data-theme="light"><head><meta charset="UTF-8">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
+        f'<title>{h(name if not ch["num"] else name + " — " + short)}</title>',
+        COURSE_FONTS, PRISM_CSS, '<link rel="stylesheet" href="../assets/system-design.css">',
+        f'<style>{COURSE_CSS}</style></head><body>',
+        BACK_PILL.format(root="../../../"),
+        '<div class="progress-bar" id="progressBar"></div>',
+        '<header class="topbar"><a class="brand" href="../index.html"><span class="brand-icon">SD</span>',
+        f'<span>{h(title)}</span></a><div class="topbar-actions">',
+        '<button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">☰</button>',
+        '<button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌙</button></div></header>',
+        '<div class="overlay" id="overlay"></div>',
+        f'<div class="layout"><aside class="sidebar" id="sidebar"><h3>{h(toc_head)}</h3>',
+        '<ul class="toc-list" id="tocList"></ul></aside>',
+        '<main class="main" id="main"><section class="hero">',
+        f'<span class="chapter-label">{h(label)}</span><h1>{h(heading)}</h1>{subtitle}{author}</section>',
+        f'<nav class="chapter-nav">{nav}</nav></main></div>',
+        f'<script src="{MARKED_JS}"></script><script src="{MERMAID_JS}"></script>',
+        f'<script>const MD={embed_md(text)};{COURSE_RENDER_JS}</script>',
+        PRISM_JS, PRISM_AUTOLOADER, '<script src="../assets/system-design.js"></script>',
+        '</body></html>',
+    ])
+
+
+def render_course(s):
+    groups = group_phases(s) if s["phases"] else [[{"title": "Chapters"}, s["chapters"]]]
+    counts = {"chapters": sum(1 for c in s["chapters"] if c["num"])}
+    phase_of = {}
+    for ph, items in groups:
+        counts["count:" + ph.get("title", "")] = len(items)
+        phase_of.update((c["slug"], ph) for c in items)
+    for c in s["chapters"]:
+        if c["title"] not in s["chapter_info"]:
+            print(f'  note: {s["slug"]}: no _subject.json "chapters" entry for "{c["title"]}" (using defaults)')
+    base = NOTES_DIR / s["slug"]
+    (base / "index.html").write_text(course_index(s, groups, counts), encoding="utf-8")
+    out = base / "chapters"
+    out.mkdir(parents=True, exist_ok=True)
+    keep = set()
+    for i, c in enumerate(s["chapters"]):
+        (out / f'{c["stem"]}.html').write_text(course_chapter(s, i, phase_of), encoding="utf-8")
+        keep.add(f'{c["stem"]}.html')
+    # Drop pages whose markdown is gone (renamed, renumbered or removed chapters).
+    for old in out.glob("*.html"):
+        if old.name not in keep:
+            old.unlink()
+            print(f"  removed stale {old.relative_to(ROOT)}")
+
+
 def main():
     tools = parse_tools(README.read_text(encoding="utf-8"))
     subjects = parse_subjects()
@@ -593,6 +849,10 @@ def main():
     gen = 0
     for s in subjects:
         if s["prebuilt"]:
+            continue
+        if s["layout"] == "course":
+            render_course(s)
+            gen += 1
             continue
         render_subject(s)
         for i in range(len(s["chapters"])):
