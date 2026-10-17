@@ -706,4 +706,4 @@ The key is to **balance trade-offs:** performance vs. consistency, cost vs. reli
 
 ---
 
-**Next Up:** [Chapter 24 — Design a Collaborative Document Editor (Google Docs) →](./24%20-%20Design%20a%20Collaborative%20Document%20Editor%20(aka%20Google%20Docs).md)
+**Next Up:** [Chapter 28 — Design a Collaborative Document Editor (Google Docs) →](./28%20-%20Design%20a%20Collaborative%20Document%20Editor%20(aka%20Google%20Docs).md)

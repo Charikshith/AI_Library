@@ -807,4 +807,4 @@ Whether preparing for a system design interview or architecting a real-world sol
 
 ---
 
-**Next Up:** [Chapter 21 — Design a Search Engine (Google) →](./21%20-%20Design%20a%20Search%20Engine(aka%20Google).md)
+**Next Up:** [Chapter 25 — Design a Search Engine (Google) →](./25%20-%20Design%20a%20Search%20Engine(aka%20Google).md)

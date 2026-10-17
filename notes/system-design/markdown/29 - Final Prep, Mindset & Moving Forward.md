@@ -31,7 +31,7 @@ Interviewers aren't just seeking the "right" architecture — they're evaluating
 
 ## A 4-Step Framework for Structured Responses
 
-A clear structure keeps your solution coherent and adaptable, even as interviewers introduce curveballs. Use this **repeatable 4-step framework** (from Chapter 11):
+A clear structure keeps your solution coherent and adaptable, even as interviewers introduce curveballs. Use this **repeatable 4-step framework** (from Chapter 15):
 
 1. **Understand Requirements** — Clarify both functional and non-functional needs.
 2. **Estimate Scale & Identify Bottlenecks** — Use "back-of-the-envelope" calculations; spot potential hotspots.

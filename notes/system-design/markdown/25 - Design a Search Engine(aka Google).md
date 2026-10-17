@@ -817,4 +817,4 @@ By combining **distributed crawling, NoSQL document stores, real-time indexing, 
 
 ---
 
-**Next Up:** [Chapter 22 — Design an E-Commerce Platform (Amazon) →](./22%20-%20Design%20an%20E-Commerce%20Platform(aka%20Amazon).md)
+**Next Up:** [Chapter 26 — Design an E-Commerce Platform (Amazon) →](./26%20-%20Design%20an%20E-Commerce%20Platform(aka%20Amazon).md)
