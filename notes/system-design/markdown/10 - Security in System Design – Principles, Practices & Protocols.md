@@ -132,14 +132,13 @@ graph LR
 | Poor Authentication    | Weak passwords, no 2FA, session flaws  | Strong auth, MFA, secure token handling  |
 | Open Ports/Services    | Unnecessary or exposed ports           | Firewalls, segmentation, port closure    |
 
+```mermaid
+flowchart LR
+    I(["Internet"]) --> FW["Firewall"] --> W["Web service"]
+    FW --> DB[("Database")]
+    W --> IA["Internal APIs"]
 ```
-   +------------+      +-------------+      +-------------+
-   |  Internet  |----->|   Firewall  |----->| Web Service |
-   +------------+      +------+------+      +------+------+
-                                 |                 |
-                                 v                 v
-                         [Database]       [Internal APIs]
-```
+
 
 Attackers probe every interface — APIs, open ports, misconfigured servers.
 
@@ -1405,30 +1404,17 @@ JWT is everywhere, but it's also where the most security mistakes happen.
 
 A single security control will eventually fail. **Layer your defenses** so an attacker has to bypass multiple controls.
 
+```mermaid
+flowchart TB
+    I(["Internet"]) --> L1["1. CDN and anti-DDoS<br/>(Cloudflare, AWS Shield)"]
+    L1 --> L2["2. WAF: blocks OWASP Top 10 attempts"]
+    L2 --> L3["3. API gateway: auth, rate limits, JWT validation"]
+    L3 --> L4["4. App-level authorization: role and permission checks per endpoint"]
+    L4 --> L5["5. Database access controls: row-level security, per-service DB users"]
+    L5 --> L6["6. Encryption at rest: stolen data stays unreadable"]
+    L6 --> L7["7. Audit logs: every access logged for incident response"]
 ```
-Internet
-   │
-   ▼
-[1] CDN / Anti-DDoS (Cloudflare, AWS Shield)
-   │
-   ▼
-[2] WAF (Web Application Firewall) — blocks OWASP Top 10 attempts
-   │
-   ▼
-[3] API Gateway — auth, rate limits, JWT validation
-   │
-   ▼
-[4] App-level authorization — role/permission checks per endpoint
-   │
-   ▼
-[5] Database access controls — row-level security, per-service DB users
-   │
-   ▼
-[6] Encryption at rest — even if attacker exfiltrates the DB, data is encrypted
-   │
-   ▼
-[7] Audit logs — every access logged for incident response
-```
+
 
 > **Lesson:** even if one layer is bypassed, the next catches it. Don't rely on a single "wall."
 

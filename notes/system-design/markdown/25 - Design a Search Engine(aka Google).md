@@ -76,23 +76,16 @@ After working through this case study, you'll be able to:
 
 ### 25.5.1 High-Level Component Diagram
 
+```mermaid
+flowchart TB
+    U(["User / API"]) <--> QL["Query layer"] <--> IS[("Index storage")]
+    U <--> CL[("Cache layer")]
+    QL <--> RK["Ranking engine"]
+    IS --- FI[("Forward and inverted indexes")]
+    CR["Crawler service"] <--> UF["URL frontier"] --> DS[("Document store")]
+    CL <--> CR
 ```
-+-------------------+        +----------------+        +--------------------+
-|   User / API      |<------>|   Query Layer  |<------>|   Index Storage    |
-+-------------------+        +----------------+        +--------------------+
-         ^                            ^                        ^
-         |                            |                        |
-         v                            |                        |
-+-------------------+        +----------------+        +--------------------+
-|   Cache Layer     |        | Ranking Engine |        | Forward/Inverted   |
-+-------------------+        +----------------+        | Indexes            |
-         ^                            ^                +--------------------+
-         |                            |
-         v                            v
-+-------------------+        +----------------+        +--------------------+
-|  Crawler Service  |<------>| URL Frontier   |------->| Document Store     |
-+-------------------+        +----------------+        +--------------------+
-```
+
 
 ### 25.5.2 Mermaid Architecture
 
@@ -126,31 +119,12 @@ flowchart TD
 
 ### 25.5.3 End-to-End Data Flow
 
+```mermaid
+flowchart LR
+    CR["Crawler"] --> PA["Parser"] --> IX["Indexer"] --> ST[("Storage")]
+    IX --> QA["Query / API"] --> RK["Ranking"] --> CA[("Cache")] --> UC(["User / client"])
 ```
-   +----------+      +----------+      +----------+      +----------+
-   |  Crawler |----->|  Parser  |----->| Indexer  |----->|  Storage |
-   +----------+      +----------+      +----------+      +----------+
-                                                |
-                                                v
-                                         +-------------+
-                                         |  Query/API  |
-                                         +-------------+
-                                                |
-                                                v
-                                          +-----------+
-                                          |  Ranking  |
-                                          +-----------+
-                                                |
-                                                v
-                                          +-----------+
-                                          |   Cache   |
-                                          +-----------+
-                                                |
-                                                v
-                                         +------------+
-                                         | User/Client|
-                                         +------------+
-```
+
 
 ---
 

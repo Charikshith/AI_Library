@@ -71,14 +71,13 @@ Reliability is a system's ability to **operate continuously without failure**. I
 | **Availability** | System is accessible and responsive             | Can query a database anytime         |
 | **Durability**   | Data is safe and not lost (even after failures) | Data remains after system crash      |
 
+```mermaid
+flowchart LR
+    Q(["User query"]) --> Up{"System up?"}
+    Up -- "yes: available" --> A(["Available"])
+    Up --> D{"Data safe?<br/>(durability)"}
 ```
-+----------------+        +----------------+
-|   User Query   | -----> |   System Up?   | ----> [Available?]
-+----------------+        +----------------+
-                                    |
-                                    v
-                        [Data Safe? (Durability)]
-```
+
 
 ---
 
@@ -360,25 +359,18 @@ Design with multiple instances of key components (servers, databases, etc.) to a
 - Ensures high availability and resilience during regional outages.
 - Distribute components across multiple regions to handle data center/region outages.
 
-### 9.9.3 Active-Active vs. Active-Passive Across Data Centers
+### 9.9.3 Failing Over Between Data Centers
 
-A **data center** is a building (or campus) of servers with its own power, cooling and network. Cloud providers group them into **regions** and **availability zones**. Running in more than one data center protects you from a whole-site failure.
+A **data center** is a building (or campus) of servers with its own power, cooling and network. Cloud providers group them into **regions** and **availability zones**. Running in more than one data center protects you from a whole-site failure. The comparison of **active-active** and **active-passive** designs is in the section of that name later in this chapter; this part covers what makes either one work in practice.
 
-| | **Active-passive** | **Active-active** |
-|--|--------------------|-------------------|
-| How it works | one site serves all traffic; the other stands by (warm or cold) and takes over on failure | every site serves live traffic at the same time |
-| Failover | needs a switch-over (DNS or load-balancer change), so there is a short outage | traffic simply shifts away from the failed site |
-| Cost | lower (the standby may be small) | higher (all sites sized for the load) |
-| Data | standby gets replicated data, usually asynchronously, so a little may be lost | needs multi-site writes or careful partitioning, so conflicts and lag must be handled |
-| Complexity | simpler | harder |
-
-**Routing users to a site:** use **Geo-DNS** (see the DNS chapter) or a global load balancer to send each user to the nearest healthy site, and to remove a failed site from the answers. Keep DNS **TTLs** short enough for failover to take effect quickly.
+**Routing users to a healthy site:** use **Geo-DNS** (see the DNS chapter) or a global load balancer to send each user to the nearest healthy site, and to drop a failed site from the answers. Keep DNS **TTLs** short enough for a failover to take effect quickly.
 
 **Things that go wrong:**
 
 - **Replication lag:** the standby is a few seconds behind, which sets your **RPO** (how much data you can lose).
 - **Split brain:** both sites believe they are the primary and accept conflicting writes. Use a quorum or an external arbiter to decide the single winner.
 - **Untested failover:** a switch you have never exercised often fails. Rehearse it regularly.
+- **Capacity:** if one site fails, can the survivors carry the whole load? In active-active designs each site must be sized for that.
 
 ### 9.9.4 Automated Failover
 
@@ -466,13 +458,14 @@ livenessProbe:
 | **Differential** | Changes since last full backup       | Faster restore      | Larger than incremental |
 
 ```mermaid
-timeline
-    title Backup Types Over a Week
-    Monday : Full Backup
-    Tuesday : Incremental 1
-    Wednesday : Incremental 2
-    Thursday : Differential 1
-    Friday : Incremental 3
+flowchart LR
+    M["Monday<br/><b>Full backup</b>"] --> T["Tuesday<br/><b>Incremental 1</b>"] --> W["Wednesday<br/><b>Incremental 2</b>"] --> Th["Thursday<br/><b>Differential 1</b>"] --> F["Friday<br/><b>Incremental 3</b>"]
+    classDef full fill:#2563eb,stroke:#1d4ed8,color:#ffffff
+    classDef inc fill:#10b981,stroke:#047857,color:#ffffff
+    classDef diff fill:#f59e0b,stroke:#b45309,color:#111827
+    class M full
+    class T,W,F inc
+    class Th diff
 ```
 
 **Hybrid approach example:** Weekly full backups, daily incremental backups.
@@ -507,12 +500,13 @@ graph TD
 ```mermaid
 gantt
     dateFormat  HH:mm
+    axisFormat  %H:%M
     title Backup and Recovery Timeline
     section Normal operation
-    Uptime                :done,    des1, 00:00, 04:00
+    Uptime                :done,    des1, 00:00, 4h
     section Failure and Recovery
-    Failure Detected      :active,  des2, 04:00, 00:30
-    Recovery In Progress  :         des3, 04:30, 01:00
+    Failure Detected      :active,  des2, 04:00, 30m
+    Recovery In Progress  :         des3, 04:30, 1h
 ```
 
 ### 9.11.5 Designing Your Backup & Recovery Strategy
@@ -628,23 +622,16 @@ In today's digital world, downtime is expensive — not just in dollars, but als
 
 **Diagram: DR Coverage**
 
+```mermaid
+flowchart TB
+    D["Disaster event"] --> DL["Data loss"]
+    D --> IO["Infrastructure outage"]
+    DL --> B["Backup"]
+    IO --> F["Failover"]
+    B --> R(["Complete resilience"])
+    F --> R
 ```
-+-----------------------------+
-|        Disaster Event       |
-+-----------------------------+
-         |               |
-         |               |
-    Data Loss      Infra Outage
-         |               |
-     +---v---+       +---v----+
-     |Backup |       |Failover|
-     +-------+       +--------+
-         \             /
-          \           /
-          +----+-----+
-               |
-      Complete Resilience
-```
+
 
 ### 9.12.5 Recovery Automation and Testing
 
@@ -846,6 +833,8 @@ Stripe, PayPal, and modern payment APIs all use this. **You should too** for any
 | **Active-Active**| All regions serve traffic simultaneously; data replicated bidirectionally     | Zero failover time; uses all capacity | Conflict resolution required; complex |
 | **Active-Passive**| One region serves; other(s) on standby, take over on failure                | Simpler; clean failover               | Standby capacity is paid for and idle |
 
+*Routing, replication lag and split brain are covered under Failing Over Between Data Centers in the redundancy section.*
+
 **Rule of thumb:** active-active is the right answer for read-heavy systems where eventual consistency is OK (social feeds, content delivery). Active-passive is simpler for transactional systems (banking, ticketing) where conflict resolution would be a nightmare.
 
 ---
@@ -884,15 +873,16 @@ You don't know if your reliability mechanisms work until you actually break thin
 ### 9.18.2 A Typical Pipeline
 
 ```mermaid
-flowchart LR
-    C[Commit / pull request] --> B[Build]
-    B --> L[Lint and static checks]
-    L --> T[Unit and integration tests]
-    T --> P[Package: container image]
-    P --> S[Deploy to staging]
-    S --> A{Approval gate}
-    A --> D[Deploy to production]
-    D --> M[Monitor and roll back if needed]
+flowchart TB
+    subgraph CI["Continuous integration: runs on every change"]
+        direction LR
+        C["Commit / pull request"] --> B["Build"] --> L["Lint and static checks"] --> T["Unit and integration tests"] --> P["Package container image"]
+    end
+    subgraph CD["Continuous delivery: release"]
+        direction LR
+        S["Deploy to staging"] --> A{"Approval gate"} --> D["Deploy to production"] --> M["Monitor, roll back if needed"]
+    end
+    CI --> CD
 ```
 
 Each stage is a **gate**: if it fails, the change stops and nobody is paged at night. Fast stages (lint, unit tests) run first so feedback arrives in minutes.

@@ -214,15 +214,13 @@ We want redirects to be lightning-fast for popular URLs.
 
 ### 16.6.5 Data Flow & Hot Path
 
+```mermaid
+flowchart LR
+    U1([User]) --> GW["API gateway"] --> SS["URL shortener service"] --> DB[("Database")]
+    SS --> CL[("Cache layer")]
+    CL --> RS["Redirect service"] --> U2([User])
 ```
-[User] --> [API Gateway] --> [URL Shortener Service] --> [Database]
-                                     |
-                                     v
-                                [Cache Layer]
-                                     ^
-                                     |
-[User] <-- [Redirect Service] <------+
-```
+
 
 - **Hot Path:** Redirect checks Cache first; DB on miss.
 - **Write Path:** New short URLs go to DB and may pre-warm Cache.
@@ -420,39 +418,23 @@ new_id = get_next_id()
 short_key = encode_base62(new_id)
 ```
 
-### 16.9.2 ASCII Diagram
+### 16.9.2 Diagram
 
+```mermaid
+flowchart LR
+    S1["URL shortener service 1"] --> ZK["ZooKeeper<br/>(counter)"]
+    S2["URL shortener service 2"] --> ZK
+    ZK --> ID["Global unique ID for Base62"]
 ```
-+---------------------+
-| URL Shortener Svc 1 | --+
-+---------------------+   |
-                          |   +-------------+
-+---------------------+   +-->| Zookeeper   |
-| URL Shortener Svc 2 | --+   | (Counter)   |
-+---------------------+       +-------------+
-                               |
-                               v
-                    [Global Unique ID for Base62]
-```
+
 
 Or, in another visualization:
 
+```mermaid
+flowchart TB
+    G["URL generation service"] --> ZK["ZooKeeper counter<br/>atomic ID, e.g. 1234567"] --> B["Base62 encode<br/>(e.g. abc123)"]
 ```
-+------------------------+
-| URL Generation Service |
-+------------------------+
-           |
-           v
-+----------------------+
-|  Zookeeper Counter   |  ---[Atomic ID: 1234567]--->
-+----------------------+
-           |
-           v
-+----------------------+
-| Base62 Encode (e.g., |
-| "abc123")            |
-+----------------------+
-```
+
 
 ### 16.9.3 Advantages
 

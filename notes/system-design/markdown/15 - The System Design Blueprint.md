@@ -46,12 +46,11 @@ Before we dive into the framework, let's recap what system design means in pract
 
 Here's the high-level process we'll use for every case study:
 
+```mermaid
+flowchart LR
+    P1["1. Problem and scope"] --> P2["2. Estimate scale and find bottlenecks"] --> P3["3. High-level design<br/>(services, APIs)"] --> P4["4. Tech and infra decisions<br/>(stack, performance)"]
 ```
-+---------------------+      +----------------------------+      +-----------------------+      +-----------------------------+
-| 1. Problem & Scope  | ---> | 2. Estimating Scale &      | ---> | 3. High-Level Design  | ---> | 4. Tech & Infra Decisions   |
-|                     |      |    Identifying Bottlenecks |      |    (Services, APIs)   |      |    (Stack, Performance)     |
-+---------------------+      +----------------------------+      +-----------------------+      +-----------------------------+
-```
+
 
 Let's dig into each step.
 

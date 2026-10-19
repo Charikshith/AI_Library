@@ -692,17 +692,23 @@ In addition to item auctions, sellers can pay to feature their listings — whic
 
 ## 21.19 Example Sequence Diagram
 
+```mermaid
+sequenceDiagram
+    participant B as Bidder
+    participant G as API gateway
+    participant A as Auction service
+    participant BS as Bid service
+    participant N as Notification
+    B->>G: Place bid
+    G->>A: Validate auction
+    A-->>G: Auction OK
+    G->>BS: Place bid (concurrency check)
+    BS-->>G: Bid accepted
+    G->>N: Broadcast
+    N->>B: Push outbid notices to other bidders
+    G-->>B: Bid accepted
 ```
-Bidder                API Gateway           Auction Service           Bid Service         Notification
-  |                        |                      |                        |                   |
-  |-- Place Bid ---------->|                      |                        |                   |
-  |                        |-- Validate Auction ->|                        |                   |
-  |                        |<-- Auction OK ------ |                        |                   |
-  |                        |--- Place Bid ------->|--- Concurrency Check ->|                   |
-  |                        |<-- Bid Accepted ---- |                        |                   |
-  |                        |--- Broadcast --------|----------------------->|--- Push Outbid -->|
-  |<-- Bid Accepted -------|                      |                        |                   |
-```
+
 
 ---
 

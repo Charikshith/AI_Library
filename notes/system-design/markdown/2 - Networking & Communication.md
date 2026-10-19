@@ -32,14 +32,13 @@ After reading this chapter, you'll be able to:
 
 Before we dive in, here's the mental map for *where each topic in this chapter lives*. Every networking concept fits somewhere in this stack.
 
-```
-Layer                  Examples                            Topics in this chapter
-─────────────────────────────────────────────────────────────────────────────────
-Application (L7)       HTTP, HTTPS, DNS, gRPC, WebSocket    API Gateway, L7 LB, CDN
-Transport   (L4)       TCP, UDP                             L4 LB, NAT
-Network     (L3)       IP (v4, v6), ICMP                    IP addresses, routing
-Link        (L2)       Ethernet, Wi-Fi                      (out of scope here)
-```
+| Layer | Examples | Topics in this chapter |
+|-------|----------|------------------------|
+| **Application (L7)** | HTTP, HTTPS, DNS, gRPC, WebSocket | API Gateway, L7 load balancer, CDN |
+| **Transport (L4)** | TCP, UDP | L4 load balancer, NAT |
+| **Network (L3)** | IP (v4, v6), ICMP | IP addresses, routing |
+| **Link (L2)** | Ethernet, Wi-Fi | (out of scope here) |
+
 
 **Two terms you'll see constantly:**
 
@@ -464,17 +463,19 @@ The hierarchy above is operated by different organizations, which helps explain 
 **What happens when you register `example.com`:** you pay a registrar; the registrar tells the `.com` registry which **name servers** are responsible for your domain; those name servers then hold your records (`A`, `CNAME`, `MX`...). Resolvers learn the answer by walking root → TLD → your name servers.
 
 > **Why this matters in design:** the registrar and the DNS host are separate choices. Moving DNS hosting (for failover or Geo-DNS) only means changing the name-server records at the registrar.
-### 2.5.9 Resolution Flow (ASCII for plain-text viewers)
+### 2.5.9 Resolution Flow (Condensed)
 
+```mermaid
+flowchart TB
+    U([User browser]) --> BC["Browser cache"]
+    BC --> OC["OS cache"]
+    OC --> R["Recursive resolver (ISP)"]
+    R --> Root["Root server"]
+    Root --> TLD["TLD server"]
+    TLD --> Auth["Authoritative server"]
+    Auth --> IP(["IP address response"])
 ```
-User (Browser)
-  |
-  v
-Browser Cache --> OS Cache --> Recursive Resolver (ISP) --> Root Server --> TLD Server --> Authoritative Server
-                                                                                               |
-                                                                                               v
-                                                                               IP Address Response
-```
+
 
 ### 2.5.10 DNS Caching and Performance
 
@@ -512,14 +513,16 @@ DNS is a keystone in scalable, resilient architectures:
 
 **Anycast** is the foundational trick behind global DNS, modern CDNs, and DDoS mitigation. The same IP address is advertised from many physical locations using BGP (the internet's routing protocol). When you query that IP, the network automatically routes you to the **closest** instance.
 
+```mermaid
+flowchart LR
+    L["London"] --> N{{"Same IP 1.1.1.1<br/>advertised from every site"}}
+    F["Frankfurt"] --> N
+    M["Mumbai"] --> N
+    T["Tokyo"] --> N
+    V["Virginia"] --> N
+    N --> Y(["You reach whichever site is nearest by network distance"])
 ```
-Same IP (1.1.1.1) is advertised from:
-   - London    ──┐
-   - Frankfurt ──┤
-   - Mumbai    ──┼── you reach whichever is "nearest" by network distance
-   - Tokyo     ──┤
-   - Virginia  ──┘
-```
+
 
 This is why Cloudflare's `1.1.1.1` resolver answers in <10ms from almost anywhere in the world. Same IP, hundreds of physical locations.
 
@@ -999,23 +1002,14 @@ Load balancers can be categorized by **network layer** and **deployment model**.
 - Can route requests based on content (e.g., send `/checkout` to a different server pool).
 - **Example:** AWS Application Load Balancer, NGINX.
 
-```text
-+-------------------+
-|   Client Request  |
-+---------+---------+
-          |
-          v
-    +-----+------+
-    | Load       |   Layer 4:  IP/Port based
-    | Balancer   |   Layer 7:  Content-aware
-    +-----+------+
-          |
-   +------+------+------+
-   |             |      |
-+--+--+       +--+--+ +--+--+
-| S1 |       | S2 | | S3 |
-+-----+       +-----+ +-----+
+```mermaid
+flowchart TB
+    Req(["Client request"]) --> LB{{"Load balancer<br/>Layer 4: IP and port based<br/>Layer 7: content aware"}}
+    LB --> S1["Server 1"]
+    LB --> S2["Server 2"]
+    LB --> S3["Server 3"]
 ```
+
 
 #### 2.8.2.2 By Deployment Model
 

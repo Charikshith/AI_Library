@@ -907,17 +907,13 @@ def increment():
 
 ### 8.8.9 Event Loop (Simplified)
 
+```mermaid
+flowchart TB
+    R(["Incoming HTTP requests"]) --> EL["Event loop"]
+    EL --> IO["Async I/O and callbacks"]
+    EL --> TP["Thread pool for CPU-heavy tasks"]
 ```
-+-------------------------+
-| Incoming HTTP Requests  |
-+-----------+-------------+
-            |
-      +-----v------+
-      | Event Loop |-----> [Async I/O, Callbacks]
-      +------------+
-            |
-     [Thread Pool for CPU tasks]
-```
+
 
 ---
 

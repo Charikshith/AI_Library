@@ -940,11 +940,11 @@ Modern web applications are no longer siloed on a single domain — they often d
 (Cross-origin request blocked unless CORS is enabled)
 ```
 
-```plaintext
-+----------+      GET /api/data      +------------------+
-| app.com  |  -------------------->  | api.other.com    |
-+----------+   (Blocked by SOP)      +------------------+
+```mermaid
+flowchart LR
+    A["app.com"] -- "GET /api/data<br/>blocked by the same-origin policy" --x B["api.other.com"]
 ```
+
 
 ### 5.6.2 The Solution: What is CORS?
 

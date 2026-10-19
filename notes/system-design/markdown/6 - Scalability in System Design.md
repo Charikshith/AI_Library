@@ -775,19 +775,14 @@ gcloud compute instance-groups managed set-autoscaling my-group \
 ### 6.9.1 A Typical Web Request Path
 
 ```mermaid
-flowchart LR
-    U[User] --> R53[Route 53]
-    R53 --> CF[CloudFront CDN]
-    CF --> WAF[WAF]
-    WAF --> APIGW[API Gateway / ALB]
-    APIGW --> COG[Cognito checks the token]
-    APIGW --> SVC["Service on ECS / EKS / Lambda"]
-    SVC --> CACHE[(ElastiCache)]
-    SVC --> DB[(Aurora / RDS)]
-    SVC --> Q[SQS queue]
-    Q --> W[Worker service]
-    W --> S3[(S3)]
-    SVC --> CW[CloudWatch logs and metrics]
+flowchart TB
+    U([User]) --> R53["Route 53 (DNS)"] --> CF["CloudFront CDN"] --> WAF["WAF"] --> GW["API Gateway or ALB"]
+    GW --> COG["Cognito checks the token"]
+    GW --> SVC["Service on ECS, EKS or Lambda"]
+    SVC --> CACHE[("ElastiCache")]
+    SVC --> DB[("Aurora / RDS")]
+    SVC --> CW["CloudWatch logs and metrics"]
+    SVC --> Q[["SQS queue"]] --> W["Worker service"] --> S3[("S3")]
 ```
 
 ### 6.9.2 Choosing Between Look-Alikes

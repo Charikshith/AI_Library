@@ -92,21 +92,18 @@ A platform where users can:
 
 ### 24.5.1 High-Level Block Diagram
 
+```mermaid
+flowchart LR
+    CA(["Client apps"]) --> GW["API gateway"]
+    GW <--> US["User service"]
+    US --> ES["Engagement service"]
+    US --> MS["Metadata service"]
+    GW --> UP["Upload and ingestion"]
+    UP --> EP["Encoding pipeline"] --> BL[("Blob storage<br/>S3 / GCS")] --> CDN["CDN"]
+    UP --> EQ[["Event queue<br/>Kafka / SQS"]] --> AP["Async processing"]
+    UP --> SD["Search and discovery"] <--> RE["Recommendation engine"]
 ```
-[Client Apps]
-     |
-     v
-[API Gateway] <--------> [User Service]
-     |                      |
-     |                      +----> [Engagement Service]
-     |                      |
-     v                      +----> [Metadata Service]
-[Upload & Ingestion]------> [Encoding Pipeline]-----> [Blob Storage/S3/GCS]---> [CDN]
-     |
-     +----> [Event Queue (Kafka/SQS)] ------> [Async Processing]
-     |
-     +----> [Search & Discovery] <----> [Recommendation Engine]
-```
+
 
 ### 24.5.2 Mermaid Architecture
 
@@ -117,7 +114,7 @@ flowchart TD
     Ingestion-->|Event|Encoding
     Encoding-->|Store|ObjectStorage
     ObjectStorage-->|CDN sync|CDN
-    APIGateway-->|GET /videos/{id}|MetadataService
+    APIGateway-->|"GET /videos/{id}"|MetadataService
     APIGateway-->|POST /like|EngagementService
     EngagementService-->|Event Bus|AnalyticsService
     APIGateway-->|GET /search|SearchService

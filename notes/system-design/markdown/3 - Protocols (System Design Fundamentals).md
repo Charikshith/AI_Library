@@ -52,17 +52,13 @@ After reading this chapter, you'll be able to:
 
 Before diving into individual protocols, it helps to understand how they layer:
 
+```mermaid
+flowchart TB
+    A["Application layer: REST, GraphQL, gRPC, WebSockets"] --> H["HTTP / HTTPS"]
+    H --> T["TCP / UDP"]
+    T --> I["IP"]
 ```
-+------------------------------+
-|        Application Layer     |  <-- REST, GraphQL, gRPC APIs, WebSockets
-+------------------------------+
-|       HTTP/HTTPS Protocol    |
-+------------------------------+
-|        TCP / UDP             |
-+------------------------------+
-|           IP                 |
-+------------------------------+
-```
+
 
 - **TCP/UDP:** Low-level, transport protocols. TCP is reliable and connection-oriented; UDP is fast but unreliable.
 - **HTTP:** Application-level protocol, stateless, built on top of TCP — powers web traffic.
@@ -96,28 +92,22 @@ sequenceDiagram
     Note over Client,Server: Connection established
 ```
 
-#### 3.3.1.2 TCP Three-Way Handshake (ASCII versions)
+#### 3.3.1.2 TCP Three-Way Handshake
 
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant S as Server
+    C->>S: SYN (1)
+    S-->>C: SYN-ACK (2)
+    C->>S: ACK (3)
+    Note over C,S: Connection established, data can now flow reliably
 ```
-Client         Server
-  |   SYN   --->   |
-  | <---  SYN-ACK  |
-  |   ACK   --->   |
-(Connection established)
-```
+
 
 A second view, with step numbers:
 
-```plaintext
-Client                Server
-  |     SYN (1)         |
-  |-------------------->|
-  |    SYN-ACK (2)      |
-  |<--------------------|
-  |     ACK (3)         |
-  |-------------------->|
-Data can now flow reliably!
-```
+
 
 **Explanation:**
 
@@ -174,13 +164,16 @@ sequenceDiagram
     Server->>Client: (Optional) Response Packet
 ```
 
+```mermaid
+sequenceDiagram
+    participant S as Sender
+    participant R as Receiver
+    S->>R: packet 1
+    S->>R: packet 2
+    S->>R: packet 3
+    Note over S,R: No handshake, no acknowledgment
 ```
-Sender               Receiver
-  |  ---> packet 1  --->   |
-  |  ---> packet 2  --->   |
-  |  ---> packet 3  --->   |
-(No handshake, no acknowledgment)
-```
+
 
 **Postcard analogy:** Each UDP datagram is like dropping a postcard in the mail. It might arrive, might not, and order isn't guaranteed.
 
@@ -530,14 +523,16 @@ graph TD
 - **Integrity:** Ensures data is tamper-proof during transfer.
 - **Authentication:** Verifies server identity to prevent impersonation.
 
+```mermaid
+flowchart LR
+    subgraph H["HTTP (port 80)"]
+        C1["Client"] -- "readable by anyone on the path" --- S1["Server"]
+    end
+    subgraph HS["HTTPS (port 443)"]
+        C2["Client"] == "encrypted tunnel" ==> S2["Server"]
+    end
 ```
-HTTP (port 80)         HTTPS (port 443, encrypted)
-+-------------+        +-------------+
-|  Client     |        |  Client     |
-|  ---------  |        |  ---------  |
-|  Server     |        |  Server     |
-+-------------+        +-------------+
-```
+
 
 **Always use HTTPS** for any sensitive data (login, payments, banking, e-commerce, APIs).
 
@@ -1223,19 +1218,19 @@ sequenceDiagram
     Client->>Server: Close connection (when done)
 ```
 
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant S as Server
+    C->>S: HTTP Upgrade request
+    S-->>C: 101 Switching Protocols
+    Note over C,S: Connection open
+    C->>S: data
+    S->>C: data
+    C->>S: close frame
+    Note over C,S: Closed
 ```
-Client             Server
-  |   HTTP Upgrade  |
-  |---------------> |
-  | <--- 101 SW     |
-  |                 |  (Connection Open)
-  | <-- Data -----> |
-  | <---- Data ---- |
-  |    ...          |
-  |  [Close Frame]  |
-  |---------------> |
-  |    (Closed)     |
-```
+
 
 WebSocket handshake at the HTTP level:
 
@@ -1660,16 +1655,13 @@ flowchart LR
     style D fill:#f0f0f0,stroke:#333,stroke-width:1px
 ```
 
-#### 3.7.3.4 gRPC Architecture (ASCII)
+#### 3.7.3.4 gRPC Architecture
 
-```plaintext
-+-------------+        HTTP/2 + Protobuf        +-------------+
-|  Client     | <==============================>|   Server    |
-| (auto-code) |          (binary, fast)         | (auto-code) |
-+-------------+                                 +-------------+
-         ^                                          ^
-         |<--- Bidirectional Streaming ------------>|
+```mermaid
+flowchart LR
+    C["Client<br/>(auto-generated code)"] <== "HTTP/2 + Protobuf<br/>binary, fast<br/>bidirectional streaming" ==> S["Server<br/>(auto-generated code)"]
 ```
+
 
 Or, simpler:
 
@@ -2119,31 +2111,23 @@ mutation {
 
 ### 3.7.7 REST vs GraphQL vs gRPC — Visualizing the Data Fetch
 
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant S as Server
+    Note over C,S: REST (multiple endpoints)
+    C->>S: GET /user/123
+    S-->>C: {id, name, email, ...}
+    C->>S: GET /user/123/transactions
+    S-->>C: [{amount, date, ...}, ...]
+    Note over C,S: GraphQL (single query)
+    C->>S: POST /graphql (user + transactions)
+    S-->>C: {user: {name, email, transactions: [...]}}
+    Note over C,S: gRPC (single call, binary)
+    C->>S: GetUser(user_id=123)
+    S-->>C: UserResponse(name, email, ...)
 ```
-REST (Multiple Endpoints)
--------------------------
-Client
-  |
-  |--GET /user/123----------------------------->|
-  |<--{id, name, email, ...}--------------------|
-  |
-  |--GET /user/123/transactions---------------->|
-  |<--[{amount, date, ...}, ...]---------------|
 
-GraphQL (Single Query)
-----------------------
-Client
-  |
-  |--POST /graphql (user + transactions)-------->|
-  |<--{user: {name, email, transactions: [...]}}|
-
-gRPC (Single Call, Binary)
---------------------------
-Client
-  |
-  |--GetUser(user_id=123)---------------------->|
-  |<--UserResponse(name, email, ...)-----------|
-```
 
 ### 3.7.8 Example: REST vs GraphQL
 
@@ -2166,17 +2150,15 @@ POST /graphql
 
 ### 3.7.9 Decision Tree
 
+```mermaid
+flowchart TD
+    Start([Start]) --> Q1{"Need flexible data fetching or aggregation from many sources?"}
+    Q1 -- Yes --> GQL["Use GraphQL"]
+    Q1 -- No --> Q2{"Need efficient, low-latency, real-time or service-to-service calls?"}
+    Q2 -- Yes --> GRPC["Use gRPC"]
+    Q2 -- No --> REST["Use REST"]
 ```
-Start
- |
- +-- Does your client require flexible data fetching or aggregation from multiple sources?
- |       +-- Yes: Use GraphQL
- |       +-- No:
- |
- +-- Do you need efficient, low-latency, real-time, or microservice-to-microservice communication?
-         +-- Yes: Use gRPC
-         +-- No: Use REST
-```
+
 
 ### 3.7.10 Modern APIs — Tips & Interview Phrases
 

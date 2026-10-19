@@ -1195,22 +1195,28 @@ Modern applications must be scalable, resilient, and maintainable. As businesses
 
 ASCII view of monolith vs microservices:
 
-```
-[Monolith]              [Microservices]
-+-------------------+   +--------+  +--------+  +--------+
-| UI | Logic | Data |   | Auth   |  | Orders |  | Payment|
-+-------------------+   +--------+  +--------+  +--------+
+```mermaid
+flowchart LR
+    subgraph Monolith
+        M["UI | Logic | Data<br/>(one unit)"]
+    end
+    subgraph Microservices
+        A["Auth"]
+        O["Orders"]
+        P["Payment"]
+    end
 ```
 
+
+```mermaid
+flowchart TB
+    OS["Order service"] --- ODB[("Order DB")]
+    PS["Payment service"] --- PDB[("Payment DB")]
+    US["User service"] --- UDB[("User DB")]
+    OS <-- "API / events" --> PS
+    PS <-- "API / events" --> US
 ```
-+-------------------+   +--------------------+   +-------------------+
-| Order Service     |   | Payment Service    |   | User Service      |
-+-------------------+   +--------------------+   +-------------------+
-| Order DB          |   | Payment DB         |   | User DB           |
-+-------------------+   +--------------------+   +-------------------+
-       |                       |                        |
-       +---------API / Events--+------------------------+
-```
+
 
 ### 4.8.2 Identifying and Structuring Microservices
 
@@ -1224,19 +1230,22 @@ ASCII view of monolith vs microservices:
 
 **Domain-Driven Design (DDD)** is a useful approach:
 
+```mermaid
+flowchart TB
+    O["Order service"] <--> P["Payment service"] <--> U["User service"]
+    O --- ODB[("Order DB")]
+    P --- PDB[("Payment DB")]
+    U --- UDB[("User DB")]
 ```
-[Order Service] <--> [Payment Service] <--> [User Service]
-     |                    |                   |
-[Order DB]          [Payment DB]           [User DB]
-```
+
 
 ASCII domain model:
 
+```mermaid
+flowchart LR
+    O["Order"] <--> P["Payment"] <--> I["Inventory"]
 ```
-+-------------+      +------------+      +-----------+
-| Order       |<---->| Payment    |<---->| Inventory |
-+-------------+      +------------+      +-----------+
-```
+
 
 ### 4.8.3 Example: Node.js Microservice Skeleton
 
@@ -1353,12 +1362,13 @@ producer.send('order-events', json.dumps({'order_id': 123, 'status': 'created'})
 
 **Event flow diagram:**
 
+```mermaid
+flowchart LR
+    O["Order service"] -- "order_created" --> K[["Kafka"]]
+    K --> P["Payment service"]
+    P --> I["Inventory service"]
 ```
-[Order Service]--(order_created)-->[Kafka]--->[Payment Service]
-                                                |
-                                                v
-                                          [Inventory Service]
-```
+
 
 ### 4.8.5 Key Challenges in Microservices
 
@@ -1411,19 +1421,14 @@ spec:
 
 **Horizontal scaling diagram:**
 
+```mermaid
+flowchart TB
+    C([Client]) --> LB["Load balancer"]
+    LB --> S1["Order S1"]
+    LB --> S2["Order S2"]
+    LB --> S3["Order S3"]
 ```
-        +----------+
-        |  Client  |
-        +----------+
-             |
-     +----------------------+
-     |   Load Balancer      |
-     +----------------------+
-      /          |          \
-+--------+  +--------+  +--------+
-|Order S1|  |Order S2|  |Order S3|
-+--------+  +--------+  +--------+
-```
+
 
 ### 4.8.8 Real-World Examples
 
@@ -1706,11 +1711,16 @@ Each frontend (web, iOS, Android, smart TV) gets its **own dedicated backend ser
 
 **Why:** different clients have different data needs and constraints. The iOS app wants minimal data on cellular; the web wants more. Without a BFF, every microservice has to support every client variation — or the frontend makes 10 separate calls.
 
+```mermaid
+flowchart LR
+    Clients([Clients]) --> BW["BFF for Web"]
+    Clients --> BI["BFF for iOS"]
+    Clients --> BT["BFF for TV"]
+    BW --> MS["Microservices"]
+    BI --> MS
+    BT --> MS
 ```
-                ┌─ BFF for Web ─┐
-Clients ──→     ├─ BFF for iOS ─┤ ──→ Microservices
-                └─ BFF for TV  ─┘
-```
+
 
 ### 4.11.4 CQRS (Command Query Responsibility Segregation)
 
@@ -1738,13 +1748,14 @@ In a monolith, you wrap multi-step operations in a database transaction. In micr
 
 **Example: book a trip (flight + hotel + car)**
 
+```mermaid
+flowchart TB
+    F["1. Book flight: success"] --> H["2. Book hotel: success"] --> Car["3. Book car: FAILED"]
+    Car -. compensate .-> CH["4. Cancel hotel"]
+    CH -. compensate .-> CF["5. Cancel flight"]
+    style Car fill:#fee2e2,stroke:#ef4444,color:#7f1d1d
 ```
-1. Book flight       → success
-2. Book hotel        → success
-3. Book car          → FAILED
-4. Compensate hotel  (cancel)
-5. Compensate flight (cancel)
-```
+
 
 Two implementation styles:
 - **Choreography:** each service listens for events and decides what to do. No central coordinator. Simple but hard to reason about at scale.

@@ -170,35 +170,26 @@ def is_fraudulent(order):
 
 ### 26.7.6 Checkout Flow Diagram
 
+```mermaid
+flowchart TB
+    U(["User"]) -- "POST /checkout" --> O["Order service"]
+    O --> E1[["Order placed event"]]
+    E1 --> P["Payment service (async)"]
+    P --> E2[["Payment success / failure event"]]
+    E2 --> N["Notification service"]
 ```
-User ---> POST /checkout ---> Order Service
-                                |
-                                v
-                        [Order Placed Event]
-                                |
-                                v
-                        Payment Service (async)
-                                |
-                                v
-                    [Payment Success/Failure Event]
-                                |
-                                v
-                        Notification Service
-```
+
 
 ### 26.7.7 Bottleneck Diagram
 
+```mermaid
+flowchart LR
+    UR(["User request"]) --> GW["API gateway"] --> SL["Service layer"]
+    SL --> CS["Catalog / search"] --> ESr[("Elasticsearch")]
+    SL --> IV["Inventory"] --> PG[("Postgres + locks")]
+    SL --> OR["Orders"] --> Q[["Queue"]]
 ```
-+--------------------+      +--------------------+      +-----------------+
-|   User Request     |----->|  API Gateway       |----->|  Service Layer  |
-+--------------------+      +--------------------+      +-----------------+
-                                                      /      |       \
-                                    +----------------+   +--+--+   +---+---+
-                                    | Catalog/Search |   |Inventory| |Orders|
-                                    +----------------+   +-------+ |-------+
-                                           |                  |        |
-                                     [Elasticsearch]   [Postgres+Locks][Queue]
-```
+
 
 ---
 
@@ -674,18 +665,13 @@ kafka.consume('order-placed', async (msg) => {
 
 Checkout touches multiple services: cart, inventory, payment, shipping. You can't wrap them in a DB transaction. Use a **Saga** (see Chapter 4):
 
+```mermaid
+flowchart TB
+    S1["1. Reserve inventory: success"] --> S2["2. Charge payment: success"] --> S3["3. Create order: success"] --> S4["4. Notify shipping: success"] --> S5["5. Send confirmation: success<br/>(commit)"]
+    S2 -. "if step 2 fails" .-> X["compensate(1): release inventory, then abort"]
+    style X fill:#fee2e2,stroke:#ef4444,color:#7f1d1d
 ```
-1. Reserve inventory     → success
-2. Charge payment        → success
-3. Create order          → success
-4. Notify shipping       → success
-5. Send confirmation     → success
-   (commit)
 
-If step 2 fails:
-   compensate(1)  → release inventory
-   abort
-```
 
 Implement with a **Saga orchestrator** service (or a workflow engine like Temporal / AWS Step Functions). Each step must be **idempotent** so retries don't double-charge.
 

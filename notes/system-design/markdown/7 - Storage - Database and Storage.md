@@ -77,14 +77,16 @@ CREATE TABLE users (
 
 **Diagram: Structured vs. Unstructured**
 
+```mermaid
+flowchart LR
+    subgraph S["Structured data"]
+        T["id | email | date"]
+    end
+    subgraph U["Unstructured data"]
+        F["image1.jpg, video.mp4,<br/>log_2024-06-01.txt, ..."]
+    end
 ```
-+-------------------+          +--------------------------+
-|  Structured Data  |          |   Unstructured Data      |
-|-------------------|          |--------------------------|
-| id | email | date |          | image1.jpg, video.mp4,   |
-|-------------------|          | log_2024-06-01.txt, ...  |
-+-------------------+          +--------------------------+
-```
+
 
 ---
 
@@ -1060,22 +1062,18 @@ The folder view in the AWS Console is **just a visual convenience**.
 - **Definition:** Flexible, extensible info about the object.
 - **Examples:** MIME type, creation date, owner, custom tags, access controls.
 
-#### 7.10.2.1 ASCII Diagram: Object Storage Structure
+#### 7.10.2.1 Object Storage Structure
 
+```mermaid
+flowchart LR
+    subgraph B1["Bucket: photos"]
+        O1["Object: dog.jpg<br/>Key: 123abc<br/>Metadata: type, tags"]
+    end
+    subgraph B2["Bucket: videos"]
+        O2["Object: movie.mp4<br/>Key: 456xyz<br/>Metadata: type, tags"]
+    end
 ```
-+-------------------+             +-------------------+
-|    Bucket: photos |             |    Bucket: videos |
-+-------------------+             +-------------------+
-|  +-------------+  |             |  +-------------+  |
-|  | Object:     |  |             |  | Object:     |  |
-|  | dog.jpg     |  |             |  | movie.mp4   |  |
-|  | Key: 123abc |  |             |  | Key: 456xyz |  |
-|  | Metadata:   |  |             |  | Metadata:   |  |
-|  |  - type     |  |             |  |  - type     |  |
-|  |  - tags     |  |             |  |  - tags     |  |
-|  +-------------+  |             |  +-------------+  |
-+-------------------+             +-------------------+
-```
+
 
 A simpler conceptual view:
 
@@ -1327,39 +1325,25 @@ with client.read('/user/data/example.txt', encoding='utf-8') as reader:
 
 ### 7.11.7 Diagram: DFS Architecture
 
+```mermaid
+flowchart TB
+    NN["NameNode<br/>(metadata manager)"]
+    NN --> D1["DataNode<br/>Blocks 1, 3"]
+    NN --> D2["DataNode<br/>Blocks 2, 1"]
+    NN --> D3["DataNode<br/>Blocks 3, 2"]
+    N["Replication keeps every block on several nodes"] -.- D2
 ```
-                +----------------------+
-                |      NameNode        |
-                | (Metadata manager)   |
-                +----------+-----------+
-                           |
-       +-------------------+-------------------+
-       |                   |                   |
-+---------------+   +---------------+   +---------------+
-|   DataNode    |   |   DataNode    |   |   DataNode    |
-| (Stores data) |   | (Stores data) |   | (Stores data) |
-+---------------+   +---------------+   +---------------+
-       |                   |                   |
-    [Block 1]          [Block 2]           [Block 3]
-    [Block 3]          [Block 1]           [Block 2]
- (Replication ensures each block is on multiple nodes)
-```
+
 
 A simplified view:
 
+```mermaid
+flowchart TB
+    NN["NameNode<br/>(metadata, file hierarchy)"] --> D1["DataNode (stores blocks)"]
+    NN --> D2["DataNode"]
+    NN --> D3["DataNode"]
 ```
-+-------------------+
-|     NameNode      |  (metadata, file hierarchy)
-+-------------------+
-         |
-    +----------+
-    | DataNode |  (stores blocks)
-    +----------+
-    | DataNode |
-    +----------+
-    | DataNode |
-    +----------+
-```
+
 
 ### 7.11.8 File Systems & DFS — Tips & Tricks
 

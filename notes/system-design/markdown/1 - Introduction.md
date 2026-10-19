@@ -348,12 +348,14 @@ A well-designed system ensures high availability, fault tolerance, and seamless 
 
 **Example: Load Balancing**
 
-```plaintext
-                    +-------------+
-                    |  Load       |
-   Clients  --->    |  Balancer   |  --->  Multiple App Servers
-                    +-------------+
+```mermaid
+flowchart LR
+    Clients([Clients]) --> LB["Load balancer"]
+    LB --> A1["App server 1"]
+    LB --> A2["App server 2"]
+    LB --> A3["App server 3"]
 ```
+
 
 ### 1.6.2 Architectural Thinking
 
@@ -367,16 +369,14 @@ This means making informed decisions and trade-offs, such as:
 
 **Trade-off Example: CAP Theorem**
 
-```plaintext
-+------------------------+
-|       CAP Theorem      |
-+------------------------+
-| C: Consistency         |
-| A: Availability        |
-| P: Partition Tolerance |
-+------------------------+
-Pick any two.
+```mermaid
+flowchart TB
+    CAP{{"CAP theorem: pick any two"}}
+    CAP --> Cn["C: Consistency"]
+    CAP --> Av["A: Availability"]
+    CAP --> Pt["P: Partition tolerance"]
 ```
+
 
 > **A nuance worth knowing:** the "pick any two" framing is the classic teaching, but in practice, network partitions in a distributed system are unavoidable — so P is essentially a given. The real choice you make during a partition is between **C and A**: do you serve stale data (favor availability) or refuse the request (favor consistency)? We'll dive deeper in Chapter 7 (Storage).
 
@@ -511,13 +511,11 @@ System design is not static — it has evolved rapidly over the last 25 years. L
 ### 1.9.2 Timeline Diagram
 
 ```mermaid
-timeline
-    title System Design Evolution
-    1995-2005 : Monolithic Apps (LAMP, MVC, single-node DB)
-    2005-2010 : Distributed Systems (caching, CDNs, replication)
-    2010-2015 : Cloud Revolution (AWS, containerization, NoSQL)
-    2015-2020 : Microservices (API gateways, event-driven, CI/CD)
-    2020-Present : Real-Time, Edge, AI (Kubernetes, serverless, observability)
+flowchart TB
+    E1["1995-2005<br/><b>Monolithic apps</b><br/>LAMP, MVC, single-node DB"] --> E2["2005-2010<br/><b>Distributed systems</b><br/>caching, CDNs, replication"]
+    E2 --> E3["2010-2015<br/><b>Cloud revolution</b><br/>AWS, containerization, NoSQL"]
+    E3 --> E4["2015-2020<br/><b>Microservices</b><br/>API gateways, event-driven, CI/CD"]
+    E4 --> E5["2020-present<br/><b>Real-time, edge, AI</b><br/>Kubernetes, serverless, observability"]
 ```
 
 ### 1.9.3 ASCII Timeline (for plain-text viewers)
@@ -756,13 +754,15 @@ Let's apply the framework to a simplified example — designing a URL shortener 
 2. Store the mapping in a database.
 3. Redirect incoming requests to the original URL.
 
-### 1.12.3 High-Level Architecture (ASCII)
+### 1.12.3 High-Level Architecture
 
-```plaintext
-        +--------+        +-----+       +-----------+
-User -> |  API   | <----> | DB  | <---- | Cache     |
-        +--------+        +-----+       +-----------+
+```mermaid
+flowchart LR
+    U([User]) --> API["API"]
+    API <--> DB[("Database")]
+    API <--> Ca[("Cache")]
 ```
+
 
 ### 1.12.4 Request Flow (Mermaid)
 
@@ -846,13 +846,18 @@ A glimpse of what's to come in Chapter 4.
 
 ### 1.13.1 Monolithic vs. Microservices Architecture
 
-```plaintext
-+------------------------------+         +-----------+    +-----------+
-|   Monolithic Application     |         | Service A |    | Service B |
-+------------------------------+         +-----------+    +-----------+
-| UI | Business Logic | DB     |   vs    (own DB,    )... (own DB,    )
-+------------------------------+         (own logic )    (own logic )
+```mermaid
+flowchart LR
+    subgraph Mono["Monolith: one deployable unit"]
+        M["UI + business logic + one shared database"]
+    end
+    subgraph Micro["Microservices: many small units"]
+        SA["Service A<br/>own logic, own DB"]
+        SB["Service B<br/>own logic, own DB"]
+    end
+    Mono -. versus .- Micro
 ```
+
 
 - **Monolith:** Single codebase, tight coupling, easy to start, hard to scale.
 - **Microservices:** Decomposed, independent deployability, language-agnostic, scales better.

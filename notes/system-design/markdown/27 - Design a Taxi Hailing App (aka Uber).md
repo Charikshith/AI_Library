@@ -137,36 +137,17 @@ After working through this case study, you'll be able to:
 
 ## 27.7 Core Microservices Architecture
 
+```mermaid
+flowchart TB
+    MC(["Mobile clients"]) --> GW["API gateway"]
+    GW --> US["User service"]
+    GW --> DS["Driver service"]
+    GW --> LS["Location service"]
+    GW --> RM["Ride match service"]
+    RM --> PS["Payment service"] --> NS["Notification service"]
+    GW <--> TP["Third-party APIs<br/>(maps, payments, etc.)"]
 ```
-                +-----------------------+
-                |   Mobile Clients      |
-                +-----------------------+
-                         |
-                         v
-                +-----------------------+
-                |      API Gateway      |<----------------------+
-                +-----------------------+                       |
-         /         |           |           \                    |
-        v          v           v            v                   |
-+-----------+ +-----------+ +-----------+ +-----------+         |
-| User Svc  | | DriverSvc | | Location  | | Ride Match|         |
-+-----------+ +-----------+ |  Service  | |  Service  |         |
-                            +-----------+ +-----------+         |
-                                             |                  |
-                                         +--------+             |
-                                         |Payment |             |
-                                         |Service |             |
-                                         +--------+             |
-                                             |                  |
-                                      +------------------+      |
-                                      | Notification Svc |      |
-                                      +------------------+      |
-                                                               v
-                                               +-----------------------+
-                                               |   Third-Party APIs    |
-                                               | (Maps, Payments, etc) |
-                                               +-----------------------+
-```
+
 
 ### 27.7.1 Mermaid View
 
