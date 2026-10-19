@@ -28,15 +28,16 @@ After reading this chapter, you'll be able to:
 - [7.5 Trade-offs: Scalability, Reliability, and Performance](#75-trade-offs-scalability-reliability-and-performance)
 - [7.6 The CAP Theorem](#76-the-cap-theorem)
 - [7.7 Database Models — SQL vs. NoSQL](#77-database-models--sql-vs-nosql)
-- [7.8 Advanced Database Topics](#78-advanced-database-topics)
-- [7.9 Object Storage](#79-object-storage)
-- [7.10 File Systems and Distributed Storage](#710-file-systems-and-distributed-storage)
-- [7.11 Big Data Fundamentals](#711-big-data-fundamentals)
-- [7.16 Choosing the Right Storage Solution](#716-choosing-the-right-storage-solution)
-- [7.17 Combined Tips & Tricks](#717-combined-tips--tricks)
-- [7.18 Sample Interview Questions](#718-sample-interview-questions)
-- [7.19 Summary & Key Takeaways](#719-summary--key-takeaways)
-- [7.20 Further Reading](#720-further-reading)
+- [7.8 SQL in Practice: Querying Beyond the Basics](#78-sql-in-practice-querying-beyond-the-basics)
+- [7.9 Advanced Database Topics](#79-advanced-database-topics)
+- [7.10 Object Storage](#710-object-storage)
+- [7.11 File Systems and Distributed Storage](#711-file-systems-and-distributed-storage)
+- [7.12 Big Data Fundamentals](#712-big-data-fundamentals)
+- [7.17 Choosing the Right Storage Solution](#717-choosing-the-right-storage-solution)
+- [7.18 Combined Tips & Tricks](#718-combined-tips--tricks)
+- [7.19 Sample Interview Questions](#719-sample-interview-questions)
+- [7.20 Summary & Key Takeaways](#720-summary--key-takeaways)
+- [7.21 Further Reading](#721-further-reading)
 
 ---
 
@@ -478,11 +479,209 @@ NoSQL systems often relax ACID guarantees in favor of scalability and availabili
 
 ---
 
-## 7.8 Advanced Database Topics
+## 7.8 SQL in Practice: Querying Beyond the Basics
 
-### 7.8.1 Scaling Strategies — A Recap
+> **Starting point:** this section assumes the database and SQL primer in Chapter 1 (tables, keys, `SELECT`/`INSERT`/`UPDATE`/`DELETE`, basic joins, indexes, transactions). Here we go further: how a query is really evaluated, all the join types, subqueries and CTEs, window functions, upserts, `NULL`, and the habits that make ORM-generated SQL slow.
+> **Why it matters:** interviewers expect you to read a query, predict its result and spot why it is slow. ORMs hide the SQL but not its cost.
 
-#### 7.8.1.1 Vertical Scaling (Scale-Up)
+### 7.8.1 A Small Schema to Follow Along
+
+The examples use these tables:
+
+```sql
+users    (id, name, country)
+orders   (id, user_id, status, total_cents, created_at)   -- user_id → users.id
+accounts (id, balance)
+inventory(id, item, quantity)
+```
+
+### 7.8.2 The Clauses and Their Real Execution Order
+
+One query shows nearly the whole language. Question: *which countries bring in the most revenue, counting only countries with more than three shipped orders?*
+
+```sql
+SELECT   u.country,
+         COUNT(*)           AS orders,
+         SUM(o.total_cents) AS revenue
+FROM     orders o
+JOIN     users  u ON u.id = o.user_id
+WHERE    o.status = 'shipped'
+GROUP BY u.country
+HAVING   COUNT(*) > 3
+ORDER BY revenue DESC
+LIMIT    10;
+```
+
+You *write* `SELECT` first, but the database *evaluates* the clauses in a different order:
+
+| Step | Clause | Job |
+|------|--------|-----|
+| 1 | `FROM` / `JOIN` | build the working set of rows (`o` and `u` are table aliases) |
+| 2 | `WHERE` | filter **individual rows**, before any grouping |
+| 3 | `GROUP BY` | collapse rows into groups |
+| 4 | `HAVING` | filter **groups**, after grouping |
+| 5 | `SELECT` | compute and name the output columns (`AS` only renames the display) |
+| 6 | `ORDER BY` | sort the result |
+| 7 | `LIMIT` | keep the first N rows |
+
+Consequences worth remembering:
+
+- **A column alias defined in `SELECT` does not exist yet in `WHERE`.** `WHERE revenue > 100` fails with "column does not exist". Repeat the expression, or wrap the query in a subquery or CTE. `ORDER BY` runs after `SELECT`, so it *can* use the alias.
+- **`WHERE` filters rows; `HAVING` filters groups.** Use `WHERE` whenever you can, because it shrinks the data before the costly grouping step.
+- Every column in `SELECT` must either appear in `GROUP BY` or sit inside an aggregate (`COUNT`, `SUM`, `AVG`, `MIN`, `MAX`).
+- Common `WHERE` operators: `=`, `<`, `>`, `<=`, `>=`, `BETWEEN a AND b`, `IN (...)`, `LIKE 'abc%'`, `IS NULL`.
+
+### 7.8.3 All the Join Types
+
+| Join | Keeps | Unmatched rows |
+|------|-------|----------------|
+| `INNER JOIN` | only rows that match on both sides | dropped |
+| `LEFT JOIN` | every row of the left table | right columns become `NULL` |
+| `RIGHT JOIN` | every row of the right table | left columns become `NULL` |
+| `FULL OUTER JOIN` | every row of both tables | the missing side becomes `NULL` |
+| `CROSS JOIN` | every pairing (3 rows × 3 rows = 9 rows) | not applicable |
+
+```sql
+-- every user, even those with no orders (order columns are NULL for them)
+SELECT u.name, o.id
+FROM users u
+LEFT JOIN orders o ON o.user_id = u.id;
+
+-- users who have NO orders: keep the NULL rows
+SELECT u.name
+FROM users u
+LEFT JOIN orders o ON o.user_id = u.id
+WHERE o.id IS NULL;
+```
+
+> **A classic bug:** after a `LEFT JOIN`, a `WHERE` condition on a column of the right-hand table (such as `WHERE o.status = 'shipped'`) throws away the `NULL` rows, so the query quietly behaves like an inner join. Put the condition in the `ON` clause if you want to keep the unmatched left rows.
+
+### 7.8.4 Subqueries
+
+A **subquery** is a query nested inside another.
+
+```sql
+-- IN: build a list from the inner query, then test membership
+SELECT name FROM users
+WHERE id IN (SELECT user_id FROM orders WHERE status = 'shipped');
+
+-- EXISTS: stops at the first match and returns true or false
+SELECT name FROM users u
+WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id);
+```
+
+A **correlated subquery** refers to a column of the outer query (`u.id` above), so it cannot run on its own: conceptually it is evaluated once per outer row. Planners often rewrite these into joins, but do not count on that for large tables.
+
+### 7.8.5 CTEs (Common Table Expressions)
+
+A **CTE** gives a query a name and places it above the main statement. It is easier to read than deep nesting, and the intermediate result can be computed once.
+
+```sql
+WITH busy_users AS (
+  SELECT user_id, COUNT(*) AS n
+  FROM orders
+  GROUP BY user_id
+  HAVING COUNT(*) > 5
+)
+SELECT u.name, b.n
+FROM busy_users b
+JOIN users u ON u.id = b.user_id;
+```
+
+Use a CTE when the same intermediate result feeds the main query, or when a long query needs to be read top to bottom.
+
+### 7.8.6 Window Functions
+
+`GROUP BY` collapses rows. A **window function** keeps every row and adds a computed column next to it. `OVER (...)` defines the window.
+
+```sql
+SELECT user_id, total_cents,
+       ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY created_at) AS nth_order,
+       SUM(total_cents) OVER (PARTITION BY user_id)                 AS user_total
+FROM orders;
+```
+
+| Function | Behaviour |
+|----------|-----------|
+| `ROW_NUMBER` | 1, 2, 3, ... never ties |
+| `RANK` | ties share a rank and the next rank is skipped (1, 2, 2, 4) |
+| `DENSE_RANK` | ties share a rank, no gaps (1, 2, 2, 3) |
+| `LAG` / `LEAD` | the value from the previous / next row |
+| `SUM`, `AVG`, `COUNT` with `OVER` | running totals and moving averages |
+
+A common interview task, "the latest order per user", is a `ROW_NUMBER()` partitioned by user and filtered to `1`.
+
+### 7.8.7 Upsert: Insert or Update in One Step
+
+```sql
+-- PostgreSQL / SQLite
+INSERT INTO inventory (id, item, quantity) VALUES (42, 'widget', 50)
+ON CONFLICT (id) DO UPDATE SET quantity = EXCLUDED.quantity;
+
+-- MySQL equivalent:
+-- INSERT ... ON DUPLICATE KEY UPDATE quantity = VALUES(quantity);
+```
+
+Doing the check and the write in one statement avoids the race where two clients both see "not found" and both insert.
+
+### 7.8.8 NULL: Unknown, Not Zero
+
+`NULL` means *unknown*. Any comparison with an unknown is unknown: `NULL = NULL` and `price > NULL` are neither true nor false. Test with `IS NULL` and `IS NOT NULL`.
+
+The classic trap is `NOT IN` when the list contains a `NULL`:
+
+```sql
+-- archived contains the ids (3, 7, NULL): this returns ZERO rows
+SELECT * FROM products WHERE category_id NOT IN (SELECT id FROM archived);
+
+-- safe form
+SELECT * FROM products p
+WHERE NOT EXISTS (SELECT 1 FROM archived a WHERE a.id = p.category_id);
+```
+
+Also remember that aggregates skip `NULL` values (`COUNT(col)` ignores them, `COUNT(*)` does not).
+
+### 7.8.9 ORM Habits That Hurt at Scale
+
+An ORM writes the SQL, but you still own the performance. A query that is instant on 200 rows can take tens of seconds on 2 million.
+
+| Problem | What happens | Fix |
+|---------|--------------|-----|
+| **N+1 queries** | load 100 posts, then touch each post's author in a loop: 1 + 100 = 101 queries | eager-load with a join, or two queries (`posts`, then `authors WHERE id IN (...)`) |
+| `SELECT *` on wide tables | pulls large text columns just to render a list of titles | select only the columns you need |
+| Counting in application code | loads 10,000 rows to read `.length` | `SELECT COUNT(*)` returns one number |
+| No `LIMIT` | an unbounded query on a table of unknown size can run for seconds | always limit or paginate |
+| Giant `IN (...)` lists | 50,000 ids: some drivers reject them and planners handle them badly | split the ids into chunks, or join against a temporary table |
+
+Log the SQL your ORM actually sends while you develop. For query plans, indexing and pagination in practice, see Database Performance Optimization in Chapter 8.
+
+### 7.8.10 Key Takeaways
+
+- Evaluation order is `FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT`, which is why a `SELECT` alias fails in `WHERE`.
+- `WHERE` filters rows, `HAVING` filters groups.
+- Pick joins on purpose; a `WHERE` on the right table after a `LEFT JOIN` undoes it.
+- Use `EXISTS` and CTEs for clarity; correlated subqueries run per row.
+- Window functions keep rows and add computed columns (`ROW_NUMBER`, `RANK`, `LAG`, running sums).
+- `ON CONFLICT` (or `ON DUPLICATE KEY`) makes insert-or-update atomic.
+- `NULL` is unknown: use `IS NULL`, and prefer `NOT EXISTS` over `NOT IN` when `NULL` may appear.
+- Know what your ORM sends: eager-load to kill N+1, select needed columns, `COUNT` in SQL, always `LIMIT`.
+
+### 7.8.11 Sample Interview Questions
+
+1. What is the difference between `WHERE` and `HAVING`? Give an example that needs both.
+2. Why does `SELECT price * qty AS total FROM t WHERE total > 100` fail, and how do you fix it?
+3. Your `LEFT JOIN` returns fewer rows than the left table. What probably happened?
+4. Explain the N+1 problem and two ways to fix it.
+5. Write a query for "the latest order per user" using a window function.
+6. Why can `NOT IN (subquery)` return no rows, and what is the safer form?
+
+---
+
+## 7.9 Advanced Database Topics
+
+### 7.9.1 Scaling Strategies — A Recap
+
+#### 7.9.1.1 Vertical Scaling (Scale-Up)
 
 - **Definition:** Boost the capacity of a single server (more CPU, RAM, SSD).
 - **Typical with:** Relational/SQL databases.
@@ -495,7 +694,7 @@ graph TD
     B -.-> |Scale Up| C[Add CPU/RAM/SSD]
 ```
 
-#### 7.8.1.2 Horizontal Scaling (Scale-Out)
+#### 7.9.1.2 Horizontal Scaling (Scale-Out)
 
 - **Definition:** Add more servers/nodes to distribute load and data.
 - **Typical with:** NoSQL databases.
@@ -516,7 +715,7 @@ graph TD
 - **SQL / Vertical:** Banking, ERP, transactional systems.
 - **NoSQL / Horizontal:** Social feeds, product catalogs, IoT, analytics.
 
-### 7.8.2 Replication
+### 7.9.2 Replication
 
 **Replication** copies data across multiple database nodes for redundancy and increased throughput.
 
@@ -526,7 +725,7 @@ graph TD
 - **Read Scalability:** Distribute read load across replicas.
 - **Data Availability:** Users access data despite node failures.
 
-#### 7.8.2.1 Leader-Follower (Primary-Replica) Replication
+#### 7.9.2.1 Leader-Follower (Primary-Replica) Replication
 
 (See `image-7.png` for a primary-replica diagram.)
 
@@ -565,7 +764,7 @@ A wider topology view:
         (writes)           (reads)         (reads)
 ```
 
-#### 7.8.2.2 Read Replicas
+#### 7.9.2.2 Read Replicas
 
 (See `image-6.png` for a read-replica diagram.)
 
@@ -573,7 +772,7 @@ A wider topology view:
 - **All writes** go to the primary; **reads** are balanced across replicas.
 - **Trade-off:** Potential for stale reads if replication lags.
 
-#### 7.8.2.3 Example: Configuring Read Replicas in PostgreSQL
+#### 7.9.2.3 Example: Configuring Read Replicas in PostgreSQL
 
 ```bash
 # On the primary server (postgresql.conf)
@@ -586,16 +785,16 @@ standby_mode = 'on'
 primary_conninfo = 'host=primary_ip user=replicator password=secret'
 ```
 
-### 7.8.3 Sharding
+### 7.9.3 Sharding
 
 As systems outgrow the capacity of a single node, **sharding** divides data across multiple databases or nodes.
 
-#### 7.8.3.1 Types of Sharding
+#### 7.9.3.1 Types of Sharding
 
 - **Horizontal sharding:** Split data by rows — e.g., user_id ranges.
 - **Vertical sharding:** Split by feature/domain — e.g., profiles vs. analytics.
 
-#### 7.8.3.2 Sharding Strategies
+#### 7.9.3.2 Sharding Strategies
 
 **a) Range-Based Sharding:**
 
@@ -645,7 +844,7 @@ graph TD
 - **How:** Shard by geographic region for latency/compliance.
 - **Use Case:** Social media, CDN, regionally regulated data.
 
-### 7.8.4 Polyglot Persistence
+### 7.9.4 Polyglot Persistence
 
 **Polyglot persistence** means using multiple database types in one architecture, choosing the best tool for each job.
 
@@ -661,7 +860,7 @@ graph TD
 | Full-Text Search    | Search Engine (Elastic)  | Search functionality        |
 | Analytics           | Columnar (Cassandra)     | Log/metrics pipelines       |
 
-#### 7.8.4.1 Example: Microservices with Polyglot Persistence
+#### 7.9.4.1 Example: Microservices with Polyglot Persistence
 
 ```mermaid
 graph LR
@@ -673,7 +872,7 @@ graph LR
 
 ---
 
-## 7.9 Object Storage
+## 7.10 Object Storage
 
 (See `image-8.png` for object-storage architecture.)
 
@@ -691,11 +890,11 @@ Unlike traditional file or block storage, object storage systems are:
 - **Distributed:** Spans servers, data centers, regions, even continents.
 - **Optimized for unstructured data:** Handles images, videos, logs, backups, etc.
 
-### 7.9.1 What Does "Flat Namespace" Mean?
+### 7.10.1 What Does "Flat Namespace" Mean?
 
 When we say **object storage uses a flat namespace**, it means there are **no hierarchical folders or directories** — every object is stored in a **single logical container (bucket)** and identified by a **unique key (name or ID)**.
 
-#### 7.9.1.1 Example Comparison
+#### 7.10.1.1 Example Comparison
 
 **File Storage (Hierarchical):**
 
@@ -715,7 +914,7 @@ images/2025/travel/mountains.png
 
 There are **no real folders** — the slashes (`/`) are *just part of the object name*. Everything exists in **one big flat space**.
 
-#### 7.9.1.2 AWS S3 Example
+#### 7.10.1.2 AWS S3 Example
 
 In an S3 bucket:
 
@@ -735,7 +934,7 @@ Under the hood, S3 does **not** create real directories — it simply stores obj
 
 The folder view in the AWS Console is **just a visual convenience**.
 
-#### 7.9.1.3 Why Flat Namespace?
+#### 7.10.1.3 Why Flat Namespace?
 
 | Advantage    | Explanation                                                                |
 |--------------|----------------------------------------------------------------------------|
@@ -748,7 +947,7 @@ The folder view in the AWS Console is **just a visual convenience**.
 - **File storage** → like a *folder tree* on your computer.
 - **Object storage** → like a *key-value store* — each object is fetched by its **key**, not its folder path.
 
-### 7.9.2 Key Concepts & Architecture
+### 7.10.2 Key Concepts & Architecture
 
 **Object:**
 
@@ -765,7 +964,7 @@ The folder view in the AWS Console is **just a visual convenience**.
 - **Definition:** Flexible, extensible info about the object.
 - **Examples:** MIME type, creation date, owner, custom tags, access controls.
 
-#### 7.9.2.1 ASCII Diagram: Object Storage Structure
+#### 7.10.2.1 ASCII Diagram: Object Storage Structure
 
 ```
 +-------------------+             +-------------------+
@@ -790,14 +989,14 @@ Bucket: "user-photos"
     ├── photo2.jpg (metadata: {uploaded_by: "bob", tags: ["profile"]})
 ```
 
-### 7.9.3 Popular Object Storage Platforms
+### 7.10.3 Popular Object Storage Platforms
 
 - **Amazon S3:** Industry gold standard, highly durable, vast ecosystem.
 - **Google Cloud Storage (GCS):** Simple tiers, ML/data-lake friendly.
 - **Azure Blob Storage:** Deep Microsoft stack integration, flexible tiers.
 - **On-prem / Hybrid (Open Source):** MinIO, Ceph — cloud-native APIs in your datacenter.
 
-### 7.9.4 Common Use Cases
+### 7.10.4 Common Use Cases
 
 - **Media Storage:** Images, videos, design files (YouTube, asset management).
 - **Backups & Archives:** Durable, cheap, long-term backup and compliance storage.
@@ -805,7 +1004,7 @@ Bucket: "user-photos"
 - **Static Website Hosting:** Host HTML/CSS/JS directly from S3/GCS buckets.
 - **IoT & ML Data Pipelines:** Sink for sensor/model data, high-throughput ingestion.
 
-### 7.9.5 Performance and Cost Considerations
+### 7.10.5 Performance and Cost Considerations
 
 **Performance:**
 
@@ -822,7 +1021,7 @@ Bucket: "user-photos"
   - Use lifecycle rules to move stale data to cheaper tiers or delete it.
   - Monitor usage, adjust storage classes as access patterns change.
 
-### 7.9.6 Sample Code: Using Amazon S3 with Python (`boto3`)
+### 7.10.6 Sample Code: Using Amazon S3 with Python (`boto3`)
 
 A simple upload:
 
@@ -860,7 +1059,7 @@ s3 = boto3.client('s3')
 s3.upload_file('photo1.jpg', 'mybucket', 'photos/photo1.jpg', ExtraArgs={'Metadata': {'uploaded_by': 'alice'}})
 ```
 
-### 7.9.7 Object Storage — Tips & Tricks
+### 7.10.7 Object Storage — Tips & Tricks
 
 - **Use metadata wisely:** Tag objects for easier search, access control, and automation.
 - **Lifecycle rules:** Automate moving old data to cheaper storage or deletion to control costs.
@@ -869,7 +1068,7 @@ s3.upload_file('photo1.jpg', 'mybucket', 'photos/photo1.jpg', ExtraArgs={'Metada
 - **Optimize for access patterns:** Use Standard tier for hot data, Archive/Glacier for cold data.
 - **Batch operations:** When possible, batch uploads/downloads to reduce request costs.
 
-### 7.9.8 Object Storage — Interview Questions
+### 7.10.8 Object Storage — Interview Questions
 
 - What is object storage and how is it different from file or block storage?
 - When would you choose object storage over a traditional file system?
@@ -879,9 +1078,9 @@ s3.upload_file('photo1.jpg', 'mybucket', 'photos/photo1.jpg', ExtraArgs={'Metada
 
 ---
 
-## 7.10 File Systems and Distributed Storage
+## 7.11 File Systems and Distributed Storage
 
-### 7.10.1 What is a File System?
+### 7.11.1 What is a File System?
 
 A **file system** is the foundational layer that defines how data is stored, organized, and accessed on storage media (hard drives, SSDs, removable disks).
 
@@ -895,7 +1094,7 @@ A **file system** is the foundational layer that defines how data is stored, org
 
 - `ext4` (Linux), `NTFS` (Windows), `XFS` (high-performance Linux).
 
-### 7.10.2 Traditional File Systems: Strengths & Limitations
+### 7.11.2 Traditional File Systems: Strengths & Limitations
 
 Traditional file systems use a **hierarchical structure** — folders and files arranged in a tree:
 
@@ -915,7 +1114,7 @@ Traditional file systems use a **hierarchical structure** — folders and files 
 
 **Best suited for:** Personal computers, small servers, workloads not requiring distributed, parallel access or massive scale.
 
-### 7.10.3 Distributed File Systems (DFS): The Need for Scale
+### 7.11.3 Distributed File Systems (DFS): The Need for Scale
 
 > **Definition:** A DFS allows files to be **stored and accessed across multiple nodes/servers**, but appears as a single file system to users and applications.
 
@@ -930,7 +1129,7 @@ Traditional file systems use a **hierarchical structure** — folders and files 
 - **HDFS (Hadoop Distributed File System):** Powers Hadoop and Spark analytics.
 - **CephFS, GlusterFS:** Enterprise and scientific storage.
 
-### 7.10.4 DFS Architecture: NameNode & DataNodes
+### 7.11.4 DFS Architecture: NameNode & DataNodes
 
 (See `image-9.png` for HDFS architecture diagram.)
 
@@ -951,7 +1150,7 @@ A classic DFS architecture (like HDFS) has:
 - Larger blocks = fewer metadata entries, but less flexibility.
 - Striping enables parallel access and higher throughput.
 
-### 7.10.5 Scalability, Fault Tolerance, and Performance
+### 7.11.5 Scalability, Fault Tolerance, and Performance
 
 **Scalability:**
 
@@ -968,7 +1167,7 @@ A classic DFS architecture (like HDFS) has:
 - **Parallel I/O:** Multiple nodes serve read/write requests simultaneously.
 - **High throughput:** Ideal for analytics, machine learning, and backup workloads.
 
-### 7.10.6 Code Snippet: Accessing HDFS in Python
+### 7.11.6 Code Snippet: Accessing HDFS in Python
 
 ```python
 from hdfs import InsecureClient
@@ -989,7 +1188,7 @@ with client.read('/user/data/example.txt', encoding='utf-8') as reader:
     print(content)
 ```
 
-### 7.10.7 Diagram: DFS Architecture
+### 7.11.7 Diagram: DFS Architecture
 
 ```
                 +----------------------+
@@ -1025,7 +1224,7 @@ A simplified view:
     +----------+
 ```
 
-### 7.10.8 File Systems & DFS — Tips & Tricks
+### 7.11.8 File Systems & DFS — Tips & Tricks
 
 - **Tune block size:** Adjust based on workload. Larger files → larger blocks.
 - **Monitor replication:** Avoid under- or over-replication. Too few = risk of data loss; too many = wasted space.
@@ -1036,11 +1235,11 @@ A simplified view:
 
 ---
 
-## 7.11 Big Data Fundamentals
+## 7.12 Big Data Fundamentals
 
 Modern software systems — from Netflix recommendations to IoT-driven smart factories — are fueled by data. But as data grows in **volume**, **speed**, and **complexity**, traditional storage and processing systems struggle to keep up.
 
-### 7.11.1 The 6 V's of Big Data
+### 7.12.1 The 6 V's of Big Data
 
 | V              | Description                                            | Example                                |
 |----------------|--------------------------------------------------------|----------------------------------------|
@@ -1053,7 +1252,7 @@ Modern software systems — from Netflix recommendations to IoT-driven smart fac
 
 > **Tip:** In interviews, referencing the 6 V's demonstrates deep understanding of Big Data challenges.
 
-### 7.11.2 Why Traditional Storage Fails at Scale
+### 7.12.2 Why Traditional Storage Fails at Scale
 
 - **Limited scalability:** Vertical scaling hits physical and cost limits.
 - **Performance bottlenecks:** Not optimized for parallel reads/writes.
@@ -1062,7 +1261,7 @@ Modern software systems — from Netflix recommendations to IoT-driven smart fac
 
 > **Example:** Imagine storing petabytes of logs from millions of sensors on a single server — simply infeasible.
 
-### 7.11.3 Distributed Storage for Big Data
+### 7.12.3 Distributed Storage for Big Data
 
 Modern Big Data solutions rely on **distributed file systems** and **cloud-native object storage**:
 
@@ -1077,7 +1276,7 @@ Modern Big Data solutions rely on **distributed file systems** and **cloud-nativ
 - **Replication** ensures that if one node fails, data is safe elsewhere.
 - **Horizontal scaling:** Add more nodes to grow storage and throughput.
 
-### 7.11.4 Big Data Workloads: Real-World Examples
+### 7.12.4 Big Data Workloads: Real-World Examples
 
 - **Logs & Events:** Application/system logs, server metrics (monitoring & auditing).
 - **Clickstreams:** Tracks user navigation on websites/apps (personalization, analytics).
@@ -1086,16 +1285,16 @@ Modern Big Data solutions rely on **distributed file systems** and **cloud-nativ
 
 > **Commonality:** All require infrastructure that is scalable, flexible, and can handle both *large volumes* and *high velocity*.
 
-### 7.11.5 Batch vs. Stream Processing
+### 7.12.5 Batch vs. Stream Processing
 
-#### 7.11.5.1 Batch Processing
+#### 7.12.5.1 Batch Processing
 
 - **Definition:** Processes large data chunks at intervals (hourly, nightly).
 - **Use Cases:** Historical analysis, ETL jobs, aggregations.
 - **Tools:** Hadoop, Apache Spark (batch mode).
 - **Trade-offs:** High throughput, but higher latency.
 
-#### 7.11.5.2 Stream Processing
+#### 7.12.5.2 Stream Processing
 
 - **Definition:** Processes data in real-time as it arrives.
 - **Use Cases:** Monitoring, fraud detection, real-time recommendations.
@@ -1118,7 +1317,7 @@ graph TD
     C2 --> D2[Real-Time Dashboards/Alerts]
 ```
 
-### 7.11.6 Code Example: Simple Batch & Stream Processing
+### 7.12.6 Code Example: Simple Batch & Stream Processing
 
 **Batch Example — Apache Spark (PySpark):**
 
@@ -1141,7 +1340,7 @@ for msg in consumer:
     process(msg.value)   # Custom function for real-time processing
 ```
 
-### 7.11.7 Big Data Architecture Diagrams
+### 7.12.7 Big Data Architecture Diagrams
 
 **Storage & Processing Pipeline:**
 
@@ -1180,7 +1379,7 @@ flowchart TB
 
 ---
 
-## 7.12 Consistency Models — A Spectrum, Not a Binary
+## 7.13 Consistency Models — A Spectrum, Not a Binary
 
 CAP says "C or A." Reality is more nuanced — between strict serializability and pure eventual consistency lies a useful spectrum:
 
@@ -1198,7 +1397,7 @@ CAP says "C or A." Reality is more nuanced — between strict serializability an
 
 ---
 
-## 7.13 Storage Engines: B-Tree vs LSM-Tree
+## 7.14 Storage Engines: B-Tree vs LSM-Tree
 
 Two foundational data structures power almost every database. Knowing which one your DB uses tells you what it's good at.
 
@@ -1214,7 +1413,7 @@ Two foundational data structures power almost every database. Knowing which one 
 
 ---
 
-## 7.14 Block vs File vs Object Storage — They're NOT Interchangeable
+## 7.15 Block vs File vs Object Storage — They're NOT Interchangeable
 
 Probably the most common confusion in storage design.
 
@@ -1228,7 +1427,7 @@ Probably the most common confusion in storage design.
 
 ---
 
-## 7.15 Specialized Database Types Worth Knowing
+## 7.16 Specialized Database Types Worth Knowing
 
 Beyond SQL and the four NoSQL categories, modern systems often use specialized stores:
 
@@ -1245,7 +1444,7 @@ Beyond SQL and the four NoSQL categories, modern systems often use specialized s
 
 ---
 
-## 7.16 Choosing the Right Storage Solution
+## 7.17 Choosing the Right Storage Solution
 
 | Requirement                          | Best Storage Type                                       |
 |--------------------------------------|---------------------------------------------------------|
@@ -1257,17 +1456,17 @@ Beyond SQL and the four NoSQL categories, modern systems often use specialized s
 
 ---
 
-## 7.17 Combined Tips & Tricks
+## 7.18 Combined Tips & Tricks
 
 A consolidated master list drawn from across all sections.
 
-### 7.17.1 Data Modeling
+### 7.18.1 Data Modeling
 
 - **Always know your data!** Structured or unstructured? This guides storage and DB choice.
 - For SQL, design normalized schemas; for NoSQL, optimize for access patterns.
 - **Know your consistency needs:** Financial or mission-critical systems need strong consistency (ACID/CP). For social feeds or caching, availability (AP/BASE) is often more valuable.
 
-### 7.17.2 Scaling
+### 7.18.2 Scaling
 
 - **Design for scale from day one:** Use distributed storage and sharding for growth.
 - **Plan for scale:** If you expect massive growth, design for horizontal scaling — favor NoSQL or distributed SQL solutions.
@@ -1276,19 +1475,19 @@ A consolidated master list drawn from across all sections.
 - **Use consistent hashing for dynamic clusters**, especially if you expect nodes to be added/removed frequently.
 - **Document your sharding key choices:** Poorly chosen sharding keys can lead to hotspots or unbalanced data.
 
-### 7.17.3 Reliability & Replication
+### 7.18.3 Reliability & Replication
 
 - **Replication for read-heavy systems:** Deploy read replicas to distribute load but monitor replication lag.
 - **Automate failover and recovery:** Use managed database services or robust orchestration for quick failover.
 - **Test failover and replication regularly:** Don't just set it and forget it.
 - **Simulate failures:** Test your replication and failover strategies (e.g., using Chaos Engineering).
 
-### 7.17.4 Trade-offs
+### 7.18.4 Trade-offs
 
 - **Monitor the CAP trade-offs:** Decide early if your system values consistency over availability, or vice versa.
 - **Monitor trade-offs:** Optimize for the property (scalability, reliability, or performance) that aligns with your business needs.
 
-### 7.17.5 Object & Distributed Storage
+### 7.18.5 Object & Distributed Storage
 
 - **Use object storage for unstructured, growing data:** Images, backups, logs belong here.
 - **Choose storage class wisely:** For S3, select Standard, Infrequent Access, or Glacier based on retrieval needs and cost.
@@ -1296,7 +1495,7 @@ A consolidated master list drawn from across all sections.
 - **Object Storage Cost:** Use lifecycle policies to move old data to cheaper storage classes (e.g., S3 Glacier).
 - **DFS for Analytics:** Choose HDFS or similar for big data processing pipelines, ensuring replication and scalability.
 
-### 7.17.6 Big Data
+### 7.18.6 Big Data
 
 - **Know your 6 V's:** Always consider volume, velocity, variety, veracity, value, and variability.
 - **Hybrid processing:** Combine batch (for large-scale analytics) and stream (for real-time actions) for robust solutions.
@@ -1307,7 +1506,7 @@ A consolidated master list drawn from across all sections.
 - **Monitor and clean data:** Poor veracity can taint downstream analytics.
 - **Scalability first:** Assume your data will grow — design horizontally scalable systems from the start.
 
-### 7.17.7 Security & Operations
+### 7.18.7 Security & Operations
 
 - **Security:** Implement access controls and encryption, especially for object and distributed storage.
 - **Backup:** Regularly backup critical data, and test restoration procedures.
@@ -1316,7 +1515,7 @@ A consolidated master list drawn from across all sections.
 
 ---
 
-## 7.18 Sample Interview Questions
+## 7.19 Sample Interview Questions
 
 1. Why is storage a critical component in system design?
 2. How do you differentiate between structured and unstructured data?
@@ -1334,7 +1533,7 @@ A consolidated master list drawn from across all sections.
 
 ---
 
-## 7.19 Summary & Key Takeaways
+## 7.20 Summary & Key Takeaways
 
 - **Storage is foundational:** Impacts every system's performance, reliability, and cost.
 - **Understand your data:** Structured vs. unstructured shapes your architecture.
@@ -1349,7 +1548,7 @@ A consolidated master list drawn from across all sections.
 
 ---
 
-## 7.20 Further Reading
+## 7.21 Further Reading
 
 - [AWS Storage Services Overview](https://aws.amazon.com/products/storage/)
 - [Google Cloud Storage Documentation](https://cloud.google.com/storage/docs/)
