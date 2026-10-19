@@ -1420,6 +1420,16 @@ flowchart TB
 
 ---
 
+### 10.19.1 Reducing the Blast Radius
+
+Assume some component will eventually be compromised, and design so the damage stays small:
+
+- Use separate cloud **accounts or projects** for each environment and each sensitive system (production, staging and security tooling are different accounts).
+- **Segment the network:** private subnets, security groups that allow only the needed ports from the needed sources, and egress denied by default.
+- Use a **cell-based architecture**: shards of users served by independent stacks, so a failure or breach touches one cell.
+- Give each service its **own identity**, with its own permissions and secrets (one service, one identity).
+- Apply **rate limits, quotas and budgets** so a stolen key cannot do unlimited damage.
+
 ## 10.20 Secrets Management — Don't Put Secrets in Code
 
 Hard-coded API keys, DB passwords, and TLS certs in source repos are how breaches happen. Use a **secrets manager.**

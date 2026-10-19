@@ -403,6 +403,31 @@ app.listen(3000, () => console.log("Server running on port 3000"));
 
 ---
 
+### 8.6.8 Choosing a Write Strategy and Reading the Numbers
+
+**The latency ladder.** Why caching pays off:
+
+| Source | Typical latency | Relative to an in-process cache |
+|--------|-----------------|---------------------------------|
+| In-process memory (dictionary, LRU) | about 100 ns | 1× |
+| Redis or Memcached, same region | about 0.5 ms | about 5,000× |
+| Database query, indexed | about 5 ms | about 50,000× |
+| Database query, complex join | about 50–500 ms | about 1,000,000× |
+| Cross-region call | about 70–150 ms | about 1,000,000× |
+
+**Hit rate is the number to watch.** A 95% hit rate turns a 50 ms average read into roughly `0.95 × 0.5 + 0.05 × 50 ≈ 3 ms`.
+
+**The four write strategies side by side**
+
+| Strategy | Read path | Write path | Good for | Risk |
+|----------|-----------|------------|----------|------|
+| **Cache-aside** (lazy loading) | check the cache, on a miss read the database and fill the cache | write the database, then **delete** the cache key | most read-heavy apps; the default choice | the first read after a change is slow; race windows |
+| **Write-through** | read from the cache | write the cache **and** the database together | data read right after it is written | every write pays double latency; caches cold data |
+| **Write-around** | like cache-aside | write the database only; the cache fills on the next read | write-once, read-rarely data (logs, uploads) | recent writes always miss |
+| **Write-back** (write-behind) | read from the cache | write the cache only; flush to the database later | a very high write rate (counters, metrics) | **data loss** if the cache dies before the flush |
+
+**Key terms:** **TTL** (a safety net for missed invalidations); **invalidation** (removing or updating a value when its source changes); **stampede** (a hot key expires and thousands of requests miss at once and hit the database; stop it with a lock or single-flight, TTL jitter, or early refresh); **cache coherence** (keeping many copies, such as several cache nodes or per-server local caches, in agreement); **eviction** (what is thrown out when the cache is full: LRU, LFU, random).
+
 ## 8.7 Messaging & Queues for Decoupling
 
 Asynchronous messaging **decouples** services, boosts scalability, and enhances resilience.
@@ -527,7 +552,23 @@ graph TD
 - **At-most-once:** Message delivered only once (no retries); possible loss.
 - **Exactly-once:** Processed once and only once; hardest to implement, supported by Kafka under constraints.
 
-### 8.7.8 Ordering, FIFO Queues and Visibility Timeout
+### 8.7.8 Delivery Semantics in Practice and the Outbox Pattern
+
+| Semantic | How it works | Risk |
+|----------|--------------|------|
+| **At most once** | acknowledge **before** processing | a crash loses the message |
+| **At least once** (the usual default) | acknowledge **after** processing | a crash after processing causes redelivery, so duplicates |
+| **"Exactly once"** | at-least-once delivery **plus idempotent processing** (deduplicate by message ID, use upserts, store offsets together with results), or Kafka transactions for read-process-write inside Kafka | it holds end to end only if every side effect is idempotent or transactional |
+
+**Rule:** design every consumer to be idempotent. True exactly-once *delivery* cannot be had across a network, so aim for exactly-once *effect*. "Exactly once" at the broker does not cover your database write or the email you sent.
+
+**Failures and retries.** After N failed attempts, move the message to a **dead-letter queue** so one poison message cannot block the rest. Alert on its depth and provide a redrive tool. Use exponential backoff between retries (delay queues or retry topics).
+
+**Consumer-group rebalance (Kafka).** When a consumer joins, leaves or stops sending heartbeats, partitions are reassigned within the group. Consumption pauses, and uncommitted work may be redone, which is one more reason for idempotency. Cooperative-sticky assignment and static membership reduce the disruption.
+
+**The outbox pattern (solving the dual-write problem).** A service that updates its database *and* publishes an event can fail between the two steps. Instead, write the event to an **outbox table in the same database transaction** as the business change, and let a separate relay (or change-data-capture) publish rows from the outbox to the broker. The database and the event stream can then never disagree.
+
+### 8.7.9 Ordering, FIFO Queues and Visibility Timeout
 
 **Order is not free.** With several consumers working in parallel, messages can finish out of order even if they were sent in order.
 
@@ -541,7 +582,7 @@ graph TD
 
 **Visibility timeout.** When a consumer receives a message, the broker hides it from other consumers for a set time. If the consumer acknowledges before the timeout, the message is deleted. If it crashes or is too slow, the message becomes visible again and is retried. Set the timeout **longer than your slowest normal processing time**; too short causes duplicate work, too long delays retries after a crash. Messages that keep failing go to a **dead-letter queue** (see the queue primer in Chapter 4).
 
-### 8.7.9 Queue Types: Standard, FIFO, Priority and Delay
+### 8.7.10 Queue Types: Standard, FIFO, Priority and Delay
 
 | Queue type | Behaviour | Typical use |
 |------------|-----------|-------------|
@@ -555,9 +596,9 @@ graph TD
 
 **Watch for starvation:** if urgent messages never stop arriving, low-priority ones may wait forever. Reserve some capacity for the low-priority queue, or **age** messages so their priority rises the longer they wait.
 
-### 8.7.10 Sample Code: Publishing & Consuming Messages
+### 8.7.11 Sample Code: Publishing & Consuming Messages
 
-#### 8.7.10.1 Example 1: RabbitMQ (Python with `pika`)
+#### 8.7.11.1 Example 1: RabbitMQ (Python with `pika`)
 
 **Producer:**
 
@@ -630,7 +671,7 @@ channel.basic_consume(queue='task_queue', on_message_callback=callback)
 channel.start_consuming()
 ```
 
-#### 8.7.10.2 Example 2: Kafka (Node.js with `kafkajs`)
+#### 8.7.11.2 Example 2: Kafka (Node.js with `kafkajs`)
 
 **Producer:**
 
@@ -666,7 +707,7 @@ await consumer.run({
 });
 ```
 
-### 8.7.11 Messaging — Best Practices
+### 8.7.12 Messaging — Best Practices
 
 - **Idempotent consumers:** Ensure re-processing a message doesn't cause incorrect results.
 - **Dead-letter queues (DLQ):** Capture and inspect messages that fail multiple times.
@@ -675,7 +716,7 @@ await consumer.run({
 - **Choose guarantees wisely:** At-least-once is common, but know your requirements.
 - **Security:** Encrypt messages, use authentication & authorization.
 
-### 8.7.12 Messaging — Tips & Tricks
+### 8.7.13 Messaging — Tips & Tricks
 
 - **Make operations idempotent:** Store processed message IDs or use database upserts.
 - **Use DLQs:** Never silently drop or lose failing messages.

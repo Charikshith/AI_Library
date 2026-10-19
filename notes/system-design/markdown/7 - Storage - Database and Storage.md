@@ -754,7 +754,23 @@ graph TD
 - **SQL / Vertical:** Banking, ERP, transactional systems.
 - **NoSQL / Horizontal:** Social feeds, product catalogs, IoT, analytics.
 
-### 7.9.2 Replication
+### 7.9.2 The Database Scaling Ladder
+
+Scale a database in steps, because each step adds complexity the previous one did not. Climb in order:
+
+| Step | Helps | Cost |
+|------|-------|------|
+| 1. Query and index tuning, connection pooling (for example PgBouncer) | everything | engineering time |
+| 2. Vertical scaling | everything, instantly | money; there is a ceiling |
+| 3. Caching | read-heavy hot data | invalidation and staleness |
+| 4. **Read replicas** | read throughput; isolating reports | replication lag, so stale reads |
+| 5. Table **partitioning** (inside one database) | huge tables: time-based retention, index size | queries must know the partition key |
+| 6. Functional split | different domains on different databases | joins across domains disappear |
+| 7. **Sharding** | write throughput and data size beyond one node | cross-shard queries and transactions, resharding, operations |
+
+**The read/write split and its consistency cost.** Writes go to the primary and reads go to replicas. Asynchronous replicas lag (milliseconds, sometimes seconds under load), so a user who just saved a profile may read the old one. Fixes: **read-your-writes routing** (read from the primary for a few seconds after a write, or wait until the replica has reached the write's log position), sticky routing for critical reads, and monitoring replica lag.
+
+### 7.9.3 Replication
 
 **Replication** copies data across multiple database nodes for redundancy and increased throughput.
 
@@ -764,7 +780,7 @@ graph TD
 - **Read Scalability:** Distribute read load across replicas.
 - **Data Availability:** Users access data despite node failures.
 
-#### 7.9.2.1 Leader-Follower (Primary-Replica) Replication
+#### 7.9.3.1 Leader-Follower (Primary-Replica) Replication
 
 (See `image-7.png` for a primary-replica diagram.)
 
@@ -803,7 +819,7 @@ A wider topology view:
         (writes)           (reads)         (reads)
 ```
 
-#### 7.9.2.2 Read Replicas
+#### 7.9.3.2 Read Replicas
 
 (See `image-6.png` for a read-replica diagram.)
 
@@ -811,7 +827,7 @@ A wider topology view:
 - **All writes** go to the primary; **reads** are balanced across replicas.
 - **Trade-off:** Potential for stale reads if replication lags.
 
-#### 7.9.2.3 Multi-Leader Replication and Conflict Resolution
+#### 7.9.3.3 Multi-Leader Replication and Conflict Resolution
 
 In leader-follower replication, only the leader accepts writes. In **multi-leader** (also called leader-leader or multi-master) replication, **several nodes accept writes** and copy them to each other.
 
@@ -847,7 +863,7 @@ sequenceDiagram
 
 **Rule of thumb:** use multi-leader only when you truly need multi-region writes or offline sync, and design around conflicts from the start. Otherwise prefer leader-follower plus read replicas.
 
-#### 7.9.2.4 Example: Configuring Read Replicas in PostgreSQL
+#### 7.9.3.4 Example: Configuring Read Replicas in PostgreSQL
 
 ```bash
 # On the primary server (postgresql.conf)
@@ -860,16 +876,16 @@ standby_mode = 'on'
 primary_conninfo = 'host=primary_ip user=replicator password=secret'
 ```
 
-### 7.9.3 Sharding
+### 7.9.4 Sharding
 
 As systems outgrow the capacity of a single node, **sharding** divides data across multiple databases or nodes.
 
-#### 7.9.3.1 Types of Sharding
+#### 7.9.4.1 Types of Sharding
 
 - **Horizontal sharding:** Split data by rows — e.g., user_id ranges.
 - **Vertical sharding:** Split by feature/domain — e.g., profiles vs. analytics.
 
-#### 7.9.3.2 Sharding Strategies
+#### 7.9.4.2 Sharding Strategies
 
 **a) Range-Based Sharding:**
 
@@ -919,7 +935,22 @@ graph TD
 - **How:** Shard by geographic region for latency/compliance.
 - **Use Case:** Social media, CDN, regionally regulated data.
 
-#### 7.9.3.3 Hands-On Lab: Sharding MongoDB on One Machine
+#### 7.9.4.3 Choosing a Shard Key, Hot Spots and Cross-Shard Queries
+
+| Good key | Why | Watch out for |
+|----------|-----|---------------|
+| `tenant_id` or `user_id` | most queries are "for this user"; spreads evenly | very large tenants ("whales") need dedicated shards |
+| a hash of an entity ID | even distribution | range queries across the whole set need scatter-gather |
+| composite `(user_id, time bucket)` | bounds the growth per key | more complex routing |
+| **Bad:** `created_at`, `country`, `status` | all new writes hit one shard; low cardinality | **hot shards** |
+
+**Hot spots.** A celebrity account, a viral post, or a steadily increasing key concentrates load on one shard. Mitigate by hashing the key, adding salt or suffix buckets for hot keys, giving whales dedicated shards, and caching hot reads.
+
+**Cross-shard queries.** Scatter the query to all shards and merge the results (slower, and tail latencies add up); maintain global secondary indexes or denormalized lookup tables; send analytics to a warehouse instead; and avoid cross-shard transactions, using sagas instead.
+
+**Routing.** Either the application computes the shard (through a library), or a proxy does it (Vitess, Citus, ProxySQL), using consistent hashing or a **directory** (a key-to-shard map) that makes moving data easier.
+
+#### 7.9.4.4 Hands-On Lab: Sharding MongoDB on One Machine
 
 This lab builds the real architecture of a sharded MongoDB cluster. For learning, every process runs on one machine with a single member per replica set; production uses three or more members per set and separate hosts.
 
@@ -979,7 +1010,7 @@ sh.status()
 - A query that includes the shard key goes to one shard; one that does not is **scattered** to all shards. This is why shard-key choice is the most important sharding decision (see Sharding Strategies above).
 - Clean up by stopping the processes and deleting the `data` folder.
 
-### 7.9.4 Polyglot Persistence
+### 7.9.5 Polyglot Persistence
 
 **Polyglot persistence** means using multiple database types in one architecture, choosing the best tool for each job.
 
@@ -995,7 +1026,7 @@ sh.status()
 | Full-Text Search    | Search Engine (Elastic)  | Search functionality        |
 | Analytics           | Columnar (Cassandra)     | Log/metrics pipelines       |
 
-#### 7.9.4.1 Example: Microservices with Polyglot Persistence
+#### 7.9.5.1 Example: Microservices with Polyglot Persistence
 
 ```mermaid
 graph LR
