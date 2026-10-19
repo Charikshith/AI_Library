@@ -44,7 +44,7 @@ Link        (L2)       Ethernet, Wi-Fi                      (out of scope here)
 **Two terms you'll see constantly:**
 
 - **"Layer 4 (L4)"** = decisions made on IP address and port (no idea what's inside the packet).
-- **"Layer 7 (L7)"** = decisions made on the actual application data (URL, headers, cookies).
+- **"Layer 7 (L7)"** = decisions made on the actual application data (URL, headers, cookies; a *cookie* is a small piece of data a browser stores and sends back with every request, see Chapter 5).
 
 When you read "L4 load balancer" later in this chapter, picture a thing that only sees `source_ip:port → dest_ip:port`. An "L7 load balancer" sees `GET /api/users → Cookie: session=abc`.
 
@@ -74,15 +74,15 @@ Every system relies on data exchange between components. Networking enables this
 
 - **Seamless Communication:** All system components must exchange data efficiently.
 - **Scalability:** Well-designed networks can handle millions of users and high traffic.
-- **Reliability & Performance:** Good networking minimizes downtime and latency.
+- **Reliability & Performance:** Good networking minimizes downtime and **latency** (how long one request takes to get its answer).
 - **Security:** Protects data and infrastructure from unauthorized access.
 
 ### 2.3.1 Key Networking Areas
 
 - **Communication:** Client-server, server-database, microservice-to-microservice.
 - **Load Balancing:** Preventing overload and distributing traffic.
-- **Security:** Firewalls, private networks, DDoS protection.
-- **Efficiency:** Optimizing latency and throughput.
+- **Security:** Firewalls (rules that allow or block network traffic), private networks, DDoS protection (absorbing floods of fake traffic). Chapter 10 covers these in depth.
+- **Efficiency:** Optimizing latency and **throughput** (how many requests are handled per second). Both are defined properly in Chapter 8.
 
 These concepts are foundational to nearly every chapter that follows: protocols (Ch. 3), scalability (Ch. 6), and security (Ch. 10) all build directly on top of them.
 
@@ -490,7 +490,7 @@ DNS is a keystone in scalable, resilient architectures:
 
 - **DNS Load Balancing:** Distributes user requests across multiple servers (e.g., round-robin DNS, geo-based routing).
 - **Anycast DNS:** Multiple DNS servers share the same IP; users are routed to the nearest, fastest server.
-- **Failover:** Primary and secondary DNS servers ensure availability if one goes down.
+- **Failover:** Primary and secondary DNS servers ensure **availability** (the system keeps answering) if one goes down.
 - **CDN Integration:** DNS routes users to the nearest edge node — this is exactly the mechanism that powers CDNs in Section 8.
 - **Security:** Needs protection against DNS poisoning and DDoS.
 
@@ -620,7 +620,7 @@ graph LR
 
 Every digital action — opening a website, sending an email, fetching an API — follows a basic pattern:
 
-1. **Client sends a request** (GET, POST, SQL query, etc.)
+1. **Client sends a request** (GET, POST, SQL query, etc.; SQL is the language for asking a database questions, introduced in the primers in Chapter 1)
 2. **Network transmits the request** to the server
 3. **Server processes the request** (fetches data, computes results)
 4. **Server sends a response** back
@@ -1030,7 +1030,7 @@ def get_next_server():
 
 **2. Least Connections** — routes new requests to the server with the fewest active connections.
 
-**3. IP Hashing** — routes requests based on a hash of the client's IP, providing session persistence.
+**3. IP Hashing** — routes requests based on a **hash** of the client's IP (a hash is a fixed-size fingerprint computed from data; see the hashing primer in Chapter 1), providing session persistence.
 
 ```python
 import hashlib
@@ -1150,7 +1150,7 @@ A good `/health` endpoint should:
 - A backend death loses that user's session.
 - Some backends end up hot, others cold.
 
-**The modern alternative:** make backends *stateless* and externalize session state to Redis/Memcached. Any backend can serve any user.
+**The modern alternative:** make backends *stateless* and externalize session state to Redis/Memcached (fast in-memory data stores, see Chapter 8). Any backend can serve any user.
 
 ### 2.8.8 Load Balancing — Tips & Best Practices
 
@@ -1158,7 +1158,7 @@ A good `/health` endpoint should:
 - **Sticky Sessions:** Use session persistence (IP hash, cookies) if user state is needed.
 - **SSL Offloading:** Terminate SSL at the load balancer to reduce backend load.
 - **Auto Scaling:** For cloud setups, integrate load balancers with auto-scaling groups.
-- **Rate Limiting:** Prevent abuse by integrating rate limiting at the load balancer or API gateway.
+- **Rate Limiting:** Prevent abuse by integrating rate limiting (capping how many requests one client may send per time window, for example 100 per minute; see Chapter 6) at the load balancer or API gateway.
 - **Failover:** Design for graceful failover — use multiple load balancers or DNS-based failover.
 - **Logging & Monitoring:** Track traffic, errors, and latency at the load balancer for troubleshooting and analytics.
 - **Security:** Use WAFs (Web Application Firewalls) and DDoS protection features available on most advanced load balancers.
@@ -1189,7 +1189,7 @@ An **API Gateway** is a server that acts as a centralized entry point for all cl
 
 ### 2.9.1 Key Functions
 
-- **Authentication & Authorization** (OAuth, JWT, API keys)
+- **Authentication & Authorization** (OAuth, JWT, API keys: ways to prove who is calling and what they may do; explained in Chapters 5 and 10)
 - **Security** — DDoS protection, SSL termination, bot protection
 - **Routing** — forwards requests to the correct backend service
 - **Rate Limiting & Throttling**
@@ -1394,7 +1394,7 @@ sequenceDiagram
 
 | Feature                       | Benefit                                                |
 |-------------------------------|--------------------------------------------------------|
-| **Caching & Replication**     | Reduces latency and origin server load.                |
+| **Caching & Replication** (copies of data kept closer to users or on several machines; Chapters 7 and 8)     | Reduces latency and origin server load.                |
 | **Load Balancing**            | Handles massive traffic, provides high availability.   |
 | **Compression & Optimization**| Reduces bandwidth, speeds up delivery.                 |
 | **Security**                  | DDoS mitigation, SSL/TLS, bot filtering.               |

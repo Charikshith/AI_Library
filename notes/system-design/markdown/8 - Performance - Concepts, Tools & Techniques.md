@@ -523,7 +523,7 @@ graph TD
 
 ### 8.7.7 Delivery Guarantees
 
-- **At-least-once** (default): Message retried until acknowledged; possible duplicates. *Consumer must be idempotent.*
+- **At-least-once** (default): Message retried until acknowledged; possible duplicates. *Consumer must be idempotent* (processing the same message twice has the same effect as once; see Chapter 9, Idempotency Keys).
 - **At-most-once:** Message delivered only once (no retries); possible loss.
 - **Exactly-once:** Processed once and only once; hardest to implement, supported by Kafka under constraints.
 

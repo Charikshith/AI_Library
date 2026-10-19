@@ -136,7 +136,7 @@ graph TD
 - Needs load balancers.
 - Complex setup (data consistency, replication).
 
-**Example: Kubernetes Horizontal Pod Autoscaler (HPA) YAML:**
+**Example: Kubernetes Horizontal Pod Autoscaler (HPA) YAML:** *(Kubernetes runs your containers across many machines; the HPA adds or removes copies of a container as load changes.)*
 
 ```yaml
 apiVersion: autoscaling/v2

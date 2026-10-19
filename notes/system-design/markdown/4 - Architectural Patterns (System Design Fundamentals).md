@@ -504,7 +504,7 @@ if __name__ == "__main__":
 #### 4.4.4.3 Communication
 
 - **Synchronous:** REST, gRPC
-- **Asynchronous:** Message queues (Kafka, RabbitMQ)
+- **Asynchronous:** Message queues (a buffer where one service leaves messages that another picks up later; Kafka and RabbitMQ are popular products; see Chapter 8, Messaging & Queues)
 
 #### 4.4.4.4 Pros & Cons
 
@@ -1172,7 +1172,7 @@ producer.send('order-events', json.dumps({'order_id': 123, 'status': 'created'})
 
 | Challenge             | Description                                                                       | Solutions / Tools                                |
 |-----------------------|-----------------------------------------------------------------------------------|--------------------------------------------------|
-| Data Consistency      | Eventual consistency due to distributed databases                                 | Compensating transactions, idempotent operations |
+| Data Consistency      | Eventual consistency due to distributed databases                                 | Compensating transactions, idempotent operations (safe to repeat; see the note under the HTTP methods table in Chapter 3) |
 | Distributed Tracing   | Hard to trace requests across multiple services                                   | OpenTelemetry, Jaeger, Zipkin                    |
 | Network Overhead      | More API calls mean more latency and failure points                               | Optimize with gRPC, caching, API Gateway         |
 | Security              | Each service needs auth, encrypted communication                                  | OAuth2, JWT, mTLS, API Gateway                   |
@@ -1192,9 +1192,9 @@ provider.register();
 Microservices shine in scalability:
 
 - **Horizontal Scaling:** Add more instances of a service to handle increased load.
-- **Database Sharding & Read Replicas:** Split data to optimize for high traffic.
+- **Database Sharding & Read Replicas:** Split data to optimize for high traffic. *Sharding* spreads one large database across several machines; a *read replica* is an extra copy that serves read requests. Both are covered in Chapter 7.
 
-**Auto-Scaling (Kubernetes example):**
+**Auto-Scaling (Kubernetes example):** *(Kubernetes is software that runs and scales containers, which are packaged applications, across many machines; Chapter 6 shows its autoscaler in detail.)*
 
 ```yaml
 apiVersion: autoscaling/v2
@@ -1522,7 +1522,7 @@ Clients ──→     ├─ BFF for iOS ─┤ ──→ Microservices
 
 ### 4.9.4 CQRS (Command Query Responsibility Segregation)
 
-**Separate the model used for writes from the model used for reads.** Writes go through a "command" model (often normalized, transactional); reads go through a "query" model (often denormalized, materialized views).
+**Separate the model used for writes from the model used for reads.** Writes go through a "command" model (often *normalized*, meaning split into separate related tables to avoid duplicated data, see Chapter 8; and transactional); reads go through a "query" model (often denormalized, materialized views).
 
 **Why:** read and write patterns are wildly different at scale. Reads vastly outnumber writes; denormalized views serve them in O(1). Writes can use a clean normalized model without performance pressure.
 
@@ -1615,7 +1615,7 @@ A merged master list of advice across all patterns.
 - **Handle failures gracefully.** In event-driven designs, use **dead-letter queues** and **idempotent handlers**.
 - **Embrace eventual consistency** in distributed/event-driven systems — design for eventual rather than immediate.
 - **Use retries, circuit breakers, and graceful degradation** for distributed systems.
-- **Consistency vs. Availability** — understand the CAP theorem and make informed trade-offs.
+- **Consistency vs. Availability** — understand the CAP theorem (Chapter 7) and make informed trade-offs.
 
 ### 4.11.5 Security
 

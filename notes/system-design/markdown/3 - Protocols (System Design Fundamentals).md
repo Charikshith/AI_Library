@@ -346,7 +346,7 @@ Authorization: Bearer <token>
 |-----------|------------------------------------------------------|
 | Method    | Action to perform (GET, POST, PUT, DELETE, PATCH)    |
 | URL       | Resource identifier (`/api/products/123`)            |
-| Headers   | Metadata (auth, content-type, cookies, etc.)         |
+| Headers   | Metadata (auth, content-type, cookies [see Chapter 5], etc.)         |
 | Body      | Data to send (only for POST/PUT/PATCH)               |
 
 ### 3.4.7 Anatomy of an HTTP Response
@@ -378,6 +378,8 @@ Set-Cookie: sessionId=abc123; HttpOnly
 | PUT     | Update/replace resource       | Yes         | No    | Update user profile info         |
 | PATCH   | Partial update                | Usually     | No    | Update only the email address    |
 | DELETE  | Remove resource               | Yes         | No    | Delete a user account            |
+
+> **Two terms in that table.** A request is **idempotent** if sending it several times has the same effect as sending it once (deleting item 5 twice still leaves item 5 gone), which makes it safe to retry after a timeout. A request is **safe** if it does not change anything on the server (reading data). Chapter 9 builds on idempotency for reliable retries (see Idempotency Keys).
 
 **Example: Creating a user**
 
@@ -485,7 +487,7 @@ This is called *optimistic* concurrency because nothing is locked while the user
 
 - **Cookies:** Small pieces of data stored in browser, sent with each request.
 - **Sessions:** Server stores user data; client holds a session ID (usually in a cookie).
-- **Tokens (JWT, OAuth):** Client sends a token with each request that the server validates.
+- **Tokens (JWT, OAuth):** Client sends a token with each request that the server validates. A **JWT** (JSON Web Token) is a signed token that proves who the caller is; **OAuth** is the standard for letting one app act on a user's behalf. Chapter 5 and Chapter 10 explain both.
 
 ```
 Request 1: [Client] ---> [Server] (No memory)
