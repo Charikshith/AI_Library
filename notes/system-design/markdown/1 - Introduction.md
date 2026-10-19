@@ -666,15 +666,15 @@ This 29-chapter course is designed to take you from beginner to confident archit
 
 ### 1.10.1 Foundations
 
-1. **Introduction** — System design fundamentals, importance, and the evolution of the discipline *(you are here)*
+1. **Introduction** — System design fundamentals, importance, the evolution of the discipline, and beginner primers (computer basics, databases and SQL, hashing and encryption) *(you are here)*
 2. **Networking & Communication** — IP, DNS, proxies, load balancers, API gateways, CDNs
 3. **Protocols** — UDP, TCP, HTTP, REST, WebSockets, gRPC, GraphQL
-4. **Architectural Patterns** — Monolithic, layered, microservices, event-driven
-5. **Web Concepts** — Sessions, cookies, JWT, serialization formats, CORS
-6. **Scalability** — Horizontal vs. vertical scaling, auto-scaling, load balancing strategies
-7. **Storage** — SQL vs. NoSQL, CAP theorem, sharding, replication, object storage, big data
+4. **Architectural Patterns** — Monolithic, layered, microservices, event-driven, plus message-queue and container primers
+5. **Web Concepts** — Authentication primer, sessions, cookies, JWT, serialization formats, CORS
+6. **Scalability** — Horizontal vs. vertical scaling, auto-scaling, load balancing strategies, an AWS service map, a hands-on load-balancer lab
+7. **Storage** — SQL vs. NoSQL, SQL in practice, CAP theorem, sharding (with a hands-on lab), replication, object storage and signed URLs, big data and MapReduce, vector databases
 8. **Performance** — Caching, message queues, concurrency, indexing, query optimization
-9. **Reliability, Availability & Disaster Recovery** — Fault tolerance, redundancy, RTO/RPO, backups
+9. **Reliability, Availability & Disaster Recovery** — Fault tolerance, redundancy, multi-data-center design, RTO/RPO, backups, CI/CD and safe deployment
 10. **Security** — CIA triad, authentication, authorization, encryption, threat modeling
 11. **Distributed Systems Fundamentals** *(coming soon)*
 12. **Cloud Design Patterns** *(coming soon)*
