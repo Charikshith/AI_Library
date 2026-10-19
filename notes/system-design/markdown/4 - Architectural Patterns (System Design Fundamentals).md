@@ -33,12 +33,12 @@ After reading this chapter, you'll be able to:
 - [4.7 Multi-Tier Architecture — A Deep Dive](#47-multi-tier-architecture--a-deep-dive)
 - [4.8 Microservices Architecture — A Deep Dive](#48-microservices-architecture--a-deep-dive)
 - [4.9 Event-Driven Architecture — A Deep Dive](#49-event-driven-architecture--a-deep-dive)
-- [4.10 Factors Influencing Architecture Selection](#410-factors-influencing-architecture-selection)
-- [4.12 Practical Trade-offs](#412-practical-trade-offs)
-- [4.13 Tips & Tricks](#413-tips--tricks)
-- [4.14 Sample Interview Questions](#414-sample-interview-questions)
-- [4.15 Summary & Key Takeaways](#415-summary--key-takeaways)
-- [4.16 Further Reading](#416-further-reading)
+- [4.12 Factors Influencing Architecture Selection](#412-factors-influencing-architecture-selection)
+- [4.14 Practical Trade-offs](#414-practical-trade-offs)
+- [4.15 Tips & Tricks](#415-tips--tricks)
+- [4.16 Sample Interview Questions](#416-sample-interview-questions)
+- [4.17 Summary & Key Takeaways](#417-summary--key-takeaways)
+- [4.18 Further Reading](#418-further-reading)
 
 ---
 
@@ -1656,7 +1656,157 @@ if not already_processed(event_id):
 
 ---
 
-## 4.10 Factors Influencing Architecture Selection
+## 4.10 Event-Driven Systems in Practice
+
+Event producers/consumers, event schemas, ordering, idempotency, and eventual consistency.
+
+**In one sentence:** in an event-driven system, services announce facts ("an order was placed") instead of calling each other directly, and any number of other services react on their own schedule — which decouples teams and absorbs load spikes, at the price of eventual consistency and careful handling of order and duplicates.
+
+**Mental model — a town crier vs phone calls.** In request/response, the order clerk must phone billing, shipping, and analytics one by one, and if shipping doesn't answer, the order is stuck. With events, the clerk shouts "Order 123 placed!" in the square once; whoever cares writes it down and acts. New listeners can join without the clerk changing anything. But nobody knows exactly *when* each listener acted.
+
+**Event-driven vs request/response**
+
+| | Request/response (sync) | Event-driven (async) |
+|-|-------------------------|----------------------|
+| Coupling | caller knows every callee, their API, and their availability | the producer knows only the event schema |
+| Failure | a callee failure fails the caller (cascades) | consumers fail independently; the log buffers |
+| Latency to the user | the sum of the chain | fast acknowledgment; work finishes later |
+| Consistency | immediate (if every step succeeded) | **eventual** |
+| Adding a new reaction | change the caller | add a consumer |
+| Debugging | a stack trace / one trace | distributed: needs correlation IDs and tracing |
+| Best for | queries; things the user needs *now* | side effects, integration, fan-out, analytics, workflows |
+
+**Kinds of events**
+
+| Kind | Payload | Example | Trade-off |
+|------|---------|---------|-----------|
+| Notification | just the ID | `OrderPlaced {order_id}` | small; consumers call back for details (coupling + load) |
+| **Event-carried state transfer** | the data consumers need | `OrderPlaced {order_id, customer, items, total}` | consumers are autonomous; bigger events; schema is a contract |
+| Domain event (event sourcing) | the state change itself | Vol 1 Ch 52 | full history |
+
+**Choreography vs orchestration**
+
+| | Choreography | Orchestration |
+|-|--------------|---------------|
+| How | each service reacts to events and emits its own | a central orchestrator (a saga coordinator, Temporal, Step Functions) tells each step what to do |
+| Pros | fully decoupled; no central point | the flow is visible in one place; easy timeouts and compensation |
+| Cons | the overall flow is implicit and hard to follow | the orchestrator knows every participant |
+| Use | simple fan-out reactions | multi-step business processes with compensation (sagas) |
+
+**The hard parts and their fixes**
+
+| Problem | Fix |
+|---------|-----|
+| Duplicates (at-least-once delivery) | **idempotent consumers**: dedup by `event_id` in the same transaction as the side effect |
+| Ordering | partition by the entity key (`order_id`); rely on per-key order only; use sequence numbers to detect gaps |
+| Writing to the DB *and* publishing the event atomically | the **transactional outbox**: write the event to an `outbox` table in the same DB transaction; a relay publishes it (or CDC with Debezium) |
+| Poison messages | bounded retries → a **dead-letter queue**, with alerting and replay tooling |
+| Schema evolution | versioned schemas in a **schema registry** with compatibility rules (backward/forward) |
+| Eventual consistency in the UI | show "processing"; return a version; read your own writes from the source |
+| Tracing a flow | carry `correlation_id` and `causation_id` in every event; propagate trace context |
+
+## 4.11 Cloud Design Patterns Catalog
+
+A catalog of the named patterns for building reliable, scalable distributed applications in the cloud: messaging, data management, design and implementation, reliability, and security.
+
+**In one sentence:** a cloud design pattern is a named, reusable answer to a recurring distributed-systems problem — it tells you the problem, the shape of the solution, and the trade-off you accept — so you can say "put a bulkhead there" instead of re-deriving it in every design review.
+
+**Mental model — a toolbox, not a checklist.** Each pattern is one tool with one job (a queue absorbs bursts, a breaker stops a retry storm, a sidecar bolts on a capability). Good designs use a handful of them where a real problem exists; a design that uses all of them is over-engineered. Always ask "which problem does this solve here?" before reaching for the tool.
+
+**Where this catalog comes from.** The grouping and names follow the cloud design patterns catalog in the Azure Architecture Center, which roadmap.sh also lists. The ideas are not Azure-specific: every pattern maps to AWS, GCP, Kubernetes or plain open source. Where a pattern is covered in depth elsewhere in this guide, the entry here is short and links to that chapter.
+
+**Not all patterns are equally important.** Learn these seven first — they appear in almost every real system and interview: **Circuit Breaker, Retry, Cache-Aside, CQRS, Publisher/Subscriber, Strangler Fig, Sidecar.** The rest are good vocabulary; look them up when the problem shows up.
+
+#### 4.11.1 Messaging patterns
+
+| Pattern | What it is / problem it solves | Use when | Watch out |
+|---------|--------------------------------|----------|-----------|
+| Sequential Convoy | Process related messages in order (per session, account or key) while unrelated groups still run in parallel. Solves ordering without a single-threaded bottleneck. | Order matters within a group (events for one order, one user, one device). | Needs a partition or session key; one hot key becomes a bottleneck; a poison message blocks its group. |
+| Scheduler Agent Supervisor | A scheduler runs a multi-step job by dispatching each step to an agent; a supervisor watches for failed or stuck steps and recovers or retries them. Solves long workflows that span services. | Distributed workflows that must self-heal (provisioning, onboarding, order fulfilment). | Steps must be idempotent; state must be durable; this is basically a workflow engine, so consider buying one (Temporal, Step Functions). |
+| Queue-Based Load Leveling | A queue between producers and a service buffers bursts so the service consumes at its own steady pace. Solves overload from spiky traffic. | Bursty writes to a slower backend; work that can finish later. | Adds latency; the caller gets no immediate result; the queue must be bounded and monitored (depth, age) — see Ch 8. |
+| Publisher/Subscriber | A publisher announces events to a channel; any number of subscribers receive them without the publisher knowing who they are. Solves tight coupling and fan-out. | One event, many independent reactions (email, analytics, search index). | Delivery is usually at-least-once, so consumers must be idempotent; harder to trace who reacted; schema evolution. See Ch 9. |
+| Priority Queue | Messages carry a priority so urgent work is processed before bulk work. Solves starvation of important requests behind a backlog. | Mixed workloads (paid vs free tier, interactive vs batch). | Low priority can starve forever (add aging); not every broker supports it natively — separate queues per priority also work. |
+| Pipes and Filters | Break a complex task into independent steps (filters) connected by channels (pipes). Solves monolithic processing that cannot be reused or scaled per step. | Multi-stage transformations (ingest, validate, enrich, store); steps that scale differently. | Latency of every hop; failures between stages need a retry or dead-letter plan; too many tiny stages hurts throughput. |
+| Competing Consumers | Several consumers read from one queue and each message goes to exactly one of them. Solves throughput and availability of a single consumer. | A queue backlog grows; you want to scale workers horizontally. | Ordering is lost across consumers (see Sequential Convoy); needs idempotency and a visibility timeout or ack; poison messages need a dead-letter queue. |
+| Choreography | Services react to each other's events with no central controller; each service knows only its own step. Solves central coordinator bottlenecks and coupling. | Small, stable flows across a few teams. | The overall flow is implicit and hard to see or debug; cyclic event chains; compare with orchestration (a coordinator that calls each step) as flows grow. |
+| Claim Check | Store the large payload in an external store and send only a small reference (the claim check) through the messaging system. Solves message-size limits and expensive large messages. | Payloads exceed the broker limit, or most consumers do not need the body. | Two systems to keep consistent; orphaned payloads need a lifecycle or TTL; the consumer needs access to the store. |
+| Asynchronous Request-Reply | The client sends a request, gets an immediate acknowledgement (for example `202 Accepted` plus a status URL), and polls or is called back for the result. Solves long-running operations over HTTP. | Work takes longer than a normal request timeout. | Clients must poll or expose a callback; you must store job state and expire it; make the status endpoint cheap. |
+
+#### 4.11.2 Data management patterns
+
+| Pattern | What it is / problem it solves | Use when | Watch out |
+|---------|--------------------------------|----------|-----------|
+| Valet Key | Give the client a short-lived, narrowly scoped token (a pre-signed URL, SAS token) to access one resource directly. Solves proxying large transfers through your servers. | Direct upload or download from object storage. | Tokens are bearer secrets: keep them short-lived, scoped to one object and one action; you lose the proxy as a validation point. |
+| Static Content Hosting | Serve static files (HTML, JS, images) from object storage behind a CDN instead of the web servers. Solves wasted compute and slow delivery. | Any site with static assets or a single-page app. See Ch 14. | Cache invalidation and versioned file names; CORS and access rules. |
+| Sharding | Split a dataset into partitions (shards) across nodes by a key. Solves a data set or write rate that no single node can hold. | One node's storage or write throughput is exhausted. See Ch 11. | Shard-key choice, hot shards, cross-shard queries and transactions, resharding cost. |
+| Materialized View | Pre-compute and store the result of a complex query in a shape ready to read. Solves slow, expensive read queries. | Read-heavy dashboards, search pages, denormalised read models. | The view is stale until refreshed; you need a refresh strategy (on write, scheduled, event-driven). |
+| Index Table | Create your own lookup table keyed by a non-key field in a store that has no secondary indexes. Solves slow queries on non-key attributes in NoSQL stores. | Querying by a field other than the partition key (for example find user by email). | You maintain it yourself, so it can drift from the base table; extra writes. |
+| Event Sourcing | Store every state change as an immutable event; current state is derived by replaying events. Solves lost history and hard auditing. | Audit-critical domains, temporal queries, rebuilding read models. See Vol 3 Ch 12. | Event schema versioning, replay time (use snapshots), eventual consistency, a steep learning curve. |
+| CQRS | Separate the model that handles writes (commands) from the model that serves reads (queries). Solves read and write needs that pull one model in opposite directions. | Very different read and write loads or shapes; often paired with Event Sourcing. See Vol 3 Ch 12. | More moving parts; the read side is eventually consistent; overkill for simple CRUD. |
+| Cache-Aside | The application checks the cache first, loads from the database on a miss, then fills the cache. Solves repeated expensive reads. | Read-heavy data that tolerates brief staleness. See Ch 7. | Stale data, invalidation, stampedes on a cold or expiring key. |
+
+#### 4.11.3 Design and implementation patterns
+
+| Pattern | What it is / problem it solves | Use when | Watch out |
+|---------|--------------------------------|----------|-----------|
+| Strangler Fig | Put a facade in front of a legacy system and route one feature at a time to new code until the old system can be switched off. Solves risky big-bang rewrites. | Migrating a monolith or legacy system incrementally. | Two systems run for a long time; the facade is a single point of failure; shared data is the hard part; set an end date or the migration never finishes. |
+| Sidecar | Deploy a helper process next to the main app (same pod or host) to provide cross-cutting capability — logging, proxying, config, mTLS. Solves duplicating that code in every language. | A service mesh proxy, log shipper, or secrets agent. See Ch 10. | Extra resource use per instance; the sidecar lifecycle is coupled to the app; one more thing to upgrade. |
+| Leader Election | Instances choose one coordinator to own a task, using a consensus store or lease. Solves duplicated work and conflicting writers. | Singleton jobs, partition ownership, scheduled tasks across replicas. | Split brain if leases are mishandled (use fencing tokens); failover delay; prefer a managed lock or lease service over rolling your own. |
+| External Configuration Store | Move configuration out of the deployed package into a central store the app reads at startup or at runtime. Solves redeploying to change a setting. | Many services or environments share settings; feature flags. | The store becomes a dependency (cache the last good value); access control and audit; secrets belong in a secrets manager. |
+| Compute Resource Consolidation | Run several small tasks or services in one compute unit. Solves wasted cost and overhead of many tiny deployments. | Many low-utilisation components with similar scaling and security needs. | Noisy neighbours, shared failure domain, harder independent scaling and deploys. |
+| Backends for Frontend (BFF) | One backend per kind of client (web, mobile) shaped to that client's needs. Solves a one-size-fits-all API that suits no one. | Web and mobile need very different payloads or flows. | More services to maintain; shared logic can be duplicated — push it down into shared services. |
+| Anti-Corruption Layer | A translation layer between a new system and a legacy or foreign one so the old model does not leak into the new design. Solves legacy concepts polluting the new domain. | Integrating with or migrating from a legacy system; third-party APIs with awkward models. See Vol 3 Ch 9. | Extra latency and code to maintain; can become a permanent crutch; keep it thin and tested. |
+| Ambassador | A helper proxy beside a client that handles outbound network concerns — retries, timeouts, routing, TLS, monitoring. Solves repeating client-side connectivity logic. | Legacy or polyglot clients that need resilience without code changes. | An extra hop; it is a sidecar specialised for the client side of calls. |
+| Gateway Routing / Offloading / Aggregation | One entry point that routes requests to services (routing), takes over shared work such as TLS, auth and rate limits (offloading), and combines several backend calls into one response (aggregation). Solves clients that must know every service and every cross-cutting concern. | Many services behind one public API. See Ch 5. | A single point of failure and bottleneck; keep business logic out of the gateway. |
+
+#### 4.11.4 Reliability patterns
+
+| Pattern | What it is / problem it solves | Use when | Watch out |
+|---------|--------------------------------|----------|-----------|
+| Deployment Stamps | Deploy independent, identical copies (stamps or scale units) of the whole application and data to serve a subset of tenants or a region. Solves scale limits and blast radius. | Multi-tenant SaaS, regional or compliance isolation. See Ch 15. | Cost and operational overhead per stamp; a routing layer to map tenant to stamp; global data. |
+| Geodes | Geographically distributed nodes, each able to serve any request, with data replicated between them (active-active). Solves latency and regional failure. | Global users who need low latency and regional resilience. | Replicating and reconciling data across regions; conflict resolution; consistency trade-offs. See Ch 14. |
+| Health Endpoint Monitoring | The service exposes a health endpoint that checks its own dependencies; external tools probe it. Solves discovering failures only when users complain. | Load balancers, orchestrators and monitors need liveness or readiness. | Shallow checks lie, deep checks can cause cascading failures; protect the endpoint; separate liveness from readiness. |
+| Bulkhead | Isolate resources (thread pools, connection pools, instances) per dependency or per tenant so one failure cannot drain everything. Solves cascading resource exhaustion. | Calling several dependencies of unequal reliability; protecting a critical path. | Resources are partitioned and so less efficiently used; sizing each pool. |
+| Circuit Breaker | Wrap a remote call and, after repeated failures, stop calling it for a while (open), then probe (half-open) before resuming. Solves retry storms against a failing dependency. See Vol 3 Ch 14. | Any remote call that can fail or hang. | Threshold and timeout tuning; needs a sensible fallback; per-instance state versus shared state. |
+| Compensating Transaction | Undo earlier completed steps of a multi-step process with explicit reverse operations when a later step fails. Solves consistency without distributed locks (the basis of the saga). | Workflows across services with no shared transaction. | Compensations must be idempotent and may themselves fail; some actions cannot be undone (an email already sent); intermediate states are visible. |
+| Retry | Retry a transient failure, with backoff and jitter, a limited number of times. Solves brief network or service blips. See Vol 3 Ch 14. | Transient faults on idempotent operations. | Retrying non-idempotent calls duplicates effects; retries multiply load during an outage (use budgets and a breaker); stack of retries across layers. |
+| Throttling | Control how much of a resource a consumer may use, and reject, delay or degrade the excess. Solves overload and noisy neighbours. See Ch 8. | Shared services, multi-tenant APIs, autoscaling lag. | Return clear 429s with `Retry-After`; unfair limits; clients must back off. |
+
+#### 4.11.5 Security patterns
+
+| Pattern | What it is / problem it solves | Use when | Watch out |
+|---------|--------------------------------|----------|-----------|
+| Federated Identity | Delegate authentication to an external identity provider (OIDC, SAML) instead of storing credentials yourself. Solves password management and single sign-on across apps. | Enterprise SSO, social login, partner access. See Ch 18. | The identity provider becomes a critical dependency; token validation, claim mapping and logout are subtle. |
+| Gatekeeper | A dedicated front-end host validates and sanitises requests, then forwards only the clean ones to the trusted back end. Solves exposing the component that holds data or privileges. | Sensitive workloads; limiting the damage of a compromised front end. | Another hop and component; it must hold no secrets and have minimal privileges; do not make it a bottleneck. |
+| Valet Key | A scoped, short-lived token for direct access to one resource (listed under data management above). Solves granting access without proxying or sharing full credentials. | Pre-signed uploads and downloads, delegated access. | Treat the token as a secret; keep the scope and lifetime small. |
+
+#### 4.11.6 Which pattern for which problem
+
+| Problem | Reach for |
+|---------|-----------|
+| Traffic spikes overwhelm a backend | Queue-Based Load Leveling, Throttling, Competing Consumers |
+| Remote dependency is failing or slow | Circuit Breaker, Retry (with backoff), Bulkhead |
+| Messages too large for the broker | Claim Check |
+| Operation takes minutes, caller is HTTP | Asynchronous Request-Reply |
+| Many systems react to one event | Publisher/Subscriber, Choreography |
+| Related messages must stay in order | Sequential Convoy |
+| Urgent work stuck behind bulk work | Priority Queue |
+| Reads are slow or expensive | Cache-Aside, Materialized View, CQRS |
+| One database node is full | Sharding, Index Table (for secondary lookups) |
+| Need full history and audit | Event Sourcing |
+| Rewriting a legacy system safely | Strangler Fig + Anti-Corruption Layer |
+| Cross-cutting concerns in many services | Sidecar, Ambassador, Gateway Offloading |
+| Different clients need different APIs | Backends for Frontend, Gateway Aggregation |
+| Only one instance may do a job | Leader Election |
+| Multi-step workflow across services fails halfway | Compensating Transaction, Scheduler Agent Supervisor |
+| Tenant or regional isolation and scale | Deployment Stamps, Geodes |
+| Upload or download without proxying | Valet Key, Static Content Hosting |
+| Do not store passwords or sessions yourself | Federated Identity |
+| Protect the trusted back end from raw input | Gatekeeper |
+| Change settings without redeploying | External Configuration Store |
+| Know whether an instance is healthy | Health Endpoint Monitoring |
+
+## 4.12 Factors Influencing Architecture Selection
 
 When choosing an architectural style, consider:
 
@@ -1674,7 +1824,7 @@ When choosing an architectural style, consider:
 | Microservices    | Large-scale, cloud-native, independent scaling | Small/simple projects               |
 | Event-Driven     | Real-time, IoT, async, scalable systems        | When strong consistency is needed   |
 
-### 4.10.1 Example: When to Use Which?
+### 4.12.1 Example: When to Use Which?
 
 - **Building a CRM for a small business?** Go for **Layered Architecture**.
 - **Launching an MVP for a startup?** Start with **Monolithic**; split into microservices if it grows.
@@ -1683,17 +1833,17 @@ When choosing an architectural style, consider:
 
 ---
 
-## 4.11 Patterns Worth Knowing (Beyond the Big Four)
+## 4.13 Patterns Worth Knowing (Beyond the Big Four)
 
 The four main patterns above (monolith, layered, microservices, event-driven) are *categories*. The patterns below are *specific techniques* that show up inside or across those categories.
 
-### 4.11.1 Modular Monolith
+### 4.13.1 Modular Monolith
 
 A monolith **internally organized as if it were microservices** — clear module boundaries, no cross-module DB access, well-defined interfaces — but deployed as a single binary.
 
 **Why it matters:** combines monolith's deployment simplicity with microservices' modularity. Often the *correct* starting point for a new system. You can split it into actual services later if growth demands it.
 
-### 4.11.2 Strangler Fig — How to Migrate Monolith → Microservices
+### 4.13.2 Strangler Fig — How to Migrate Monolith → Microservices
 
 Named after the strangler fig tree that grows around an existing tree and eventually replaces it. Coined by Martin Fowler.
 
@@ -1705,7 +1855,7 @@ Named after the strangler fig tree that grows around an existing tree and eventu
 
 > **Why it works:** no "big bang" rewrite (which almost always fails). You ship incrementally, and at any point you can stop. The new code never has to be perfect because the monolith is always the fallback.
 
-### 4.11.3 Backend for Frontend (BFF)
+### 4.13.3 Backend for Frontend (BFF)
 
 Each frontend (web, iOS, Android, smart TV) gets its **own dedicated backend service** that aggregates calls to underlying microservices, shaping responses for that frontend's needs.
 
@@ -1722,7 +1872,7 @@ flowchart LR
 ```
 
 
-### 4.11.4 CQRS (Command Query Responsibility Segregation)
+### 4.13.4 CQRS (Command Query Responsibility Segregation)
 
 **Separate the model used for writes from the model used for reads.** Writes go through a "command" model (often *normalized*, meaning split into separate related tables to avoid duplicated data, see Chapter 8; and transactional); reads go through a "query" model (often denormalized, materialized views).
 
@@ -1730,7 +1880,7 @@ flowchart LR
 
 **Trade-off:** complexity. Don't reach for CQRS unless your read/write asymmetry is extreme.
 
-### 4.11.5 Event Sourcing
+### 4.13.5 Event Sourcing
 
 Instead of storing the *current state*, store the *sequence of events* that produced it. Current state is derived by replaying events.
 
@@ -1740,7 +1890,7 @@ Instead of storing the *current state*, store the *sequence of events* that prod
 
 > Often paired with CQRS: events are the write model, projections are the read model.
 
-### 4.11.6 Saga Pattern (Distributed Transactions Without 2PC)
+### 4.13.6 Saga Pattern (Distributed Transactions Without 2PC)
 
 In a monolith, you wrap multi-step operations in a database transaction. In microservices, **you can't** — each service has its own DB. The **Saga pattern** is the answer.
 
@@ -1761,7 +1911,7 @@ Two implementation styles:
 - **Choreography:** each service listens for events and decides what to do. No central coordinator. Simple but hard to reason about at scale.
 - **Orchestration:** a central "saga orchestrator" service tells each step what to do. Easier to debug; one more service to operate.
 
-### 4.11.7 When NOT to Use Microservices
+### 4.13.7 When NOT to Use Microservices
 
 A microservices anti-checklist. Stay with a monolith if:
 
@@ -1775,7 +1925,7 @@ A microservices anti-checklist. Stay with a monolith if:
 
 ---
 
-## 4.12 Practical Trade-offs
+## 4.14 Practical Trade-offs
 
 | Pattern         | Pros                  | Cons                              | Use Cases                  |
 |-----------------|-----------------------|-----------------------------------|----------------------------|
@@ -1786,11 +1936,11 @@ A microservices anti-checklist. Stay with a monolith if:
 
 ---
 
-## 4.13 Tips & Tricks
+## 4.15 Tips & Tricks
 
 A merged master list of advice across all patterns.
 
-### 4.13.1 General
+### 4.15.1 General
 
 - **Start simple, scale out.** Begin with monolithic or layered; refactor to microservices when growth demands.
 - **Document boundaries.** In microservices, define clear API contracts and data ownership to avoid integration mess.
@@ -1798,7 +1948,7 @@ A merged master list of advice across all patterns.
 - **Design for change.** Assume requirements will change; favor modular, loosely-coupled designs.
 - **Choose the right pattern.** Not every problem needs microservices. Start with monolithic or multi-tier, and migrate when scaling demands it.
 
-### 4.13.2 Automation & Observability
+### 4.15.2 Automation & Observability
 
 - **Automate everything.** Especially with microservices: CI/CD, monitoring, automated testing.
 - **Monitor performance.** Use tools like Prometheus, Grafana, or Datadog to track bottlenecks and system health.
@@ -1806,37 +1956,37 @@ A merged master list of advice across all patterns.
 - **Prepare for debugging.** Implement distributed tracing (OpenTelemetry, Jaeger) early.
 - **Automate testing.** Especially in event-driven and microservices systems, automated integration tests are vital.
 
-### 4.13.3 Communication
+### 4.15.3 Communication
 
 - **Choose the right communication pattern.** Use **REST/gRPC** for synchronous, **Kafka/RabbitMQ** for async/event-driven.
 - **Use API gateways** to manage requests in microservices architectures.
 - **Document interfaces** — clearly specify contracts between services and layers.
 - **Version your contracts** — don't break clients when updating APIs.
 
-### 4.13.4 Reliability
+### 4.15.4 Reliability
 
 - **Handle failures gracefully.** In event-driven designs, use **dead-letter queues** and **idempotent handlers**.
 - **Embrace eventual consistency** in distributed/event-driven systems — design for eventual rather than immediate.
 - **Use retries, circuit breakers, and graceful degradation** for distributed systems.
 - **Consistency vs. Availability** — understand the CAP theorem (Chapter 7) and make informed trade-offs.
 
-### 4.13.5 Security
+### 4.15.5 Security
 
 - **Security first.** Isolate services, secure APIs, and encrypt inter-service communication.
 - Authentication, authorization, and data protection — especially as services multiply.
 
-### 4.13.6 Data
+### 4.15.6 Data
 
 - **Data ownership in microservices.** Each microservice should own its database. Avoid sharing schemas.
 - **Plan for schema changes.** Use event versioning or backward-compatible messages in EDA.
 
-### 4.13.7 Evolution
+### 4.15.7 Evolution
 
 - **Plan for evolution.** Choose an architecture that can evolve as your business needs change.
 
 ---
 
-## 4.14 Sample Interview Questions
+## 4.16 Sample Interview Questions
 
 - What are the differences between monolithic, layered, microservices, and event-driven architectures?
 - How does a 2-Tier architecture differ from a 3-Tier architecture?
@@ -1854,7 +2004,7 @@ A merged master list of advice across all patterns.
 
 ---
 
-## 4.15 Summary & Key Takeaways
+## 4.17 Summary & Key Takeaways
 
 - **Monolithic:** Simple, good for small apps or prototypes; struggles at scale.
 - **Layered (N-Tier):** Clear separation, maintainable; can have performance overhead.
@@ -1866,7 +2016,7 @@ A merged master list of advice across all patterns.
 
 ---
 
-## 4.16 Further Reading
+## 4.18 Further Reading
 
 - [Martin Fowler — Microservices](https://martinfowler.com/articles/microservices.html)
 - [Martin Fowler — Patterns of Enterprise Application Architecture](https://martinfowler.com/eaaCatalog/)

@@ -39,11 +39,11 @@ After reading this chapter, you'll be able to:
 - [9.10 Health Monitoring & Self-Healing Systems](#910-health-monitoring--self-healing-systems)
 - [9.11 Backup & Recovery Strategies](#911-backup--recovery-strategies)
 - [9.12 Disaster Recovery in Practice](#912-disaster-recovery-in-practice)
-- [9.18 CI/CD and Safe Deployment](#918-cicd-and-safe-deployment)
-- [9.19 Combined Tips & Tricks](#919-combined-tips--tricks)
-- [9.20 Sample Interview Questions](#920-sample-interview-questions)
-- [9.21 Summary & Key Takeaways](#921-summary--key-takeaways)
-- [9.22 Further Reading](#922-further-reading)
+- [9.19 CI/CD and Safe Deployment](#919-cicd-and-safe-deployment)
+- [9.20 Combined Tips & Tricks](#920-combined-tips--tricks)
+- [9.21 Sample Interview Questions](#921-sample-interview-questions)
+- [9.22 Summary & Key Takeaways](#922-summary--key-takeaways)
+- [9.23 Further Reading](#923-further-reading)
 
 ---
 
@@ -854,11 +854,49 @@ Parallel math assumes the failures are **independent**. That is the reason to sp
 
 **Levers that raise reliability:** redundancy (N+1, N+2), health checks with automatic failover, timeouts, retries with backoff, circuit breakers, **load shedding** (deliberately rejecting excess work so the rest succeeds), graceful degradation, and gradual rollouts.
 
-## 9.14 Retry Patterns Done Right
+## 9.14 Distributed Systems Patterns and Failure Modes
+
+Replication, partitioning, leader/follower, quorums, idempotency, and the failure modes that shape every design.
+
+**In one sentence:** almost every large system combines a few patterns — copy data for safety (replication), split data for scale (partitioning), let one node decide writes (leader/follower), require overlapping majorities (quorums), and make repeated requests harmless (idempotency) — because networks lose, delay, and duplicate messages and nodes fail in partial, confusing ways.
+
+**Mental model — a team spread across cities.** Each office keeps copies of important files (replication), each office owns certain customers (partitioning), one manager signs off changes (leader), big decisions need a majority vote (quorum), and every instruction has a reference number so doing it twice doesn't double-pay anyone (idempotency). The phone lines are unreliable, so every rule assumes a message may be lost or arrive twice.
+
+**The patterns**
+
+| Pattern | Solves | Key trade-off | Deep dive |
+|---------|--------|---------------|-----------|
+| Replication | durability, availability, read scale | consistency lag (async) vs latency (sync) | Vol 1 Ch 51 |
+| Partitioning / sharding | write scale, data size | cross-partition queries, hot spots, resharding | Ch 11 |
+| Leader / follower | a single place to order writes | failover time; leader bottleneck | |
+| Leader election / consensus | exactly one leader, even after failures | needs a majority; slower writes | Raft, etcd |
+| **Quorums** | tunable consistency without a single leader | R + W > N for overlap | Dynamo, Cassandra |
+| **Idempotency** | safe retries in a world of duplicates | storing keys / dedup state | Vol 3 Ch 14 |
+| Leases + fencing tokens | safe locks despite pauses | clock assumptions | |
+| Heartbeats + timeouts | failure detection | false positives vs slow detection | |
+
+**Quorums** — with N replicas, a write waits for W acknowledgments and a read asks R replicas. If **R + W > N**, every read set overlaps every write set in at least one replica, so a read sees the latest acknowledged write (use version numbers to pick it). Common: N = 3, W = 2, R = 2. Trade: W = 1 is fast writes but weak durability; R = 1 is fast reads but possibly stale.
+
+**Failure modes that shape every design**
+
+| Failure | What it looks like | Defense |
+|---------|--------------------|---------|
+| Crash | a node stops | replication + failover |
+| **Partial failure** | a node is slow, or some requests fail | timeouts, retries with backoff, hedging, circuit breakers |
+| Network partition | two groups can't talk | quorums; the minority side refuses writes |
+| **Split-brain** | two nodes both think they are leader | majority-based election, fencing tokens, STONITH |
+| Message loss / duplication / reordering | retries create duplicates | idempotency keys, sequence numbers |
+| Clock skew | timestamps disagree across nodes | logical clocks, avoid last-write-wins on wall time |
+| Gray failure | health checks pass but real traffic fails | health checks that exercise real paths; outlier detection |
+| Cascading failure | retries and overload spread to neighbors | load shedding, backpressure (Ch 8), retry budgets |
+
+**The eight fallacies of distributed computing** — the network is reliable; latency is zero; bandwidth is infinite; the network is secure; topology doesn't change; there is one administrator; transport cost is zero; the network is homogeneous. Every one is false.
+
+## 9.15 Retry Patterns Done Right
 
 Retries are the #1 way to convert a single transient failure into a system-wide outage. Done wrong, they're an amplifier. Done right, they're a lifesaver.
 
-### 9.14.1 The Five Rules of Retries
+### 9.15.1 The Five Rules of Retries
 
 1. **Only retry idempotent operations.** Retrying a non-idempotent POST can double-charge a credit card.
 2. **Exponential backoff** — `delay = base × 2^attempt`. Not constant delay.
@@ -866,7 +904,7 @@ Retries are the #1 way to convert a single transient failure into a system-wide 
 4. **Cap the retries.** Usually 3-5. Past that, give up and report failure.
 5. **Respect `Retry-After` and `429`.** If the server tells you when to retry, listen.
 
-### 9.14.2 Example
+### 9.15.2 Example
 
 ```python
 import random, time
@@ -884,7 +922,7 @@ def with_retry(fn, max_attempts=4, base=0.1):
 
 ---
 
-## 9.15 Idempotency Keys
+## 9.16 Idempotency Keys
 
 Even with retries done right, network failures can leave you unsure whether a request succeeded. The fix: **idempotency keys.**
 
@@ -903,7 +941,7 @@ Stripe, PayPal, and modern payment APIs all use this. **You should too** for any
 
 ---
 
-## 9.16 Active-Active vs Active-Passive
+## 9.17 Active-Active vs Active-Passive
 
 | Mode             | Behavior                                                                      | Pros                                  | Cons                                |
 |------------------|-------------------------------------------------------------------------------|---------------------------------------|--------------------------------------|
@@ -916,7 +954,7 @@ Stripe, PayPal, and modern payment APIs all use this. **You should too** for any
 
 ---
 
-## 9.17 Chaos Engineering — Failure as a Practice
+## 9.18 Chaos Engineering — Failure as a Practice
 
 You don't know if your reliability mechanisms work until you actually break things in production. **Chaos engineering** = deliberately injecting failures (kill pods, drop network packets, fail dependencies) to verify the system survives.
 
@@ -935,11 +973,11 @@ You don't know if your reliability mechanisms work until you actually break thin
 
 ---
 
-## 9.18 CI/CD and Safe Deployment
+## 9.19 CI/CD and Safe Deployment
 
 > **Why this belongs in reliability:** most outages are caused by **changes**. A good delivery pipeline makes changes small, tested and reversible, which protects availability more than almost any other habit.
 
-### 9.18.1 What the Terms Mean
+### 9.19.1 What the Terms Mean
 
 | Term | Meaning |
 |------|---------|
@@ -947,7 +985,7 @@ You don't know if your reliability mechanisms work until you actually break thin
 | **Continuous Delivery (CD)** | every change that passes is **ready** to release; a human presses the button |
 | **Continuous Deployment** | every change that passes is released **automatically**, with no button |
 
-### 9.18.2 A Typical Pipeline
+### 9.19.2 A Typical Pipeline
 
 ```mermaid
 flowchart TB
@@ -964,7 +1002,7 @@ flowchart TB
 
 Each stage is a **gate**: if it fails, the change stops and nobody is paged at night. Fast stages (lint, unit tests) run first so feedback arrives in minutes.
 
-### 9.18.3 Example: A CircleCI Configuration
+### 9.19.3 Example: A CircleCI Configuration
 
 ```yaml
 version: 2.1
@@ -998,7 +1036,7 @@ workflows:
 
 **Reading it:** *jobs* are units of work with their own environment and steps; the *workflow* wires jobs together, sets the order (`requires`) and adds a manual approval step. GitHub Actions, GitLab CI and Jenkins express the same ideas in their own syntax.
 
-### 9.18.4 Deployment Strategies
+### 9.19.4 Deployment Strategies
 
 | Strategy | How | Strength | Risk or cost |
 |----------|-----|----------|--------------|
@@ -1007,7 +1045,7 @@ workflows:
 | **Canary** | send a small share of traffic (1 to 5 percent) to the new version, then increase | real-traffic test with limited blast radius | needs good monitoring and traffic splitting |
 | **Feature flags** | ship code switched off, enable it later for chosen users | decouples deploy from release; instant off switch | flags pile up and must be cleaned |
 
-### 9.18.5 Hot Fixes and Faster Pipelines
+### 9.19.5 Hot Fixes and Faster Pipelines
 
 **Hot fix:** a small, urgent change that goes to production quickly to stop an ongoing problem, ahead of the normal release schedule. Typical flow:
 
@@ -1024,7 +1062,7 @@ workflows:
 - **Run independent jobs in parallel** (lint, unit tests, security scan) and put the quickest checks first.
 - **Protect the main branch:** require a passing pipeline and a reviewer's approval before a pull request can merge.
 
-### 9.18.6 Making Releases Safe
+### 9.19.6 Making Releases Safe
 
 - **Small, frequent changes** are easier to understand and to roll back than big ones.
 - **Automate rollback** and rehearse it. Define the trigger up front (for example an error rate above a threshold).
@@ -1033,44 +1071,44 @@ workflows:
 - **Same artifact everywhere:** build the container image once and promote that exact image from staging to production.
 - **Protect secrets:** the pipeline needs credentials, so store them in a secrets manager and limit what each job can reach (see Chapter 10).
 
-## 9.19 Combined Tips & Tricks
+## 9.20 Combined Tips & Tricks
 
 A consolidated master list drawn from all sections.
 
-### 9.19.1 Design Philosophy
+### 9.20.1 Design Philosophy
 
 - **Design for failure:** Assume components/services will fail; plan accordingly. Use retries, circuit breakers, fallback logic.
 - **Cloud-native mindset:** Leverage managed services' redundancy and auto-healing (AWS RDS Multi-AZ, GCP Cloud SQL HA).
 - **Balance cost vs. risk:** Higher SLAs and lower RTO/RPO mean higher cost and complexity. Align with business needs.
 
-### 9.19.2 Automation
+### 9.20.2 Automation
 
 - **Automate everything:** Backups, failover, health checks, restore tests.
 - **Use circuit breakers and retries:** Prevent cascading failures due to repeated calls to failing services.
 
-### 9.19.3 Testing
+### 9.20.3 Testing
 
 - **Test regularly:** Run DR drills, test backups, simulate failures (chaos engineering).
 - **Test your DR plan:** *If you haven't tested it, you don't have it.*
 - **Test across regions:** Don't assume multi-region just "works" — validate failover and data consistency.
 
-### 9.19.4 Monitoring
+### 9.20.4 Monitoring
 
 - **Monitor key metrics:** Track MTBF, MTTR, availability, error rates, backup status.
 - **Monitor and alert:** Don't just collect metrics — act on them.
 - **Implement the 3-2-1 backup rule:** 3 copies, 2 different media, 1 offsite.
 
-### 9.19.5 User Experience
+### 9.20.5 User Experience
 
 - **Gracefully degrade:** Prioritize core features; design for partial service during failures.
 - **Document SLAs and recovery objectives:** Explicitly define and communicate RTO/RPO.
 
-### 9.19.6 Documentation
+### 9.20.6 Documentation
 
 - **Document and review:** Keep disaster recovery and backup plans up to date and review them periodically.
 - **Document your DR plan:** Ensure everyone knows the process and their role.
 
-### 9.19.7 Backup-Specific
+### 9.20.7 Backup-Specific
 
 - **Test restores regularly:** A backup you've never restored is a backup you don't have.
 - **Monitor success & failures:** Set up dashboards/alerts.
@@ -1081,7 +1119,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## 9.20 Sample Interview Questions
+## 9.21 Sample Interview Questions
 
 - How would you design a system for 99.99% availability?
 - What's the difference between backup and failover?
@@ -1097,7 +1135,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## 9.21 Summary & Key Takeaways
+## 9.22 Summary & Key Takeaways
 
 - **Reliability is foundational** — measured by metrics like MTBF, MTTR, and SLAs.
 - **Design choices must anticipate and tolerate failure.**
@@ -1113,7 +1151,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## 9.22 Further Reading
+## 9.23 Further Reading
 
 - [Google SRE Book: Reliability](https://sre.google/sre-book/reliability/)
 - [Google SRE Book: Reliability and Recovery](https://sre.google/sre-book/)
