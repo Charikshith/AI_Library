@@ -448,7 +448,22 @@ db.users.insertOne({
 db.users.find({ "profile.social": "github" })
 ```
 
-#### 7.7.2.4 BASE Properties
+#### 7.7.2.4 Embedding vs. Referencing: The Duplication Trade-off
+
+In a document store you choose between **embedding** related data inside a document and **referencing** it by id.
+
+| | **Embed** (for example the seller's details inside each product) | **Reference** (store `seller_id`, keep sellers in their own collection) |
+|--|-----------------------------------------------------------------|-----------------------------------------------------------------------|
+| Reads | one read returns the product *and* seller; no join | two reads (or a lookup/join) |
+| Writes | changing a seller's name means updating it in **every** product that embeds it (10,000 products = 10,000 writes) | change it in one place |
+| Consistency | copies can drift apart | single source of truth |
+| Best when | the embedded data is read together, changes rarely, and belongs to one parent | the data is shared, changes often, or grows without bound |
+
+**Rule of thumb:** embed what you always read together and rarely change; reference what is shared or volatile. Some systems do both, keeping the embedded copy for fast reads and the referenced record as the truth.
+
+**Flexibility has a cost.** Documents in one collection may have different fields and need no migrations, which is why NoSQL is quick to build with while the data shape is still changing (for example an MVP). But enforcing structure, joins and one-place updates is harder later, and moving to SQL when the design settles is a normal path.
+
+#### 7.7.2.5 BASE Properties
 
 NoSQL systems often relax ACID guarantees in favor of scalability and availability, summarized as **BASE**:
 
@@ -456,7 +471,7 @@ NoSQL systems often relax ACID guarantees in favor of scalability and availabili
 - **Soft state:** State may change over time, even without input (due to eventual sync).
 - **Eventually consistent:** System guarantees data consistency... eventually.
 
-#### 7.7.2.5 When to Use NoSQL
+#### 7.7.2.6 When to Use NoSQL
 
 - High scalability needed.
 - Flexible / evolving data structures.
@@ -613,7 +628,37 @@ FROM orders;
 
 A common interview task, "the latest order per user", is a `ROW_NUMBER()` partitioned by user and filtered to `1`.
 
-### 7.8.7 Upsert: Insert or Update in One Step
+### 7.8.7 Transactions in Practice: BEGIN, COMMIT and ROLLBACK
+
+A transaction groups statements so that **all succeed or none do**. The money-transfer example, with the balance check done safely:
+
+```sql
+BEGIN;                                   -- start the transaction
+
+UPDATE accounts SET balance = balance - 100
+WHERE id = 1 AND balance >= 100;         -- the check and the deduction happen atomically
+-- the application looks at "rows affected":
+--   0 rows  → insufficient funds: run ROLLBACK; and stop
+--   1 row   → carry on
+
+UPDATE accounts SET balance = balance + 100 WHERE id = 2;
+
+COMMIT;                                  -- make both changes permanent
+```
+
+- **`COMMIT`** saves everything done since `BEGIN`.
+- **`ROLLBACK`** cancels everything since `BEGIN`, as if it never happened. A crash or error before `COMMIT` has the same effect.
+- Putting the check inside the `UPDATE` (`AND balance >= 100`) avoids a gap between "read the balance" and "write the new one" in which another transaction could change it.
+
+**Isolation:** concurrent transactions can interfere (dirty reads, phantom rows). You choose how much protection you want, trading safety for concurrency:
+
+```sql
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;   -- strongest: behaves as if transactions ran one at a time
+```
+
+Higher levels prevent more anomalies but allow less concurrency and can abort transactions you must retry. The isolation levels and the anomalies they stop are explained under Transaction Isolation Levels earlier in this chapter.
+
+### 7.8.8 Upsert: Insert or Update in One Step
 
 ```sql
 -- PostgreSQL / SQLite
@@ -626,7 +671,7 @@ ON CONFLICT (id) DO UPDATE SET quantity = EXCLUDED.quantity;
 
 Doing the check and the write in one statement avoids the race where two clients both see "not found" and both insert.
 
-### 7.8.8 NULL: Unknown, Not Zero
+### 7.8.9 NULL: Unknown, Not Zero
 
 `NULL` means *unknown*. Any comparison with an unknown is unknown: `NULL = NULL` and `price > NULL` are neither true nor false. Test with `IS NULL` and `IS NOT NULL`.
 
@@ -643,7 +688,7 @@ WHERE NOT EXISTS (SELECT 1 FROM archived a WHERE a.id = p.category_id);
 
 Also remember that aggregates skip `NULL` values (`COUNT(col)` ignores them, `COUNT(*)` does not).
 
-### 7.8.9 ORM Habits That Hurt at Scale
+### 7.8.10 ORM Habits That Hurt at Scale
 
 An ORM writes the SQL, but you still own the performance. A query that is instant on 200 rows can take tens of seconds on 2 million.
 
@@ -657,7 +702,7 @@ An ORM writes the SQL, but you still own the performance. A query that is instan
 
 Log the SQL your ORM actually sends while you develop. For query plans, indexing and pagination in practice, see Database Performance Optimization in Chapter 8.
 
-### 7.8.10 Key Takeaways
+### 7.8.11 Key Takeaways
 
 - Evaluation order is `FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT`, which is why a `SELECT` alias fails in `WHERE`.
 - `WHERE` filters rows, `HAVING` filters groups.
@@ -668,7 +713,7 @@ Log the SQL your ORM actually sends while you develop. For query plans, indexing
 - `NULL` is unknown: use `IS NULL`, and prefer `NOT EXISTS` over `NOT IN` when `NULL` may appear.
 - Know what your ORM sends: eager-load to kill N+1, select needed columns, `COUNT` in SQL, always `LIMIT`.
 
-### 7.8.11 Sample Interview Questions
+### 7.8.12 Sample Interview Questions
 
 1. What is the difference between `WHERE` and `HAVING`? Give an example that needs both.
 2. Why does `SELECT price * qty AS total FROM t WHERE total > 100` fail, and how do you fix it?
@@ -1618,14 +1663,31 @@ Beyond SQL and the four NoSQL categories, modern systems often use specialized s
 
 ---
 
-### 7.16.1 Vector Databases in More Depth
+### 7.16.1 Graph Databases: Why Traversal Beats Joins
+
+A **graph database** stores **nodes** (people, companies) and **edges** (relationships such as *knows* or *works at*), both of which can carry properties. Examples: Neo4j, Amazon Neptune, Dgraph, and Meta's in-house graph store (TAO) behind its social graph.
+
+**The problem it solves.** Question: *which of my connections, or their connections, work at Stripe?*
+
+- In **SQL** you keep a `friendships` table and an `employment` table. Each extra hop needs another join: one for friends, one for friends of friends, one more for the employer. Cost grows quickly with depth.
+- In a **graph database** the relationships are stored directly with each node, so the query simply **walks** the connections. Work depends on the neighbourhood you touch, not on the size of the whole table.
+
+```cypher
+// Neo4j Cypher: people within 3 hops of me who work at Stripe
+MATCH (me:Person {name: "You"})-[:KNOWS*1..3]-(p:Person)-[:WORKS_AT]->(:Company {name: "Stripe"})
+RETURN DISTINCT p.name
+```
+
+**Trade-offs:** excellent for highly connected data (social networks, fraud rings, recommendations, knowledge graphs); weaker at bulk scans and aggregations over everything, and harder to split across machines (partition) than key-based stores.
+
+### 7.16.2 Vector Databases in More Depth
 
 A **vector database** stores **embeddings**: lists of numbers (often 384 to 3,072 of them) that a machine-learning model produces to capture the *meaning* of text, images or audio. Items with similar meaning end up with **nearby vectors**.
 
 **What it is for:** finding "things like this" instead of exact matches.
 
 - **Semantic search:** "how do I reset my login?" finds the article titled "Recovering account access".
-- **Retrieval-augmented generation (RAG):** fetch the most relevant passages and give them to a language model as context.
+- **Retrieval-augmented generation (RAG):** fetch the most relevant passages and give them to a large language model (LLM) such as GPT or Claude as context.
 - **Recommendations and de-duplication:** nearest neighbours of a product, song or image.
 
 **How similarity is measured:** **cosine similarity** (the angle between vectors; the most common for text), **dot product**, or **Euclidean (L2) distance**.
@@ -1671,6 +1733,16 @@ LIMIT 5;
 | Real-time or batch big data          | Distributed Storage + Processing (HDFS, S3, Delta Lake) |
 
 ---
+
+### 7.17.1 Five Questions Before You Choose a Database
+
+1. **What are the access patterns?** Look-ups by key, ad-hoc queries and joins, full-text search, graph traversals, time-ordered writes, or similarity search?
+2. **How connected is the data?** Many relationships point to relational or graph; self-contained records point to documents.
+3. **What does wrong or stale data cost?** A stale like count on a photo is harmless; charging someone twice is a lawsuit. Money, inventory and identity need strong consistency and transactions (usually SQL); feeds, counters and caches can accept eventual consistency.
+4. **What scale and growth do you expect?** Read-heavy or write-heavy, how many records, and whether you will need to shard.
+5. **What can your team run?** A database you cannot operate, back up and debug is a liability, however fast it benchmarks.
+
+**Derived stores are not the source of truth.** A search engine (Elasticsearch) or a cache is built *from* a primary database and lags behind it, so it can be stale and is weak at transactions and updates. Keep the system of record in a database designed for it, and rebuild derived stores from it when needed.
 
 ## 7.18 Combined Tips & Tricks
 

@@ -246,6 +246,39 @@ User --> [LB] --> Node A (active)
 
 ---
 
+### 9.6.3 Single Points of Failure (SPOF)
+
+A **single point of failure** is any one component whose failure takes the whole system down. It is the most common reason a system is less reliable than the sum of its parts.
+
+**Why it matters:**
+
+- **Reliability:** one failed part means lost business and unhappy users (for example, nobody can reach checkout).
+- **Scalability:** a design full of single points struggles to grow, because every extra component is one more thing that can break the chain.
+
+**Finding them:** walk the path of one request from the user to the data and ask of every box, *"if this dies right now, what happens?"* If the answer is "everything stops", you have found one.
+
+```mermaid
+flowchart LR
+    U([User]) --> DNS["DNS"] --> LB["Load balancer"] --> A["App server"] --> DB[("Database")]
+    A --> C[("Cache")]
+    A --> Q[["Queue"]]
+```
+
+In this sketch every box is a single point of failure. Each fix below adds redundancy:
+
+| Component | Typical single point | Remove it by |
+|-----------|---------------------|--------------|
+| App servers | one server | several instances behind a load balancer, spread across availability zones |
+| Load balancer | one balancer | an active-passive pair with a shared virtual IP, or a managed, multi-zone load balancer |
+| Database | one primary | replication with automatic failover, backups, and a standby in another zone |
+| Cache and queue | one node | a replicated or clustered cache; a clustered broker with mirrored queues |
+| DNS | one provider or name server | several name servers, ideally from more than one provider |
+| Data center | one site or region | a second site or region (see Failing Over Between Data Centers) |
+
+**Hidden single points** are easy to miss: a single expired TLS certificate, one shared configuration or secrets service, one deployment pipeline, one third-party API, one person who knows how a system works, or one cloud region.
+
+**Trade-off:** every redundant part costs money and adds complexity (replication lag, failover logic, more to monitor). Spend redundancy where an outage costs more than the redundancy does, and rehearse the failover so you know it works.
+
 ## 9.7 Graceful Degradation
 
 Graceful degradation is about keeping **core functionality alive** during partial failures, even if some features are unavailable.
@@ -930,7 +963,24 @@ workflows:
 | **Canary** | send a small share of traffic (1 to 5 percent) to the new version, then increase | real-traffic test with limited blast radius | needs good monitoring and traffic splitting |
 | **Feature flags** | ship code switched off, enable it later for chosen users | decouples deploy from release; instant off switch | flags pile up and must be cleaned |
 
-### 9.18.5 Making Releases Safe
+### 9.18.5 Hot Fixes and Faster Pipelines
+
+**Hot fix:** a small, urgent change that goes to production quickly to stop an ongoing problem, ahead of the normal release schedule. Typical flow:
+
+1. **Detect:** monitoring and alerts show the failure (error rate or latency jumps). Teams usually route alerts to a chat channel and an on-call pager so someone sees them within minutes.
+2. **Stabilise first:** roll back the last release or switch off a feature flag if that restores service; fixing forward is for when rollback is impossible.
+3. **Diagnose:** use logs, metrics and traces to find the root cause, and, where safe, inspect the running application.
+4. **Fix on a short branch,** run the *same* pipeline (a hot fix is not a reason to skip tests, only to keep the change tiny), and deploy through the normal path.
+5. **Follow up:** merge the fix back to the main branch, write a short post-incident review, and replace the quick patch with a permanent solution.
+
+**Keeping the pipeline fast:**
+
+- **Cache dependencies** (for example `node_modules` or a package cache) between runs, keyed on the lock file, so builds do not download everything each time.
+- **Pass build outputs between jobs** with the CI system's workspace or artifact feature instead of rebuilding in every job.
+- **Run independent jobs in parallel** (lint, unit tests, security scan) and put the quickest checks first.
+- **Protect the main branch:** require a passing pipeline and a reviewer's approval before a pull request can merge.
+
+### 9.18.6 Making Releases Safe
 
 - **Small, frequent changes** are easier to understand and to roll back than big ones.
 - **Automate rollback** and rehearse it. Define the trigger up front (for example an error rate above a threshold).

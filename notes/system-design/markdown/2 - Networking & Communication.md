@@ -964,6 +964,22 @@ flowchart LR
 
 ---
 
+### 2.7.9 Types of Proxies by Anonymity and Use
+
+Proxies differ in how much they reveal about the client and who they are for:
+
+| Type | What the destination sees | Typical use |
+|------|--------------------------|-------------|
+| **Transparent proxy** | knows a proxy is used, and sees your real IP (it is often sent in a header) | caching and content filtering in companies, schools and ISPs; users may not even notice it |
+| **Anonymous proxy** | knows a proxy is used, but not your real IP | hiding your address while browsing |
+| **Distorting proxy** | knows a proxy is used and is given a **fake** IP | appearing to be in another location |
+| **High-anonymity (elite) proxy** | cannot tell a proxy is being used, and does not see your IP | strongest privacy |
+| **Open proxy** | any user on the internet can connect to it | bypassing restrictions; also commonly abused |
+
+> **Caution:** free open proxies can read, alter or log your traffic, so do not send passwords or sensitive data through one. Encrypted connections (HTTPS) protect the content, but the proxy still sees which sites you visit.
+
+Do not confuse these **forward-proxy** variants (they act for the client) with the **reverse proxy** in front of your servers, which hides the servers from clients.
+
 ## 2.8 Load Balancing
 
 Load balancing is a foundational building block in scalable, reliable, and high-performing system architectures. Whether you're designing for millions of users or just want smooth user experiences, understanding load balancing — its types, strategies, and real-world applications — is non-negotiable.
@@ -1017,11 +1033,23 @@ flowchart TB
 - **Software Load Balancers:** Run on general servers or VMs. Flexible and cost-effective (e.g., NGINX, HAProxy, Envoy).
 - **Cloud-Based Load Balancers:** Managed by cloud providers, offer auto-scaling and easy integration (e.g., AWS ELB, GCP Load Balancer, Azure Load Balancer).
 
-### 2.8.3 Load Balancing Strategies
+### 2.8.3 DNS-Based Load Balancing
+
+The simplest way to spread traffic needs no extra machine: publish **several IP addresses for one domain name** (several `A` records). The DNS server hands out the addresses in rotating order (**round-robin DNS**), so different users reach different servers.
+
+| Strengths | Limits |
+|-----------|--------|
+| nothing extra to buy or run | **no health checks:** a dead server keeps receiving traffic until you remove its record |
+| works across data centers and regions | **caching:** resolvers keep answers for the record's TTL, so changes take time to reach everyone |
+| cheap and simple | **crude balancing:** no awareness of load, connections or session stickiness; little customisation |
+
+Managed DNS services (such as Route 53 or Cloudflare) fix the worst gaps with **health-checked** and **weighted** records, and **Geo-DNS** (see the DNS section) that routes users to the nearest site. For fine-grained balancing inside a data center, use a real load balancer (below) and keep DNS for choosing between sites.
+
+### 2.8.4 Load Balancing Strategies
 
 The strategy you choose impacts performance, reliability, and cost. Strategies are broadly classified as **static** or **dynamic**.
 
-#### 2.8.3.1 Static Load Balancing
+#### 2.8.4.1 Static Load Balancing
 
 **1. Round Robin** — distributes requests sequentially across servers.
 
@@ -1055,7 +1083,7 @@ def get_server_by_ip(client_ip, servers):
 - **Virtual nodes** (each server appears at many points on the ring) keep the load even.
 - **Use it when** the same key should keep landing on the same server: cache servers, session affinity, sharded stores. See the consistent-hashing discussion in the sharding section of Chapter 7.
 
-#### 2.8.3.2 Dynamic Load Balancing
+#### 2.8.4.2 Dynamic Load Balancing
 
 **1. Least Response Time** — routes to the server with the fastest current response.
 
@@ -1089,7 +1117,7 @@ http {
 }
 ```
 
-### 2.8.4 Load Balancers in Action
+### 2.8.5 Load Balancers in Action
 
 ```text
                        +--------------+
@@ -1129,7 +1157,7 @@ graph LR
 - Load Balancer chooses a backend server based on the configured strategy.
 - If a server fails, the Load Balancer reroutes traffic to healthy servers.
 
-### 2.8.5 Choosing the Right Load Balancer
+### 2.8.6 Choosing the Right Load Balancer
 
 - **Layer:** L4 for speed, L7 for content-aware routing.
 - **Scalability:** Will you need auto-scaling? Use cloud-based solutions.
@@ -1137,7 +1165,7 @@ graph LR
 - **Cost & Flexibility:** Software load balancers are more flexible, hardware for enterprise performance.
 - **Use Case:** API gateways, microservices, high-traffic web apps, etc.
 
-### 2.8.6 Health Checks — What They Are
+### 2.8.7 Health Checks — What They Are
 
 The LB needs to know which backends are alive. It does this via **health checks**:
 
@@ -1150,7 +1178,7 @@ A good `/health` endpoint should:
 - Reflect *only the local* health (don't fail if a downstream is slow; that's a separate concern).
 - Optionally have a separate `/ready` endpoint for "I've finished startup and am ready to serve."
 
-### 2.8.7 Sticky Sessions — What They Are and When to Avoid
+### 2.8.8 Sticky Sessions — What They Are and When to Avoid
 
 **Sticky sessions** (a.k.a. *session affinity*) mean the LB always routes a given user to the *same* backend. Typically implemented via:
 
@@ -1167,7 +1195,7 @@ A good `/health` endpoint should:
 
 **The modern alternative:** make backends *stateless* and externalize session state to Redis/Memcached (fast in-memory data stores, see Chapter 8). Any backend can serve any user.
 
-### 2.8.8 Load Balancing — Tips & Best Practices
+### 2.8.9 Load Balancing — Tips & Best Practices
 
 - **Monitor Health:** Always enable health checks for backend servers.
 - **Sticky Sessions:** Use session persistence (IP hash, cookies) if user state is needed.
@@ -1178,7 +1206,7 @@ A good `/health` endpoint should:
 - **Logging & Monitoring:** Track traffic, errors, and latency at the load balancer for troubleshooting and analytics.
 - **Security:** Use WAFs (Web Application Firewalls) and DDoS protection features available on most advanced load balancers.
 
-### 2.8.9 Load Balancing — Interview Quick Reference
+### 2.8.10 Load Balancing — Interview Quick Reference
 
 - **What is load balancing and why is it important?** Distributes traffic to ensure high availability, performance, and reliability.
 - **Layer 4 vs. Layer 7 Load Balancers?**
@@ -1189,7 +1217,7 @@ A good `/health` endpoint should:
   - Dynamic: Adapt to real-time load/health.
 - **How does a load balancer improve security?** Can perform SSL/TLS termination, DDoS filtering, hide backend servers.
 
-### 2.8.10 Load Balancing — Further Reading
+### 2.8.11 Load Balancing — Further Reading
 
 - [NGINX as a Load Balancer](https://docs.nginx.com/nginx/admin-guide/load-balancer/http-load-balancer/)
 - [AWS Elastic Load Balancing](https://aws.amazon.com/elasticloadbalancing/)

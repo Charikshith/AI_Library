@@ -92,7 +92,21 @@ sequenceDiagram
     Note over Client,Server: Connection established
 ```
 
-#### 3.3.1.2 TCP Three-Way Handshake
+#### 3.3.1.2 What a TCP Packet Carries
+
+Every TCP segment starts with a **header** that makes reliable delivery possible:
+
+| Field | Purpose |
+|-------|---------|
+| **Source and destination ports** | identify which program on each machine the data belongs to (for example destination port 443 for HTTPS) |
+| **Sequence and acknowledgement numbers** | number the bytes so the receiver can put them in order, spot missing pieces and confirm what arrived |
+| **Flags** (`SYN`, `ACK`, `FIN`, `RST`) | control the connection: open it, confirm data, close it politely, or abort it |
+| **Window size** | tells the sender how much more data the receiver can accept (flow control) |
+| **Checksum** | detects corrupted data |
+
+**Ports** are numbered doors on a machine. Some are reserved by convention: **22** SSH, **53** DNS, **80** HTTP, **443** HTTPS. An IP address finds the machine; the port finds the program.
+
+#### 3.3.1.3 TCP Three-Way Handshake
 
 ```mermaid
 sequenceDiagram
@@ -115,7 +129,7 @@ A second view, with step numbers:
 2. **SYN-ACK:** Server acknowledges and agrees.
 3. **ACK:** Client confirms, and the connection is established.
 
-#### 3.3.1.3 Code: TCP Server in Python (echo server)
+#### 3.3.1.4 Code: TCP Server in Python (echo server)
 
 ```python
 import socket
@@ -133,7 +147,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             conn.sendall(data)
 ```
 
-#### 3.3.1.4 Code: TCP Client in Python
+#### 3.3.1.5 Code: TCP Client in Python
 
 ```python
 import socket
@@ -711,7 +725,7 @@ flowchart LR
     D -.->|breaking change needed| A
 ```
 
-Deprecation and retirement are part of the design: decide up front how you will version, how much notice clients get, and how you will see who still calls the old version (see [Versioning Strategies & Deprecation](#versioning-strategies--deprecation) below).
+Deprecation and retirement are part of the design: decide up front how you will version, how much notice clients get, and how you will see who still calls the old version (see [Versioning Strategies & Deprecation](#3514-versioning-strategies--deprecation) below).
 
 ### 3.5.7 RESTful API Design Principles
 

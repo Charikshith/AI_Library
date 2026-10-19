@@ -111,7 +111,7 @@ Key generation is critical for uniqueness, compactness, and scalability.
 ### 16.5.2 Recommended: Base62 Encoding
 
 - Use an incrementing ID, encode in Base62 (`0-9`, `a-z`, `A-Z`) for short, unique keys.
-- Requires a globally unique counter (see [Distributed Collision Handling with Zookeeper](#distributed-collision-handling-with-zookeeper)).
+- Requires a globally unique counter (see [Distributed Collision Handling with Zookeeper](#169-distributed-collision-handling-with-zookeeper)).
 
 #### 16.5.2.1 Base62 Encoding Code
 

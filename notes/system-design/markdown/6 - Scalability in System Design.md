@@ -530,7 +530,51 @@ http {
 }
 ```
 
-### 6.7.7 Hands-On Lab: Put a Load Balancer in Front of Two Servers
+### 6.7.7 From Nothing to a Running Server: SSH, a Runtime and a Process Manager
+
+Before you can put anything behind a load balancer, you need one working server. This walk-through shows the manual steps on any cloud provider (the first-server experience on DigitalOcean, AWS, Google Cloud and others is nearly identical). A server like this is called a **virtual private server (VPS)**; DigitalOcean calls it a *droplet*, AWS an *EC2 instance*.
+
+**1. Create the server.** Choose a **region** near your users, an operating system (Ubuntu is the common default), and a size. Choose **SSH key** login rather than a password.
+
+**2. Why SSH keys beat passwords.** A password can be guessed or stolen; an SSH key is a long random **key pair**. The public half sits on the server, the private half stays on your machine and is never sent. Only someone holding the private key can log in.
+
+```bash
+ssh-keygen -t ed25519 -C "me@laptop"      # creates a private and a public key
+# paste the public key (~/.ssh/id_ed25519.pub) into the provider's console
+ssh root@203.0.113.10                      # log in to the new server (or use the provider's web console)
+```
+
+You are now in a remote computer with only a terminal and no graphical interface.
+
+**3. Install what the app needs.** A fresh server has no language runtime or Git:
+
+```bash
+sudo apt update && sudo apt install -y git
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash   # Node version manager
+source ~/.bashrc && nvm install 22
+git clone https://github.com/you/user-management.git && cd user-management
+npm install && node server.js              # works, but stops when you close the terminal
+```
+
+**4. Keep it running with a process manager.** Running `node server.js` by hand dies when the terminal closes or the app crashes. A **process manager** restarts crashed apps and starts them at boot. **PM2** is the common one for Node; **systemd** does the same job for any program.
+
+```bash
+npm install -g pm2
+pm2 start server.js --name users          # runs in the background, restarts on a crash
+pm2 save                                   # remember the process list
+pm2 startup                                # prints a command; run it so PM2 itself starts at boot
+pm2 logs users                             # read the app's output
+```
+
+**5. Make it safe to expose.** The app listens on a high port such as 3000, which visitors should not see.
+
+- Put **NGINX** (a reverse proxy, see Chapter 2) on ports 80 and 443 and forward to `localhost:3000`, so users just use the domain name.
+- Turn on the **firewall** and open only what is needed: `ufw allow OpenSSH`, `ufw allow 80,443/tcp`, then `ufw enable`.
+- Keep the operating system patched and disable password login for SSH.
+
+**6. Clone it.** Once one server works, take a **snapshot** (a saved copy of the whole disk) and launch a second server from it. This is the fastest way to get an identical machine for the load-balancer lab below, and it is why scalable systems treat servers as **disposable and reproducible** (see the containers primer in Chapter 4).
+
+### 6.7.8 Hands-On Lab: Put a Load Balancer in Front of Two Servers
 
 Seeing a load balancer work makes the theory stick. This lab needs only Docker and runs on your own machine.
 
@@ -586,7 +630,7 @@ docker start app1                                    # it rejoins automatically
 
 **The same idea in a cloud console** (any provider): create a server and install your app; take a **snapshot** and launch a **clone** from it; create a **load balancer** in the same network and region; add both servers as targets; define a **forwarding rule** (for example port 80 to port 80) and a **health check**; then open the load balancer's address, refresh repeatedly and check its metrics. This is the same flow you just did locally.
 
-### 6.7.8 Choosing the Right Load Balancer
+### 6.7.9 Choosing the Right Load Balancer
 
 - **Layer 4:** Choose for raw speed and lower-level TCP/UDP traffic.
 - **Layer 7:** Choose for intelligent routing (APIs, microservices).
@@ -600,7 +644,7 @@ docker start app1                                    # it rejoins automatically
 - **DDoS Protection:** Many cloud/hardware LBs provide built-in attack mitigation.
 - **Session Persistence:** Use IP hashing or sticky sessions if needed.
 
-### 6.7.9 Load Balancing — Tips & Best Practices
+### 6.7.10 Load Balancing — Tips & Best Practices
 
 - **Always set up health checks** for your backend servers.
 - **Prefer stateless backend design** for easier load balancing.

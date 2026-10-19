@@ -104,6 +104,10 @@ Each step down the list is roughly 100 to 1,000 times slower than the one above 
 
 (1 millisecond = 1,000 microseconds = 1,000,000 nanoseconds. See "Numbers Every Programmer Should Know" later in this chapter.)
 
+**Throughput matters too (rough figures).** A hard drive moves about 80 to 160 MB per second; a solid-state drive about 500 to 3,500 MB per second (SSDs cost more per GB); RAM moves many thousands of MB per second, faster than any SSD. Capacities run the other way: disks hold hundreds of GB to several TB, RAM a few GB to hundreds of GB on a large server, and the CPU cache only a few MB.
+
+**The cache hierarchy.** The CPU keeps tiny, very fast caches on the chip: **L1** (smallest and fastest, one per core), **L2**, and **L3** (larger, shared between cores). To read a value the CPU looks in L1, then L2, then L3, then RAM, and only then goes to disk; finding it early is a **cache hit** and missing is a **cache miss**. The same idea, keeping a copy of popular data in a faster place, appears all through this course.
+
 **What this means for system design:**
 
 - Data in RAM is fast but disappears when power is lost, so anything that must survive goes to disk. This is why **databases write to disk** and **caches live in RAM**.
