@@ -839,3 +839,58 @@ pre::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius:
   z-index: 150;
 }
 .overlay.show { display: block; }
+
+/* ============================== DIAGRAM VIEWER (figure.sd-diagram) ============================== */
+.sd-diagram { position: relative; margin: 26px 0; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-elevated); box-shadow: var(--shadow-sm); overflow: hidden;
+  transition: box-shadow var(--transition), border-color var(--transition); }
+.sd-diagram:hover { box-shadow: var(--shadow-md); border-color: var(--border-strong); }
+.sd-bar { display: flex; align-items: center; gap: 8px; padding: 7px 10px 7px 14px; border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--bg-muted), var(--bg-elevated)); font-size: 12px; color: var(--text-muted); }
+.sd-kind { font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-size: 10.5px; color: var(--primary); }
+.sd-hint { margin-left: auto; font-size: 11px; color: var(--text-faint); opacity: 0; transition: opacity var(--transition); }
+.sd-diagram.sd-scrolls .sd-hint, .sd-diagram:hover .sd-hint { opacity: 1; }
+.sd-btn { appearance: none; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 7px;
+  padding: 4px 10px; font: 600 11.5px/1.2 'Inter', system-ui, sans-serif; cursor: pointer; transition: all var(--transition); }
+.sd-btn:hover { background: var(--primary-faint); border-color: var(--primary); color: var(--primary); }
+.sd-btn.ok { background: var(--success); border-color: var(--success); color: #fff; }
+.sd-diagram .mermaid { margin: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important;
+  display: block !important; overflow-x: auto; padding: 18px !important; cursor: zoom-in; }
+.sd-diagram .mermaid svg { display: block; margin: 0 auto; height: auto; }
+/* hover focus on flowcharts: dim everything except the hovered node and its connections */
+.sd-diagram.sd-focus .node:not(.sd-hl), .sd-diagram.sd-focus .cluster, .sd-diagram.sd-focus .edgeLabel:not(.sd-hl),
+.sd-diagram.sd-focus .flowchart-link:not(.sd-hl) { opacity: .22; transition: opacity 120ms; }
+.sd-diagram .node { transition: opacity 120ms; cursor: pointer; }
+.sd-diagram .flowchart-link.sd-hl { stroke-width: 3px !important; }
+/* plain-text (ASCII) diagrams */
+.sd-text .sd-body { margin: 0; border: 0; border-radius: 0; background: radial-gradient(1200px 300px at 0 0, rgba(96,165,250,.07), transparent 60%), var(--code-bg);
+  padding: 18px 20px; overflow-x: auto; cursor: zoom-in; }
+.sd-text pre.sd-body code { font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, Consolas, monospace; font-size: 13px; line-height: 1.35;
+  font-variant-ligatures: none; white-space: pre; }
+.sd-text .tx-box { color: #64748b; }
+.sd-text .tx-arrow { color: #fbbf24; font-weight: 700; }
+.sd-text .tx-node { color: #93c5fd; font-weight: 600; }
+.sd-text .copy-btn { display: none; }
+/* lightbox */
+.sd-lightbox { position: fixed; inset: 0; z-index: 100000; display: flex; flex-direction: column; background: rgba(8,12,22,.94); backdrop-filter: blur(6px);
+  animation: sdfade 140ms ease-out; }
+@keyframes sdfade { from { opacity: 0 } to { opacity: 1 } }
+.sd-lb-bar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: #e2e8f0; font: 600 13px 'Inter', system-ui, sans-serif;
+  border-bottom: 1px solid rgba(255,255,255,.08); }
+.sd-lb-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-lb-bar .sd-btn { background: rgba(255,255,255,.07); color: #e2e8f0; border-color: rgba(255,255,255,.15); }
+.sd-lb-bar .sd-btn:hover { background: rgba(96,165,250,.25); border-color: #60a5fa; color: #fff; }
+.sd-lb-zoom { min-width: 48px; text-align: center; font-variant-numeric: tabular-nums; color: #94a3b8; }
+.sd-lb-stage { position: relative; flex: 1; overflow: hidden; cursor: grab; touch-action: none; }
+.sd-lb-stage.drag { cursor: grabbing; }
+.sd-lb-content { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+.sd-lb-content svg { display: block; max-width: none !important; background: var(--bg); border-radius: 10px; padding: 20px; }
+.sd-lb-content pre { margin: 0; border-radius: 10px; }
+.sd-lb-help { padding: 8px 16px; color: #64748b; font: 12px 'Inter', system-ui, sans-serif; text-align: center; border-top: 1px solid rgba(255,255,255,.06); }
+/* diagram polish: rounded nodes, soft shadows, calmer arrows */
+.sd-diagram .node rect, .sd-diagram .node polygon, .sd-diagram .node circle, .sd-diagram .node ellipse, .sd-diagram .node path { rx: 9px; ry: 9px; stroke-width: 1.6px; }
+.sd-diagram .node { filter: drop-shadow(0 1px 2px rgba(15, 23, 42, .18)); }
+.sd-diagram .cluster rect { rx: 12px; ry: 12px; stroke-dasharray: 5 4; }
+.sd-diagram .flowchart-link, .sd-diagram .messageLine0, .sd-diagram .messageLine1 { stroke-width: 1.6px; }
+.sd-diagram .actor { rx: 8px; ry: 8px; }
+.sd-diagram .edgeLabel { border-radius: 6px; }

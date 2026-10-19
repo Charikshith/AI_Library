@@ -660,12 +660,13 @@ m.querySelectorAll("a[href]").forEach(function(a){var u=a.getAttribute("href");
 m.querySelectorAll('a[href^="http"]').forEach(function(a){a.target="_blank";a.rel="noopener";});
 var dia=[];
 m.querySelectorAll("pre > code.language-mermaid").forEach(function(c){
- var d=document.createElement("div");d.className="mermaid";d.textContent=c.textContent;
+ var d=document.createElement("div");d.className="mermaid";d.dataset.src=c.textContent;d.textContent=c.textContent;
  c.parentNode.replaceWith(d);dia.push([d,c.textContent]);});
 async function drawMermaid(){
  if(!dia.length||typeof mermaid==="undefined")return;
  var dark=document.documentElement.getAttribute("data-theme")==="dark";
- mermaid.initialize({startOnLoad:false,securityLevel:"strict",theme:dark?"dark":"default"});
+ var tv=dark?{primaryColor:"#1e3a5f",primaryTextColor:"#e2e8f0",primaryBorderColor:"#60a5fa",lineColor:"#94a3b8",secondaryColor:"#3b2f12",secondaryTextColor:"#fde68a",secondaryBorderColor:"#fbbf24",tertiaryColor:"#1a2030",tertiaryTextColor:"#e2e8f0",noteBkgColor:"#3b2f12",noteTextColor:"#fde68a",noteBorderColor:"#fbbf24",actorBkg:"#1e3a5f",actorBorder:"#60a5fa",actorTextColor:"#e2e8f0",actorLineColor:"#475569",signalColor:"#cbd5e1",signalTextColor:"#e2e8f0",labelBoxBkgColor:"#1a2030",labelBoxBorderColor:"#475569",labelTextColor:"#e2e8f0",loopTextColor:"#e2e8f0",clusterBkg:"#131826",clusterBorder:"#334155",edgeLabelBackground:"#131826",titleColor:"#e2e8f0",fontSize:"15px"}:{primaryColor:"#dbeafe",primaryTextColor:"#0f172a",primaryBorderColor:"#2563eb",lineColor:"#64748b",secondaryColor:"#fef3c7",secondaryTextColor:"#78350f",secondaryBorderColor:"#f59e0b",tertiaryColor:"#f1f5f9",tertiaryTextColor:"#0f172a",noteBkgColor:"#fef3c7",noteTextColor:"#78350f",noteBorderColor:"#f59e0b",actorBkg:"#dbeafe",actorBorder:"#2563eb",actorTextColor:"#0f172a",actorLineColor:"#94a3b8",signalColor:"#475569",signalTextColor:"#0f172a",labelBoxBkgColor:"#f1f5f9",labelBoxBorderColor:"#cbd5e1",labelTextColor:"#0f172a",loopTextColor:"#0f172a",clusterBkg:"#f8fafc",clusterBorder:"#cbd5e1",edgeLabelBackground:"#ffffff",titleColor:"#0f172a",fontSize:"15px"};
+ mermaid.initialize({startOnLoad:false,securityLevel:"strict",theme:"base",fontFamily:"Inter,system-ui,sans-serif",flowchart:{curve:"basis",htmlLabels:true,padding:12,nodeSpacing:40,rankSpacing:48},sequence:{mirrorActors:false,actorMargin:50,messageMargin:34,wrap:true},themeVariables:tv});
  var nodes=[];
  for(var i=0;i<dia.length;i++){var p=dia[i];
   if(!p[2]&&!(await mermaid.parse(p[1],{suppressErrors:true}))){
@@ -673,7 +674,18 @@ async function drawMermaid(){
    var pre=document.createElement("pre"),code=document.createElement("code");
    code.textContent=p[1];pre.appendChild(code);p[0].replaceWith(pre);dia.splice(i--,1);continue;}
   p[2]=true;p[0].removeAttribute("data-processed");p[0].textContent=p[1];nodes.push(p[0]);}
- if(nodes.length)mermaid.run({nodes:nodes});}
+ if(nodes.length){await mermaid.run({nodes:nodes});}
+ // A wide left-to-right flowchart is re-drawn top-to-bottom when that is much narrower, so it fits without scrolling.
+ for(var j=0;j<dia.length;j++){var q=dia[j],el=q[0];
+  if(q[3]||!/^\s*(flowchart|graph)\s+LR/.test(q[1]))continue;
+  var sv=el.querySelector("svg");if(!sv||!sv.viewBox)continue;
+  var vw=sv.viewBox.baseVal.width,cw=el.clientWidth-40;
+  if(vw<cw*1.3)continue;
+  try{var alt=q[1].replace(/^(\s*(?:flowchart|graph)\s+)LR/,"$1TB");
+   var out=await mermaid.render("sdflip"+j+"x"+Date.now(),alt);
+   var tmp2=document.createElement("div");tmp2.innerHTML=out.svg;var nv=tmp2.querySelector("svg").viewBox.baseVal.width;
+   if(nv<vw*0.75){el.innerHTML=out.svg;q[1]=alt;q[3]=true;}}catch(e){}}
+ if(window.SDDiagrams)window.SDDiagrams.mermaid();}
 window.addEventListener("load",function(){drawMermaid();
  new MutationObserver(drawMermaid).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});});
 """
