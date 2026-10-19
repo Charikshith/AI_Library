@@ -219,29 +219,21 @@ No storage system is perfect. Real-world solutions must **trade off** between:
 
 **No distributed system can have all three at the same time.**
 
-### 7.6.1 Diagram: CAP Triangle
+### 7.6.1 Diagram: CAP Venn Diagram
 
+```venn
+title: CAP theorem: pick two
+sets: C | A | P
+name C: Consistency
+name A: Availability
+name P: Partition tolerance
+universe: off
+label C&A: CA
+label C&P: CP
+label A&P: AP
+label C&A&P: ✕
+note: During a network partition you must give up consistency (AP) or availability (CP). The centre, all three at once, cannot be had.
 ```
-         Consistency
-            /\
-           /  \
-          /----\
-Partition      Availability
-Tolerance
-```
-
-A slightly different ASCII view:
-
-```
-          Consistency
-           /      \
-          /        \
-         /          \
-    Partition    Availability
-     Tolerance
-```
-
-(See `image.png` for a rendered CAP Venn diagram.)
 
 ```mermaid
 graph TD

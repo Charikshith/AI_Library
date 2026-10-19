@@ -824,6 +824,7 @@ def course_chapter(s, idx, phase_of):
         f'<nav class="chapter-nav">{nav}</nav></main></div>',
         f'<script src="{MARKED_JS}"></script><script src="{MERMAID_JS}"></script>',
         f'<script>const MD={embed_md(text)};{COURSE_RENDER_JS}</script>',
+        '<script src="../assets/venn.js"></script>',
         PRISM_JS, PRISM_AUTOLOADER, '<script src="../assets/system-design.js"></script>',
         '</body></html>',
     ])
