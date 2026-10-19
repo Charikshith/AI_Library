@@ -27,12 +27,13 @@ After reading this chapter, you'll be able to:
 - [6.6 Scaling Strategies — A Deep Dive](#66-scaling-strategies--a-deep-dive)
 - [6.7 Load Balancing — The Backbone of Scalability](#67-load-balancing--the-backbone-of-scalability)
 - [6.8 Autoscaling in Cloud Environments](#68-autoscaling-in-cloud-environments)
-- [6.9 Monitoring & Proactive Scaling](#69-monitoring--proactive-scaling)
-- [6.10 Cost Optimization Strategies](#610-cost-optimization-strategies)
-- [6.15 Combined Tips & Tricks](#615-combined-tips--tricks)
-- [6.16 Sample Interview Questions](#616-sample-interview-questions)
-- [6.17 Key Takeaways](#617-key-takeaways)
-- [6.18 Further Reading](#618-further-reading)
+- [6.9 Cloud Building Blocks: An AWS Service Map](#69-cloud-building-blocks-an-aws-service-map)
+- [6.10 Monitoring & Proactive Scaling](#610-monitoring--proactive-scaling)
+- [6.11 Cost Optimization Strategies](#611-cost-optimization-strategies)
+- [6.16 Combined Tips & Tricks](#616-combined-tips--tricks)
+- [6.17 Sample Interview Questions](#617-sample-interview-questions)
+- [6.18 Key Takeaways](#618-key-takeaways)
+- [6.19 Further Reading](#619-further-reading)
 
 ---
 
@@ -529,7 +530,63 @@ http {
 }
 ```
 
-### 6.7.7 Choosing the Right Load Balancer
+### 6.7.7 Hands-On Lab: Put a Load Balancer in Front of Two Servers
+
+Seeing a load balancer work makes the theory stick. This lab needs only Docker and runs on your own machine.
+
+**Goal:** run two identical servers behind NGINX, watch requests alternate, then stop one server and watch traffic keep flowing.
+
+**1. Create a network and two servers** (each replies with its own name):
+
+```bash
+docker network create labnet
+docker run -d --name app1 --network labnet hashicorp/http-echo -text="hello from app1"
+docker run -d --name app2 --network labnet hashicorp/http-echo -text="hello from app2"
+```
+
+**2. Write the load balancer config** as `nginx.conf` in the current folder:
+
+```nginx
+upstream backend {
+    server app1:5678;
+    server app2:5678;
+}
+server {
+    listen 80;
+    location / { proxy_pass http://backend; }
+}
+```
+
+**3. Start NGINX and send traffic:**
+
+```bash
+docker run -d --name lb --network labnet -p 8080:80 \
+  -v "$PWD/nginx.conf:/etc/nginx/conf.d/default.conf:ro" nginx:alpine
+
+for i in 1 2 3 4 5 6; do curl -s localhost:8080; done
+```
+
+You should see `hello from app1` and `hello from app2` taking turns: that is **round robin**.
+
+**4. Try the strategies** from this chapter by editing `nginx.conf` and reloading (`docker exec lb nginx -s reload`):
+
+- `least_conn;` as the first line inside `upstream` for **least connections**
+- `ip_hash;` for **IP hashing** (one client now sticks to one server)
+- `server app1:5678 weight=3;` for **weighted** balancing (app1 gets about three times the traffic)
+
+**5. Test failure handling:**
+
+```bash
+docker stop app1
+for i in 1 2 3 4; do curl -s localhost:8080; done   # every answer comes from app2
+docker start app1                                    # it rejoins automatically
+```
+
+**6. Clean up:** `docker rm -f lb app1 app2 && docker network rm labnet`.
+
+**The same idea in a cloud console** (any provider): create a server and install your app; take a **snapshot** and launch a **clone** from it; create a **load balancer** in the same network and region; add both servers as targets; define a **forwarding rule** (for example port 80 to port 80) and a **health check**; then open the load balancer's address, refresh repeatedly and check its metrics. This is the same flow you just did locally.
+
+### 6.7.8 Choosing the Right Load Balancer
 
 - **Layer 4:** Choose for raw speed and lower-level TCP/UDP traffic.
 - **Layer 7:** Choose for intelligent routing (APIs, microservices).
@@ -543,7 +600,7 @@ http {
 - **DDoS Protection:** Many cloud/hardware LBs provide built-in attack mitigation.
 - **Session Persistence:** Use IP hashing or sticky sessions if needed.
 
-### 6.7.8 Load Balancing — Tips & Best Practices
+### 6.7.9 Load Balancing — Tips & Best Practices
 
 - **Always set up health checks** for your backend servers.
 - **Prefer stateless backend design** for easier load balancing.
@@ -695,7 +752,57 @@ gcloud compute instance-groups managed set-autoscaling my-group \
 
 ---
 
-## 6.9 Monitoring & Proactive Scaling
+## 6.9 Cloud Building Blocks: An AWS Service Map
+
+> **Why this is here:** case studies and interviews name cloud services constantly. This map groups the common Amazon Web Services by the job they do, so each name has a place in your head. Other clouds have equivalents (Google Cloud, Azure); the **jobs** are the same.
+
+| Job | Services | Plain meaning |
+|-----|----------|---------------|
+| **DNS and edge** | **Route 53**, **CloudFront** | DNS with health checks and routing; a CDN that caches content near users |
+| **Edge security** | **WAF**, **Shield** | filter malicious requests; absorb DDoS floods |
+| **API front door and sign-in** | **API Gateway**, **Cognito** | one entry point with throttling and auth; managed user sign-up, login and tokens (OpenID Connect) |
+| **Load balancing** | **Elastic Load Balancing** (ALB for HTTP, NLB for raw TCP/UDP) | spread traffic across servers |
+| **Compute** | **EC2**, **ECS / EKS**, **Fargate**, **Lambda** | virtual servers; container orchestration (Docker / Kubernetes); containers without managing servers; functions that run on demand |
+| **Queues and events** | **SQS**, **SNS**, **EventBridge**, **Kinesis**, **Step Functions** | message queue; publish/subscribe fan-out; event routing; streaming log; workflow orchestration |
+| **Relational databases** | **RDS**, **Aurora** | managed MySQL/PostgreSQL and others; a cloud-built MySQL/PostgreSQL-compatible engine with faster failover and replicas |
+| **NoSQL and search** | **DynamoDB**, **OpenSearch** | key-value/document store at massive scale; search and log analytics |
+| **Caching** | **ElastiCache**, **MemoryDB** | managed Redis/Memcached cache; a durable Redis-compatible in-memory database |
+| **Storage** | **S3**, **EBS**, **EFS** | object storage; block storage for one server; shared network file system |
+| **Config and secrets** | **AppConfig**, **Secrets Manager**, **Parameter Store**, **KMS** | feature flags and runtime config; store passwords and keys; encryption keys |
+| **Identity and access** | **IAM** | who and what may call which AWS API |
+| **Observability** | **CloudWatch**, **X-Ray** | metrics, logs and alarms; distributed tracing |
+
+### 6.9.1 A Typical Web Request Path
+
+```mermaid
+flowchart LR
+    U[User] --> R53[Route 53]
+    R53 --> CF[CloudFront CDN]
+    CF --> WAF[WAF]
+    WAF --> APIGW[API Gateway / ALB]
+    APIGW --> COG[Cognito checks the token]
+    APIGW --> SVC["Service on ECS / EKS / Lambda"]
+    SVC --> CACHE[(ElastiCache)]
+    SVC --> DB[(Aurora / RDS)]
+    SVC --> Q[SQS queue]
+    Q --> W[Worker service]
+    W --> S3[(S3)]
+    SVC --> CW[CloudWatch logs and metrics]
+```
+
+### 6.9.2 Choosing Between Look-Alikes
+
+| Question | Guidance |
+|----------|----------|
+| EC2 vs containers vs Lambda | EC2 for full control; containers for steady services that scale; Lambda for spiky or event-driven work with short runtimes |
+| SQS vs SNS vs EventBridge vs Kinesis | SQS: one consumer group pulls work; SNS: push to many subscribers; EventBridge: route events by rules between services and SaaS; Kinesis: ordered, replayable stream |
+| ElastiCache vs MemoryDB | ElastiCache when losing the cache is acceptable (it is a copy of data); MemoryDB when it must be the durable primary store |
+| RDS vs Aurora vs DynamoDB | RDS for standard relational needs; Aurora for higher scale and faster failover; DynamoDB for key-based access at huge scale with no joins |
+| Secrets Manager vs Parameter Store vs AppConfig | secrets with rotation; simple config values; feature flags and gradual config rollout |
+
+> **Interview habit:** name the *job* first ("a managed queue"), then the product ("SQS"), and say what you would trade away by picking it.
+
+## 6.10 Monitoring & Proactive Scaling
 
 Effective autoscaling depends on robust monitoring.
 
@@ -706,7 +813,7 @@ Effective autoscaling depends on robust monitoring.
 
 ---
 
-## 6.10 Cost Optimization Strategies
+## 6.11 Cost Optimization Strategies
 
 Cloud costs can spiral if autoscaling is not managed carefully. Best practices:
 
@@ -720,9 +827,9 @@ Cloud costs can spiral if autoscaling is not managed carefully. Best practices:
 
 ---
 
-## 6.11 The Fundamental Laws
+## 6.12 The Fundamental Laws
 
-### 6.11.1 Amdahl's Law — Why Adding Servers Doesn't Linearly Scale
+### 6.12.1 Amdahl's Law — Why Adding Servers Doesn't Linearly Scale
 
 If 95% of a workload is parallelizable and 5% is serial, the **maximum speedup is 20×** — no matter how many machines you throw at it.
 
@@ -740,17 +847,17 @@ where P = parallel fraction, N = number of processors
 
 **Lesson:** the serial part of your system is the bottleneck. Profile to find it; eliminate it before adding more machines.
 
-### 6.11.2 Universal Scalability Law (Gunther)
+### 6.12.2 Universal Scalability Law (Gunther)
 
 In practice, scaling is often *worse* than Amdahl predicts because of **coordination overhead** — locks, consensus, distributed transactions. There's a point past which adding more nodes makes the system *slower*. This is why "just add another microservice" doesn't always help.
 
 ---
 
-## 6.12 Stateless Service Design
+## 6.13 Stateless Service Design
 
 The single most important enabler of horizontal scaling. A **stateless** service holds no per-request memory between requests; any instance can serve any request.
 
-### 6.12.1 Where to Put the State Instead
+### 6.13.1 Where to Put the State Instead
 
 | State                   | Where it goes               | Why                                  |
 |-------------------------|------------------------------|--------------------------------------|
@@ -763,11 +870,11 @@ The single most important enabler of horizontal scaling. A **stateless** service
 
 ---
 
-## 6.13 Failure Containment Patterns
+## 6.14 Failure Containment Patterns
 
 Scaling isn't only about handling load — it's about preventing one failure from cascading.
 
-### 6.13.1 Circuit Breaker
+### 6.14.1 Circuit Breaker
 
 If a downstream service is failing, **stop calling it for a while** so the failing service can recover and your service doesn't waste resources waiting on timeouts.
 
@@ -778,13 +885,13 @@ States:  CLOSED  →  OPEN  →  HALF-OPEN  →  CLOSED
 
 **Implementation:** count failures in a window; trip if >N% fail; after a cooldown, allow one trial request.
 
-### 6.13.2 Bulkhead
+### 6.14.2 Bulkhead
 
 Isolate resources so failure in one part of the system can't drown the rest. Just like the watertight compartments on a ship — if one floods, the rest stay dry.
 
 **Example:** dedicate separate thread pools (or connection pools) per downstream service. If the slow payment service eats all 200 threads, your auth calls still have their own pool.
 
-### 6.13.3 Rate Limiting
+### 6.14.3 Rate Limiting
 
 Cap how many requests any one client (IP, user, API key) can send in a window. Protects against abuse *and* against your own systems thundering when something goes wrong.
 
@@ -800,13 +907,13 @@ Cap how many requests any one client (IP, user, API key) can send in a window. P
 
 > **Default choice:** token bucket. Easy to reason about, allows reasonable bursts, well-supported in libraries.
 
-### 6.13.4 Backpressure
+### 6.14.4 Backpressure
 
 When you can't keep up, **tell upstream to slow down** rather than silently dropping or queuing forever. Standard mechanisms: HTTP 429, gRPC `RESOURCE_EXHAUSTED`, blocking writes on a bounded queue.
 
 ---
 
-## 6.14 Capacity Planning — Back-of-the-Envelope
+## 6.15 Capacity Planning — Back-of-the-Envelope
 
 Given:
 - p99 latency budget: **100 ms**
@@ -821,11 +928,11 @@ Given:
 
 ---
 
-## 6.15 Combined Tips & Tricks
+## 6.16 Combined Tips & Tricks
 
 A consolidated master list drawn from all sections.
 
-### 6.15.1 General Scaling
+### 6.16.1 General Scaling
 
 - **Start simple:** Use vertical scaling for MVPs; switch to horizontal as needs grow. Don't over-engineer.
 - **Design stateless services:** Easier to distribute and scale horizontally. Use shared databases or distributed caches for state.
@@ -833,7 +940,7 @@ A consolidated master list drawn from all sections.
 - **Know when to switch:** Monitor system metrics; switch when approaching hardware limits or needing high availability.
 - **Document scaling decisions:** Record why/when you chose vertical, horizontal, or diagonal scaling to aid future maintenance.
 
-### 6.15.2 Automation & Monitoring
+### 6.16.2 Automation & Monitoring
 
 - **Automate monitoring:** Track key metrics and set up alerts.
 - **Monitor everything:** Use dashboards and alerts (CloudWatch, Prometheus, Grafana).
@@ -841,7 +948,7 @@ A consolidated master list drawn from all sections.
 - **Plan for failure:** Implement health checks and graceful failover in load balancers.
 - **Test under load:** Use chaos engineering and load testing to surface bottlenecks early.
 
-### 6.15.3 Load Balancers
+### 6.16.3 Load Balancers
 
 - **Implement load balancers:** Distribute traffic, prevent overload, increase reliability.
 - **Choose the right load balancing strategy:** Match to traffic patterns.
@@ -849,7 +956,7 @@ A consolidated master list drawn from all sections.
 - **For microservices**, consider using a service mesh (Istio, Linkerd) for advanced L7 routing.
 - **Enable SSL termination** at the load balancer to reduce backend CPU load.
 
-### 6.15.4 Autoscaling
+### 6.16.4 Autoscaling
 
 - **Set conservative thresholds at first, then tune.** Avoid thrashing (rapid scaling in/out).
 - **Test autoscaling in staging with simulated traffic spikes.**
@@ -859,7 +966,7 @@ A consolidated master list drawn from all sections.
 - **Always review cloud provider pricing calculators** to forecast cost under peak loads.
 - **Limit autoscaling:** Set quotas to avoid runaway costs.
 
-### 6.15.5 Cost Optimization
+### 6.16.5 Cost Optimization
 
 - **Avoid over-provisioning.** Use auto-pausing and scale-to-zero features in serverless/cloud.
 - **Use spot/preemptible instances** for batch workloads (up to 80% cheaper).
@@ -868,7 +975,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## 6.16 Sample Interview Questions
+## 6.17 Sample Interview Questions
 
 1. What does scalability mean in system design?
 2. Compare vertical and horizontal scaling. When would you use each?
@@ -891,7 +998,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## 6.17 Key Takeaways
+## 6.18 Key Takeaways
 
 - **Scalability is essential** for growth, reliability, and performance in modern architectures.
 - **Vertical, horizontal, and diagonal scaling** serve different needs — choose wisely based on workload and growth patterns.
@@ -903,7 +1010,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## 6.18 Further Reading
+## 6.19 Further Reading
 
 **AWS:**
 

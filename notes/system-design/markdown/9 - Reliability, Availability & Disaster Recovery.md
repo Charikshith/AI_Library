@@ -39,10 +39,11 @@ After reading this chapter, you'll be able to:
 - [9.10 Health Monitoring & Self-Healing Systems](#910-health-monitoring--self-healing-systems)
 - [9.11 Backup & Recovery Strategies](#911-backup--recovery-strategies)
 - [9.12 Disaster Recovery in Practice](#912-disaster-recovery-in-practice)
-- [9.18 Combined Tips & Tricks](#918-combined-tips--tricks)
-- [9.19 Sample Interview Questions](#919-sample-interview-questions)
-- [9.20 Summary & Key Takeaways](#920-summary--key-takeaways)
-- [9.21 Further Reading](#921-further-reading)
+- [9.18 CI/CD and Safe Deployment](#918-cicd-and-safe-deployment)
+- [9.19 Combined Tips & Tricks](#919-combined-tips--tricks)
+- [9.20 Sample Interview Questions](#920-sample-interview-questions)
+- [9.21 Summary & Key Takeaways](#921-summary--key-takeaways)
+- [9.22 Further Reading](#922-further-reading)
 
 ---
 
@@ -359,7 +360,27 @@ Design with multiple instances of key components (servers, databases, etc.) to a
 - Ensures high availability and resilience during regional outages.
 - Distribute components across multiple regions to handle data center/region outages.
 
-### 9.9.3 Automated Failover
+### 9.9.3 Active-Active vs. Active-Passive Across Data Centers
+
+A **data center** is a building (or campus) of servers with its own power, cooling and network. Cloud providers group them into **regions** and **availability zones**. Running in more than one data center protects you from a whole-site failure.
+
+| | **Active-passive** | **Active-active** |
+|--|--------------------|-------------------|
+| How it works | one site serves all traffic; the other stands by (warm or cold) and takes over on failure | every site serves live traffic at the same time |
+| Failover | needs a switch-over (DNS or load-balancer change), so there is a short outage | traffic simply shifts away from the failed site |
+| Cost | lower (the standby may be small) | higher (all sites sized for the load) |
+| Data | standby gets replicated data, usually asynchronously, so a little may be lost | needs multi-site writes or careful partitioning, so conflicts and lag must be handled |
+| Complexity | simpler | harder |
+
+**Routing users to a site:** use **Geo-DNS** (see the DNS chapter) or a global load balancer to send each user to the nearest healthy site, and to remove a failed site from the answers. Keep DNS **TTLs** short enough for failover to take effect quickly.
+
+**Things that go wrong:**
+
+- **Replication lag:** the standby is a few seconds behind, which sets your **RPO** (how much data you can lose).
+- **Split brain:** both sites believe they are the primary and accept conflicting writes. Use a quorum or an external arbiter to decide the single winner.
+- **Untested failover:** a switch you have never exercised often fails. Rehearse it regularly.
+
+### 9.9.4 Automated Failover
 
 - Ensure **failover happens automatically** without manual intervention.
 - Enables seamless service continuity when a primary system fails.
@@ -848,44 +869,124 @@ You don't know if your reliability mechanisms work until you actually break thin
 
 ---
 
-## 9.18 Combined Tips & Tricks
+## 9.18 CI/CD and Safe Deployment
+
+> **Why this belongs in reliability:** most outages are caused by **changes**. A good delivery pipeline makes changes small, tested and reversible, which protects availability more than almost any other habit.
+
+### 9.18.1 What the Terms Mean
+
+| Term | Meaning |
+|------|---------|
+| **Continuous Integration (CI)** | every change is merged often and automatically built and tested |
+| **Continuous Delivery (CD)** | every change that passes is **ready** to release; a human presses the button |
+| **Continuous Deployment** | every change that passes is released **automatically**, with no button |
+
+### 9.18.2 A Typical Pipeline
+
+```mermaid
+flowchart LR
+    C[Commit / pull request] --> B[Build]
+    B --> L[Lint and static checks]
+    L --> T[Unit and integration tests]
+    T --> P[Package: container image]
+    P --> S[Deploy to staging]
+    S --> A{Approval gate}
+    A --> D[Deploy to production]
+    D --> M[Monitor and roll back if needed]
+```
+
+Each stage is a **gate**: if it fails, the change stops and nobody is paged at night. Fast stages (lint, unit tests) run first so feedback arrives in minutes.
+
+### 9.18.3 Example: A CircleCI Configuration
+
+```yaml
+version: 2.1
+jobs:
+  test:
+    docker:
+      - image: cimg/node:20.11
+    steps:
+      - checkout
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+  deploy:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - run: ./scripts/deploy.sh production
+workflows:
+  build-and-deploy:
+    jobs:
+      - test
+      - hold:
+          type: approval          # a human must approve before production
+          requires: [test]
+          filters: { branches: { only: main } }
+      - deploy:
+          requires: [hold]
+          filters: { branches: { only: main } }
+```
+
+**Reading it:** *jobs* are units of work with their own environment and steps; the *workflow* wires jobs together, sets the order (`requires`) and adds a manual approval step. GitHub Actions, GitLab CI and Jenkins express the same ideas in their own syntax.
+
+### 9.18.4 Deployment Strategies
+
+| Strategy | How | Strength | Risk or cost |
+|----------|-----|----------|--------------|
+| **Rolling** | replace instances a few at a time | no extra capacity needed | old and new versions run together for a while |
+| **Blue-green** | build a full new environment ("green"), switch traffic over at once from the old ("blue") | instant switch and instant rollback | double the infrastructure during release |
+| **Canary** | send a small share of traffic (1 to 5 percent) to the new version, then increase | real-traffic test with limited blast radius | needs good monitoring and traffic splitting |
+| **Feature flags** | ship code switched off, enable it later for chosen users | decouples deploy from release; instant off switch | flags pile up and must be cleaned |
+
+### 9.18.5 Making Releases Safe
+
+- **Small, frequent changes** are easier to understand and to roll back than big ones.
+- **Automate rollback** and rehearse it. Define the trigger up front (for example an error rate above a threshold).
+- **Database changes** need care: use **expand then contract**. First add the new column or table (compatible with old code), deploy the code, migrate data, and only later remove the old structure. Never ship a change that requires old and new code to disagree.
+- **Observe after release:** watch error rate, latency and business metrics for the new version (see Chapter 8) before widening a canary.
+- **Same artifact everywhere:** build the container image once and promote that exact image from staging to production.
+- **Protect secrets:** the pipeline needs credentials, so store them in a secrets manager and limit what each job can reach (see Chapter 10).
+
+## 9.19 Combined Tips & Tricks
 
 A consolidated master list drawn from all sections.
 
-### 9.18.1 Design Philosophy
+### 9.19.1 Design Philosophy
 
 - **Design for failure:** Assume components/services will fail; plan accordingly. Use retries, circuit breakers, fallback logic.
 - **Cloud-native mindset:** Leverage managed services' redundancy and auto-healing (AWS RDS Multi-AZ, GCP Cloud SQL HA).
 - **Balance cost vs. risk:** Higher SLAs and lower RTO/RPO mean higher cost and complexity. Align with business needs.
 
-### 9.18.2 Automation
+### 9.19.2 Automation
 
 - **Automate everything:** Backups, failover, health checks, restore tests.
 - **Use circuit breakers and retries:** Prevent cascading failures due to repeated calls to failing services.
 
-### 9.18.3 Testing
+### 9.19.3 Testing
 
 - **Test regularly:** Run DR drills, test backups, simulate failures (chaos engineering).
 - **Test your DR plan:** *If you haven't tested it, you don't have it.*
 - **Test across regions:** Don't assume multi-region just "works" — validate failover and data consistency.
 
-### 9.18.4 Monitoring
+### 9.19.4 Monitoring
 
 - **Monitor key metrics:** Track MTBF, MTTR, availability, error rates, backup status.
 - **Monitor and alert:** Don't just collect metrics — act on them.
 - **Implement the 3-2-1 backup rule:** 3 copies, 2 different media, 1 offsite.
 
-### 9.18.5 User Experience
+### 9.19.5 User Experience
 
 - **Gracefully degrade:** Prioritize core features; design for partial service during failures.
 - **Document SLAs and recovery objectives:** Explicitly define and communicate RTO/RPO.
 
-### 9.18.6 Documentation
+### 9.19.6 Documentation
 
 - **Document and review:** Keep disaster recovery and backup plans up to date and review them periodically.
 - **Document your DR plan:** Ensure everyone knows the process and their role.
 
-### 9.18.7 Backup-Specific
+### 9.19.7 Backup-Specific
 
 - **Test restores regularly:** A backup you've never restored is a backup you don't have.
 - **Monitor success & failures:** Set up dashboards/alerts.
@@ -896,7 +997,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## 9.19 Sample Interview Questions
+## 9.20 Sample Interview Questions
 
 - How would you design a system for 99.99% availability?
 - What's the difference between backup and failover?
@@ -912,7 +1013,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## 9.20 Summary & Key Takeaways
+## 9.21 Summary & Key Takeaways
 
 - **Reliability is foundational** — measured by metrics like MTBF, MTTR, and SLAs.
 - **Design choices must anticipate and tolerate failure.**
@@ -928,7 +1029,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## 9.21 Further Reading
+## 9.22 Further Reading
 
 - [Google SRE Book: Reliability](https://sre.google/sre-book/reliability/)
 - [Google SRE Book: Reliability and Recovery](https://sre.google/sre-book/)

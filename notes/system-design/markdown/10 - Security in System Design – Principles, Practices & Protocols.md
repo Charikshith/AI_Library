@@ -285,9 +285,64 @@ Stateless: server issues a signed token after login; client sends it with each r
 - **Identity Federation:** Trust external identity providers (Google, Facebook, Microsoft) for authentication across organizational boundaries.
 - **Benefit:** Fewer passwords, less friction, better user experience.
 
-### 10.8.6 Code Examples
+### 10.8.6 SAML 2.0 in Depth
 
-#### 10.8.6.1 JWT Authentication with Node.js / Express
+**SAML** (Security Assertion Markup Language) is an XML-based protocol that lets a company's **identity provider (IdP)** vouch for a user to many **service providers (SPs)**, which are the applications. It is common in enterprises (Salesforce, internal portals).
+
+```mermaid
+sequenceDiagram
+    participant U as User browser
+    participant SP as Service provider (the app)
+    participant IdP as Identity provider
+    U->>SP: open the app
+    SP-->>U: redirect with an authentication request
+    U->>IdP: authentication request
+    IdP->>U: login page (skipped if already signed in)
+    U->>IdP: credentials
+    IdP-->>U: signed SAML assertion (in an HTML form)
+    U->>SP: post the assertion to the SP's ACS URL
+    SP->>SP: verify signature, audience, time window
+    SP-->>U: start the app's own session
+```
+
+**What the assertion carries:** who the user is, attributes (email, groups), who issued it, **who it is meant for** (the audience), and a validity window.
+
+**What the service provider must verify:** the XML **signature** against the IdP's certificate (exchanged earlier as *metadata*), the **audience** and **recipient** (so an assertion for another app cannot be replayed here), the `NotOnOrAfter` time, and that the assertion has not been used before.
+
+**Common mistakes:** trusting an unsigned assertion; checking the signature on the wrong element (*XML signature wrapping*); skipping the audience check; accepting assertions with no expiry.
+
+**SAML or OIDC?** Use SAML when enterprise customers or legacy apps demand it. Prefer OpenID Connect for new consumer, mobile and single-page apps. Both give single sign-on; they differ in format (XML assertion vs. JSON ID token). See the authentication primer in Chapter 5 for the comparison.
+
+### 10.8.7 Refresh Tokens: Rotation and Storage
+
+Short-lived access tokens limit damage, but the **refresh token** that creates new ones is now the valuable secret.
+
+- **Rotation:** every time a refresh token is used, issue a **new** refresh token and invalidate the old one.
+- **Reuse detection:** if an already-used refresh token appears again, assume it was stolen. Revoke the **entire token family** (every token from that login) and force a new sign-in.
+- **Expiry:** use an **absolute lifetime** (for example 30 days) as well as an idle timeout, so a session cannot live forever.
+- **Revoke on events:** password change, logout, suspected compromise, or removing a device.
+- **Where to keep it:** in a browser, an `HttpOnly`, `Secure`, `SameSite` cookie (never `localStorage`); in a mobile app, the platform keystore (iOS Keychain, Android Keystore); on a server, encrypted at rest.
+- **Bind it** to the client where possible (device or sender-constrained tokens) so a copied token is useless elsewhere.
+
+### 10.8.8 API Key Hygiene
+
+API keys are simple, which is why they leak. Handle them like passwords:
+
+| Practice | Why |
+|----------|-----|
+| Generate keys with a cryptographically secure random source, at least 32 bytes | guessing must be impossible |
+| Give each key a **visible prefix** (`sk_live_...`) | lets you recognise it in logs and secret scanners without exposing it |
+| Store only a **hash** of the key, and show the full key once at creation | a database leak does not reveal usable keys |
+| Attach **scopes** and an owner to every key | least privilege; you can tell whose key was used |
+| Support **rotation** with two valid keys during the switch-over | no downtime when replacing a key |
+| Set **expiry** and allow instant **revocation** | contain leaks |
+| Never put keys in URLs, source code, client-side code or logs | URLs are logged and cached; code gets published |
+| Rate-limit and monitor **per key** | abuse and leaks show up as unusual volume |
+| For high-value calls, sign each request (HMAC) or use mutual TLS | a stolen key alone is not enough |
+
+### 10.8.9 Code Examples
+
+#### 10.8.9.1 JWT Authentication with Node.js / Express
 
 ```javascript
 const jwt = require('jsonwebtoken');
@@ -331,7 +386,7 @@ function authenticate(req, res, next) {
 }
 ```
 
-#### 10.8.6.2 RBAC Middleware
+#### 10.8.9.2 RBAC Middleware
 
 ```javascript
 function authorizeRoles(...allowedRoles) {
@@ -350,7 +405,7 @@ app.get('/admin', authenticateJWT, authorizeRoles('admin'), (req, res) => {
 });
 ```
 
-### 10.8.7 Diagrams
+### 10.8.10 Diagrams
 
 **Authentication & Authorization Flow:**
 
@@ -392,7 +447,7 @@ graph TD
   API-->|Policy Check| RBAC_ABAC[RBAC/ABAC]
 ```
 
-### 10.8.8 Authentication / Authorization Tips
+### 10.8.11 Authentication / Authorization Tips
 
 - **Always use HTTPS** even for development.
 - **Keep JWTs short-lived:** Use refresh tokens for longer sessions.

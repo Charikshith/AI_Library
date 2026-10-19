@@ -772,7 +772,43 @@ A wider topology view:
 - **All writes** go to the primary; **reads** are balanced across replicas.
 - **Trade-off:** Potential for stale reads if replication lags.
 
-#### 7.9.2.3 Example: Configuring Read Replicas in PostgreSQL
+#### 7.9.2.3 Multi-Leader Replication and Conflict Resolution
+
+In leader-follower replication, only the leader accepts writes. In **multi-leader** (also called leader-leader or multi-master) replication, **several nodes accept writes** and copy them to each other.
+
+**Why use it:**
+
+- **Multi-region writes:** each region writes to a nearby leader for low latency.
+- **No single write bottleneck or single point of failure** for writes.
+- **Offline-capable clients:** a phone or laptop acts like a small leader that syncs later.
+
+**The price: write conflicts.** Two leaders can change the same row at the same time, and each only learns of the other's change after replication lag.
+
+```mermaid
+sequenceDiagram
+    participant A as Leader A (Europe)
+    participant B as Leader B (US)
+    Note over A,B: both start with title = "Draft"
+    A->>A: set title = "Plan"
+    B->>B: set title = "Roadmap"
+    A-->>B: replicate "Plan"
+    B-->>A: replicate "Roadmap"
+    Note over A,B: conflict: which value wins?
+```
+
+**Ways to resolve a conflict:**
+
+| Strategy | How | Trade-off |
+|----------|-----|-----------|
+| **Last write wins (LWW)** | keep the change with the latest timestamp | simple, but silently **loses** the other write, and clocks differ between machines |
+| **Version vectors / vector clocks** | track causality to detect which changes were truly concurrent | detects conflicts precisely; something still has to decide |
+| **Application-level merge** | store both versions and let the app, or the user, merge them | correct but more code |
+| **CRDTs** | data types designed to merge automatically (counters, sets, text) | no lost updates; limited to suitable data shapes |
+| **Avoid conflicts** | route all writes for a given record to one leader (by user, region or key) | simplest and most common; gives up some of the multi-leader benefit |
+
+**Rule of thumb:** use multi-leader only when you truly need multi-region writes or offline sync, and design around conflicts from the start. Otherwise prefer leader-follower plus read replicas.
+
+#### 7.9.2.4 Example: Configuring Read Replicas in PostgreSQL
 
 ```bash
 # On the primary server (postgresql.conf)
@@ -843,6 +879,66 @@ graph TD
 
 - **How:** Shard by geographic region for latency/compliance.
 - **Use Case:** Social media, CDN, regionally regulated data.
+
+#### 7.9.3.3 Hands-On Lab: Sharding MongoDB on One Machine
+
+This lab builds the real architecture of a sharded MongoDB cluster. For learning, every process runs on one machine with a single member per replica set; production uses three or more members per set and separate hosts.
+
+**The pieces:**
+
+| Component | Job |
+|-----------|-----|
+| **Config server** (a replica set) | stores the cluster's metadata: which key ranges live on which shard |
+| **Shards** (each a replica set) | hold the actual data |
+| **`mongos` router** | the entry point applications talk to; it routes each query to the right shard(s) |
+
+**1. Start the processes** (each in its own terminal, with its own data folder):
+
+```bash
+mkdir -p data/cfg data/shardA data/shardB
+mongod --configsvr --replSet cfg    --port 27019 --dbpath data/cfg
+mongod --shardsvr  --replSet shardA --port 27018 --dbpath data/shardA
+mongod --shardsvr  --replSet shardB --port 27028 --dbpath data/shardB
+```
+
+**2. Initiate each replica set:**
+
+```bash
+mongosh --port 27019 --eval 'rs.initiate({_id:"cfg", configsvr:true, members:[{_id:0, host:"localhost:27019"}]})'
+mongosh --port 27018 --eval 'rs.initiate({_id:"shardA", members:[{_id:0, host:"localhost:27018"}]})'
+mongosh --port 27028 --eval 'rs.initiate({_id:"shardB", members:[{_id:0, host:"localhost:27028"}]})'
+```
+
+**3. Start the router and connect to it:**
+
+```bash
+mongos --configdb cfg/localhost:27019 --port 27017
+mongosh --port 27017
+```
+
+**4. Add the shards, enable sharding and choose a shard key:**
+
+```javascript
+sh.addShard("shardA/localhost:27018")
+sh.addShard("shardB/localhost:27028")
+sh.enableSharding("shop")
+sh.shardCollection("shop.orders", { user_id: "hashed" })   // hash-based: even spread
+```
+
+**5. Load data and see how it spread:**
+
+```javascript
+use shop
+for (let i = 0; i < 20000; i++) db.orders.insertOne({ user_id: i, total: i % 100 })
+db.orders.getShardDistribution()   // roughly half the documents on each shard
+sh.status()
+```
+
+**What to notice:**
+
+- A **hashed** key spreads writes evenly but makes **range queries** on `user_id` hit every shard. A **ranged** key (`{ user_id: 1 }`) keeps neighbours together but can create a **hot shard** if new ids always increase.
+- A query that includes the shard key goes to one shard; one that does not is **scattered** to all shards. This is why shard-key choice is the most important sharding decision (see Sharding Strategies above).
+- Clean up by stopping the processes and deleting the `data` folder.
 
 ### 7.9.4 Polyglot Persistence
 
@@ -1021,7 +1117,48 @@ Bucket: "user-photos"
   - Use lifecycle rules to move stale data to cheaper tiers or delete it.
   - Monitor usage, adjust storage classes as access patterns change.
 
-### 7.10.6 Sample Code: Using Amazon S3 with Python (`boto3`)
+### 7.10.6 Signed URLs and Signed Cookies: Temporary Access to Private Objects
+
+Private objects in a bucket cannot simply be linked to: a plain URL either exposes the file to everyone or to no one. **Signed access** gives a **time-limited key** to one user without making the bucket public.
+
+**How a signed URL works:** the server builds a URL that contains the resource path, an **expiry time** and a **signature**: a cryptographic hash (HMAC) of those parts made with a secret the storage service also knows. When the request arrives, the service recomputes the signature. If the URL was tampered with, or the time has passed, it refuses.
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant App as Your API
+    participant S3 as Object storage
+    U->>App: request file 42
+    App->>App: check the user may see file 42
+    App-->>U: signed URL (valid 5 minutes)
+    U->>S3: GET the signed URL
+    S3->>S3: verify signature and expiry
+    S3-->>U: the object
+```
+
+```python
+import boto3
+s3 = boto3.client("s3")
+url = s3.generate_presigned_url(
+    "get_object",
+    Params={"Bucket": "private-media", "Key": "reports/q3.pdf"},
+    ExpiresIn=300,          # seconds
+)
+```
+
+The same pattern works for **uploads** (a signed `PUT` lets a client upload straight to storage, so large files never pass through your servers).
+
+**Signed URL or signed cookie?** (for example with a CDN such as CloudFront)
+
+| | **Signed URL** | **Signed cookie** |
+|--|----------------|-------------------|
+| Grants access to | one object per URL | many objects, for example every file under a path |
+| Best for | a single download or upload link, sharing one file | a streaming video split into hundreds of segments, or a whole members-only area |
+| URL stays | different for every file | unchanged, so existing links and players keep working |
+
+**Good practice:** keep lifetimes short, use HTTPS, check authorization *before* signing, sign only the path needed, and avoid logging full URLs. A signed URL **cannot be revoked** before it expires, so a short expiry is your only control.
+
+### 7.10.7 Sample Code: Using Amazon S3 with Python (`boto3`)
 
 A simple upload:
 
@@ -1059,7 +1196,7 @@ s3 = boto3.client('s3')
 s3.upload_file('photo1.jpg', 'mybucket', 'photos/photo1.jpg', ExtraArgs={'Metadata': {'uploaded_by': 'alice'}})
 ```
 
-### 7.10.7 Object Storage — Tips & Tricks
+### 7.10.8 Object Storage — Tips & Tricks
 
 - **Use metadata wisely:** Tag objects for easier search, access control, and automation.
 - **Lifecycle rules:** Automate moving old data to cheaper storage or deletion to control costs.
@@ -1068,7 +1205,7 @@ s3.upload_file('photo1.jpg', 'mybucket', 'photos/photo1.jpg', ExtraArgs={'Metada
 - **Optimize for access patterns:** Use Standard tier for hot data, Archive/Glacier for cold data.
 - **Batch operations:** When possible, batch uploads/downloads to reduce request costs.
 
-### 7.10.8 Object Storage — Interview Questions
+### 7.10.9 Object Storage — Interview Questions
 
 - What is object storage and how is it different from file or block storage?
 - When would you choose object storage over a traditional file system?
@@ -1317,7 +1454,60 @@ graph TD
     C2 --> D2[Real-Time Dashboards/Alerts]
 ```
 
-### 7.12.6 Code Example: Simple Batch & Stream Processing
+### 7.12.6 MapReduce: The Model Behind Batch Processing
+
+**MapReduce** is a way to process a huge dataset by splitting it across many machines. You write two small functions; the framework handles distribution, retries and sorting.
+
+1. **Map:** each machine reads its own slice of the data and emits **key → value** pairs.
+2. **Shuffle and sort:** the framework groups all values by key and sends each key's group to one reducer.
+3. **Reduce:** each reducer combines the values for its keys into a result.
+
+**Example: count requests per status code in terabytes of web logs.**
+
+```python
+def map_fn(log_line):                    # runs on every machine, on its own slice
+    status = log_line.split()[8]         # e.g. "200", "404", "500"
+    yield (status, 1)
+
+def reduce_fn(status, counts):           # receives all counts for one status
+    yield (status, sum(counts))
+```
+
+```mermaid
+flowchart LR
+    I1[Log slice 1] --> M1[Map]
+    I2[Log slice 2] --> M2[Map]
+    I3[Log slice 3] --> M3[Map]
+    M1 --> S{{Shuffle and sort by key}}
+    M2 --> S
+    M3 --> S
+    S --> R1["Reduce: 200"]
+    S --> R2["Reduce: 404"]
+    S --> R3["Reduce: 500"]
+    R1 --> O[(Output)]
+    R2 --> O
+    R3 --> O
+```
+
+**Why it was a breakthrough:** the work **moves to the data** (each map task runs where its slice is stored, for example on HDFS), failed tasks are simply re-run, and adding machines speeds it up almost linearly.
+
+**Where it falls short:**
+
+- Every stage writes to **disk**, so it is slow for small jobs and **iterative** workloads such as machine learning.
+- It is **batch only**: results arrive after the whole job finishes, not in real time.
+
+**What replaced it in practice:**
+
+| Tool | Idea |
+|------|------|
+| **Apache Spark** | the same map/reduce thinking but data stays **in memory** between steps, much faster for iterative work; also offers **micro-batch** streaming (tiny batches every second or so) |
+| **Apache Flink, Kafka Streams** | true record-by-record **stream processing** with low latency |
+| **Managed cloud services** (EMR, Dataproc, HDInsight, BigQuery) | run Hadoop or Spark clusters, or SQL engines, without managing the machines |
+| **YARN** | the resource manager that schedules these jobs on a Hadoop cluster |
+
+**Choosing:** batch jobs where hours of latency are fine (nightly reports, indexing) suit MapReduce-style processing; anything needing answers in seconds needs stream processing. See Batch vs. Stream Processing above.
+
+### 7.12.7 Code Example: Simple Batch & Stream Processing
 
 **Batch Example — Apache Spark (PySpark):**
 
@@ -1340,7 +1530,7 @@ for msg in consumer:
     process(msg.value)   # Custom function for real-time processing
 ```
 
-### 7.12.7 Big Data Architecture Diagrams
+### 7.12.8 Big Data Architecture Diagrams
 
 **Storage & Processing Pipeline:**
 
@@ -1443,6 +1633,48 @@ Beyond SQL and the four NoSQL categories, modern systems often use specialized s
 > **Polyglot persistence** (Chapter 7) means using multiple databases for different parts of one system. Modern apps routinely mix PostgreSQL + Redis + Elasticsearch + S3.
 
 ---
+
+### 7.16.1 Vector Databases in More Depth
+
+A **vector database** stores **embeddings**: lists of numbers (often 384 to 3,072 of them) that a machine-learning model produces to capture the *meaning* of text, images or audio. Items with similar meaning end up with **nearby vectors**.
+
+**What it is for:** finding "things like this" instead of exact matches.
+
+- **Semantic search:** "how do I reset my login?" finds the article titled "Recovering account access".
+- **Retrieval-augmented generation (RAG):** fetch the most relevant passages and give them to a language model as context.
+- **Recommendations and de-duplication:** nearest neighbours of a product, song or image.
+
+**How similarity is measured:** **cosine similarity** (the angle between vectors; the most common for text), **dot product**, or **Euclidean (L2) distance**.
+
+**Why a normal index does not work:** comparing a query against every stored vector is too slow at millions of items. Vector databases use **approximate nearest neighbour (ANN)** indexes that trade a little accuracy for large speed-ups:
+
+| Index | Idea | Trade-off |
+|-------|------|-----------|
+| **HNSW** | a layered graph; hop from coarse to fine neighbours | fast and accurate, uses a lot of memory |
+| **IVF** | cluster the vectors, search only the nearest clusters | smaller memory, accuracy depends on how many clusters you probe |
+| **Quantization** | compress vectors | much less memory, some accuracy lost |
+
+The key measure is **recall**: the fraction of the true nearest neighbours the index actually returns.
+
+```sql
+-- PostgreSQL with the pgvector extension
+CREATE EXTENSION vector;
+CREATE TABLE docs (id bigserial PRIMARY KEY, body text, embedding vector(768));
+CREATE INDEX ON docs USING hnsw (embedding vector_cosine_ops);
+
+SELECT id, body
+FROM docs
+ORDER BY embedding <=> $1      -- $1 is the query's embedding; <=> is cosine distance
+LIMIT 5;
+```
+
+**Design considerations:**
+
+- **Filtering:** real queries mix similarity with filters ("only documents the user may see, from this year"). Check how the database combines the two.
+- **Hybrid search:** combine vector search with keyword search (BM25) for better results on names and exact terms.
+- **Model changes:** a new embedding model produces vectors that are **not comparable** with old ones, so you must re-embed and re-index everything. Store the model version with each vector.
+- **Cost:** vectors are large; memory use is often the main bill.
+- **Dedicated store or extension?** For moderate scale, `pgvector` inside your existing PostgreSQL keeps things simple. For very large collections, or heavy vector traffic, a dedicated system (Pinecone, Weaviate, Milvus) may pay off.
 
 ## 7.17 Choosing the Right Storage Solution
 

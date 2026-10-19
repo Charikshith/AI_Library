@@ -527,9 +527,23 @@ graph TD
 - **At-most-once:** Message delivered only once (no retries); possible loss.
 - **Exactly-once:** Processed once and only once; hardest to implement, supported by Kafka under constraints.
 
-### 8.7.8 Sample Code: Publishing & Consuming Messages
+### 8.7.8 Ordering, FIFO Queues and Visibility Timeout
 
-#### 8.7.8.1 Example 1: RabbitMQ (Python with `pika`)
+**Order is not free.** With several consumers working in parallel, messages can finish out of order even if they were sent in order.
+
+| Setup | Ordering you get | Trade-off |
+|-------|------------------|-----------|
+| **Standard queue** (for example Amazon SQS standard) | best effort, may deliver out of order and more than once | very high throughput |
+| **FIFO queue** (SQS FIFO) | strict first-in-first-out **within a message group** | lower throughput; ordering is per group, not global |
+| **Partitioned log** (Kafka) | strict order **within a partition**; a key (such as a user ID) always lands in the same partition | no ordering across partitions; parallelism = number of partitions |
+
+**Design rule:** order only what must be ordered. Pick the key (account ID, order ID) whose events must stay in sequence and route by it, so different keys can still be processed in parallel. If strict order is impossible, put a **sequence number** in each message and let the consumer discard or reorder stale ones.
+
+**Visibility timeout.** When a consumer receives a message, the broker hides it from other consumers for a set time. If the consumer acknowledges before the timeout, the message is deleted. If it crashes or is too slow, the message becomes visible again and is retried. Set the timeout **longer than your slowest normal processing time**; too short causes duplicate work, too long delays retries after a crash. Messages that keep failing go to a **dead-letter queue** (see the queue primer in Chapter 4).
+
+### 8.7.9 Sample Code: Publishing & Consuming Messages
+
+#### 8.7.9.1 Example 1: RabbitMQ (Python with `pika`)
 
 **Producer:**
 
@@ -602,7 +616,7 @@ channel.basic_consume(queue='task_queue', on_message_callback=callback)
 channel.start_consuming()
 ```
 
-#### 8.7.8.2 Example 2: Kafka (Node.js with `kafkajs`)
+#### 8.7.9.2 Example 2: Kafka (Node.js with `kafkajs`)
 
 **Producer:**
 
@@ -638,7 +652,7 @@ await consumer.run({
 });
 ```
 
-### 8.7.9 Messaging — Best Practices
+### 8.7.10 Messaging — Best Practices
 
 - **Idempotent consumers:** Ensure re-processing a message doesn't cause incorrect results.
 - **Dead-letter queues (DLQ):** Capture and inspect messages that fail multiple times.
@@ -647,7 +661,7 @@ await consumer.run({
 - **Choose guarantees wisely:** At-least-once is common, but know your requirements.
 - **Security:** Encrypt messages, use authentication & authorization.
 
-### 8.7.10 Messaging — Tips & Tricks
+### 8.7.11 Messaging — Tips & Tricks
 
 - **Make operations idempotent:** Store processed message IDs or use database upserts.
 - **Use DLQs:** Never silently drop or lose failing messages.

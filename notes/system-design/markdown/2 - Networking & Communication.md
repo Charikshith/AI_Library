@@ -450,7 +450,21 @@ graph TD
     Resolver --> User
 ```
 
-### 2.5.8 Resolution Flow (ASCII for plain-text viewers)
+### 2.5.8 Who Runs DNS: ICANN, Registries and Registrars
+
+The hierarchy above is operated by different organizations, which helps explain what happens when you buy a domain:
+
+| Role | What it does | Example |
+|------|--------------|---------|
+| **ICANN** | coordinates the global DNS: manages the root zone and sets the rules for top-level domains | the organization behind the root of the tree |
+| **Registry** | runs one top-level domain (TLD) and keeps its master list of names | the registry for `.com` |
+| **Registrar** | a company that sells domain names to you and records them with the registry | GoDaddy, Namecheap |
+| **DNS host / authoritative server** | answers "what IP is `www.example.com`?" for your domain | Route 53, Cloudflare |
+
+**What happens when you register `example.com`:** you pay a registrar; the registrar tells the `.com` registry which **name servers** are responsible for your domain; those name servers then hold your records (`A`, `CNAME`, `MX`...). Resolvers learn the answer by walking root → TLD → your name servers.
+
+> **Why this matters in design:** the registrar and the DNS host are separate choices. Moving DNS hosting (for failover or Geo-DNS) only means changing the name-server records at the registrar.
+### 2.5.9 Resolution Flow (ASCII for plain-text viewers)
 
 ```
 User (Browser)
@@ -462,29 +476,29 @@ Browser Cache --> OS Cache --> Recursive Resolver (ISP) --> Root Server --> TLD 
                                                                                IP Address Response
 ```
 
-### 2.5.9 DNS Caching and Performance
+### 2.5.10 DNS Caching and Performance
 
-#### 2.5.9.1 Why is Caching Important?
+#### 2.5.10.1 Why is Caching Important?
 
 - **Reduces Latency:** Cached records allow instant DNS resolution.
 - **Lowers Server Load:** Fewer queries hit the authoritative servers.
 - **Improves User Experience:** Faster page loads, especially for repeat visits.
 
-#### 2.5.9.2 Where Does DNS Caching Happen?
+#### 2.5.10.2 Where Does DNS Caching Happen?
 
 1. **Browser cache**
 2. **Operating system cache** (e.g., `/etc/hosts`)
 3. **Recursive resolver cache** (ISP level)
 4. **Authoritative server cache** (optional, for negative responses)
 
-#### 2.5.9.3 The Role of TTL (Time-to-Live)
+#### 2.5.10.3 The Role of TTL (Time-to-Live)
 
 **TTL** determines how long a DNS record stays in cache.
 
 - **Short TTL:** Faster updates, higher traffic to DNS servers.
 - **Long TTL:** Lower DNS traffic, but slower propagation of record changes.
 
-### 2.5.10 DNS in Large-Scale Systems
+### 2.5.11 DNS in Large-Scale Systems
 
 DNS is a keystone in scalable, resilient architectures:
 
@@ -494,7 +508,7 @@ DNS is a keystone in scalable, resilient architectures:
 - **CDN Integration:** DNS routes users to the nearest edge node — this is exactly the mechanism that powers CDNs in Section 8.
 - **Security:** Needs protection against DNS poisoning and DDoS.
 
-### 2.5.11 Anycast — One IP, Many Servers
+### 2.5.12 Anycast — One IP, Many Servers
 
 **Anycast** is the foundational trick behind global DNS, modern CDNs, and DDoS mitigation. The same IP address is advertised from many physical locations using BGP (the internet's routing protocol). When you query that IP, the network automatically routes you to the **closest** instance.
 
@@ -514,13 +528,13 @@ This is why Cloudflare's `1.1.1.1` resolver answers in <10ms from almost anywher
 - **DNS LB** returns a *different IP* depending on who's asking → routing decision is at DNS lookup time.
 - **Anycast** uses the *same IP* everywhere → routing decision is made by BGP at every hop.
 
-### 2.5.12 Geo-DNS / GSLB
+### 2.5.13 Geo-DNS / GSLB
 
 **Geo-DNS** (also called Global Server Load Balancing, or GSLB) returns different DNS answers based on the *querying client's location*. The user in Tokyo gets the Tokyo region's IP; the user in São Paulo gets the São Paulo region's IP. Implemented by Route 53 (AWS), Cloud DNS (GCP), Azure Traffic Manager, Cloudflare, Akamai, etc.
 
 > **Performance note:** A DNS lookup typically takes 20-120ms the first time (often cached afterward). That's why DNS caching matters: from Chapter 1's table, a network round-trip within a datacenter is ~0.5ms; DNS adds the equivalent of ~100 round trips on a miss.
 
-### 2.5.13 DNS Security Considerations
+### 2.5.14 DNS Security Considerations
 
 DNS is a frequent target for cyber attacks:
 
@@ -528,7 +542,7 @@ DNS is a frequent target for cyber attacks:
 - **DDoS Attacks:** Overwhelm DNS servers with requests, making websites unreachable.
 - **Mitigation:** Use DNSSEC (DNS Security Extensions), monitoring, and secure configurations to protect infrastructure.
 
-### 2.5.14 Code Snippet: Querying DNS in Python
+### 2.5.15 Code Snippet: Querying DNS in Python
 
 Using [dnspython](https://www.dnspython.org/):
 
@@ -552,7 +566,7 @@ resolve_domain('google.com')
 google.com has IP address: 142.250.190.78
 ```
 
-### 2.5.15 DNS — Tips and Best Practices
+### 2.5.16 DNS — Tips and Best Practices
 
 - **Set Appropriate TTLs:** Balance between freshness and efficiency. Short TTLs for frequently updated records, longer for static domains.
 - **Use Multiple DNS Providers:** Improve redundancy with primary and secondary DNS providers.
@@ -562,7 +576,7 @@ google.com has IP address: 142.250.190.78
 - **Optimize Caching Layers:** Understand cache hierarchies — browser, OS, resolver.
 - **Document DNS Changes:** Keep detailed records for auditing and rollback.
 
-### 2.5.16 DNS — Common Interview Questions
+### 2.5.17 DNS — Common Interview Questions
 
 - Explain the DNS resolution process step by step.
 - What is the difference between authoritative and recursive DNS servers?
@@ -571,7 +585,7 @@ google.com has IP address: 142.250.190.78
 - How does DNS-based load balancing work in large-scale systems?
 - What are common DNS-related security threats, and how can they be mitigated?
 
-### 2.5.17 DNS — Further Reading
+### 2.5.18 DNS — Further Reading
 
 - [RFC 1035: Domain Names Implementation and Specification](https://www.rfc-editor.org/rfc/rfc1035)
 - [Google Public DNS Documentation](https://developers.google.com/speed/public-dns/docs/using)
@@ -1039,6 +1053,13 @@ def get_server_by_ip(client_ip, servers):
     index = int(hashlib.sha256(client_ip.encode()).hexdigest(), 16) % len(servers)
     return servers[index]
 ```
+
+**4. Consistent Hashing** — routes each request by hashing a **key** (a user ID, session ID or cache key) onto a ring of servers.
+
+- Servers sit at points on a **hash ring**. A request's key is hashed to a point on the ring and goes to the **next server clockwise**.
+- Adding or removing a server moves only about **1/N of the keys**, where plain `hash(key) % N` would reshuffle almost everything.
+- **Virtual nodes** (each server appears at many points on the ring) keep the load even.
+- **Use it when** the same key should keep landing on the same server: cache servers, session affinity, sharded stores. See the consistent-hashing discussion in the sharding section of Chapter 7.
 
 #### 2.8.3.2 Dynamic Load Balancing
 
