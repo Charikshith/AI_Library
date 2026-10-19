@@ -10,7 +10,7 @@ System design is a cornerstone skill for software engineers, architects, and any
 
 ---
 
-## Learning Outcomes
+## 1.1 Learning Outcomes
 
 After reading this chapter, you will be able to:
 
@@ -22,7 +22,7 @@ After reading this chapter, you will be able to:
 
 ---
 
-## Prerequisites
+## 1.2 Prerequisites
 
 Before starting, you should be comfortable with:
 
@@ -35,7 +35,7 @@ You **don't need** prior distributed-systems experience, prior cloud experience,
 
 ---
 
-## How to Use This Course
+## 1.3 How to Use This Course
 
 - **Foundations (Chapters 1–15):** Read in order. Each chapter builds on the previous.
 - **Case studies (Chapters 16–28):** Read in any order after the foundations. Each is self-contained.
@@ -44,7 +44,7 @@ You **don't need** prior distributed-systems experience, prior cloud experience,
 - **Read real post-mortems.** [danluu.com/postmortem-lessons](https://danluu.com/postmortem-lessons/) is the best curated list. Real failures teach more than any textbook.
 - **Pace:** Each foundational chapter takes 1–2 hours to read carefully. Case studies take 30–60 minutes.
 
-### Tools You'll See in This Course
+### 1.3.1 Tools You'll See in This Course
 
 - **Diagramming:** [Mermaid](https://mermaid-js.github.io/) (renders in GitHub/most Markdown viewers), [Excalidraw](https://excalidraw.com/), [draw.io](https://app.diagrams.net/).
 - **API testing:** [Postman](https://www.postman.com/), `curl`.
@@ -57,27 +57,27 @@ You don't need to install any of these now — they'll be introduced where used.
 
 ## Table of Contents
 
-1. [What is System Design?](#what-is-system-design)
-2. [Why System Design Matters](#why-system-design-matters)
-3. [Functional vs. Non-Functional Requirements](#functional-vs-non-functional-requirements)
-4. [Numbers Every Programmer Should Know](#numbers-every-programmer-should-know)
-5. [The Evolution of System Design (1995–Present)](#the-evolution-of-system-design-1995present)
-6. [Course Structure](#course-structure)
-7. [The 4-Step Design Framework](#the-4-step-design-framework)
-8. [Worked Example: A URL Shortener](#worked-example-a-url-shortener)
-9. [Architectural Patterns: A Preview](#architectural-patterns-a-preview)
-10. [Communication & Load Balancing: A Preview](#communication--load-balancing-a-preview)
-11. [Performance Boosters](#performance-boosters)
-12. [Security Essentials](#security-essentials)
-13. [Common Beginner Anti-Patterns](#common-beginner-anti-patterns)
-14. [Tips and Tricks for Mastering System Design](#tips-and-tricks-for-mastering-system-design)
-15. [Navigating This Course Effectively](#navigating-this-course-effectively)
-16. [Further Reading](#further-reading)
-17. [Conclusion](#conclusion)
+- [1.4 What is System Design?](#14-what-is-system-design)
+- [1.5 Why System Design Matters](#15-why-system-design-matters)
+- [1.6 Functional vs. Non-Functional Requirements](#16-functional-vs-non-functional-requirements)
+- [1.7 Numbers Every Programmer Should Know](#17-numbers-every-programmer-should-know)
+- [1.8 The Evolution of System Design (1995–Present)](#18-the-evolution-of-system-design-1995present)
+- [1.9 Course Structure](#19-course-structure)
+- [1.10 The 4-Step Design Framework](#110-the-4-step-design-framework)
+- [1.11 Worked Example: A URL Shortener](#111-worked-example-a-url-shortener)
+- [1.12 Architectural Patterns: A Preview](#112-architectural-patterns-a-preview)
+- [1.13 Communication & Load Balancing: A Preview](#113-communication--load-balancing-a-preview)
+- [1.14 Performance Boosters](#114-performance-boosters)
+- [1.15 Security Essentials](#115-security-essentials)
+- [1.16 Common Beginner Anti-Patterns](#116-common-beginner-anti-patterns)
+- [1.17 Tips and Tricks for Mastering System Design](#117-tips-and-tricks-for-mastering-system-design)
+- [1.18 Navigating This Course Effectively](#118-navigating-this-course-effectively)
+- [1.19 Further Reading](#119-further-reading)
+- [1.20 Conclusion](#120-conclusion)
 
 ---
 
-## What is System Design?
+## 1.4 What is System Design?
 
 > **System Design is the process of defining the architecture, components, modules, interfaces, and data flow for a system to meet specific requirements.**
 
@@ -87,7 +87,7 @@ System design is much more than just drawing boxes and arrows on a whiteboard �
 
 You'll encounter system design in real-world applications like scalable web apps, distributed systems, databases, and cloud infrastructures.
 
-### Key Aspects of System Design
+### 1.4.1 Key Aspects of System Design
 
 - **Architecture:** Overall structure, including how components interact — Monoliths, microservices, serverless, etc.
 - **Components / Modules:** The building blocks — Databases, caches, message queues, etc.
@@ -97,7 +97,7 @@ You'll encounter system design in real-world applications like scalable web apps
 - **Reliability & Performance:** Can the system recover from failure and remain fast?
 - **Maintainability:** How easy is it to update or fix the system?
 
-### A First Look: High-Level Architecture
+### 1.4.2 A First Look: High-Level Architecture
 
 A classic web application architecture, showing how a load balancer distributes traffic to multiple servers that use caching and a database to serve requests efficiently:
 
@@ -147,11 +147,11 @@ flowchart TD
 
 ---
 
-## Why System Design Matters
+## 1.5 Why System Design Matters
 
 Let's break down the core reasons, weaving in lecture material:
 
-### 1. Scalability & Reliability
+### 1.5.1 Scalability & Reliability
 
 > *"Think about modern applications we use daily. These platforms handle millions, even billions of users without any problem. A good system design is crucial for such systems."*
 
@@ -166,7 +166,7 @@ A well-designed system ensures high availability, fault tolerance, and seamless 
                     +-------------+
 ```
 
-### 2. Architectural Thinking
+### 1.5.2 Architectural Thinking
 
 > *"When you study system design, you are actually going beyond coding. You are thinking at an architectural level."*
 
@@ -199,31 +199,31 @@ Pick any two.
 >
 > Don't worry about mastering these now — just know the words exist.
 
-### 3. Career Growth
+### 1.5.3 Career Growth
 
 > *"It is also important to become a senior level engineer or architect to focus on system design."*
 
 Junior engineers focus on code; senior engineers design for scalability, maintainability, and system health. Mastery of system design is a must for tech leads and architects.
 
-### 4. Real-World Problem Solving
+### 1.5.4 Real-World Problem Solving
 
 > *"System design is about solving real-world engineering challenges and not just passing interviews."*
 
 Memorizing patterns isn't enough. You must deeply understand *why* certain design choices are made. It enables you to design systems that solve actual business needs, not just interview questions.
 
-### 5. Trade-Offs & Decision Making
+### 1.5.5 Trade-Offs & Decision Making
 
 > *"There is no such thing as a perfect system design. Only well-reasoned trade-offs are there in a good system design."*
 
 You must balance scalability, cost, speed, and complexity. For example, the choice between SQL and NoSQL depends on your application's consistency and scalability needs.
 
-### 6. Future-Proofing
+### 1.5.6 Future-Proofing
 
 > *"Poorly designed systems become bottlenecks over time. A well-designed system can adapt to growing traffic, new features and emerging technologies."*
 
 Netflix and eBay, for instance, started with monolithic architectures but migrated to microservices as they scaled. A good design prevents bottlenecks and supports software evolution.
 
-### 7. Cost
+### 1.5.7 Cost
 
 A system that "works" but costs $50K/month when it could have cost $5K is a failed design. Cloud bills are real, and architectural choices directly drive them:
 
@@ -239,7 +239,7 @@ A system that "works" but costs $50K/month when it could have cost $5K is a fail
 
 ---
 
-## Functional vs. Non-Functional Requirements
+## 1.6 Functional vs. Non-Functional Requirements
 
 You'll see these terms constantly. Pin them down now:
 
@@ -250,7 +250,7 @@ You'll see these terms constantly. Pin them down now:
 
 > **Rule of thumb:** if removing the requirement still gives you a *working* system that's just slower, less reliable, or more expensive, it's non-functional.
 
-### The Common Non-Functional Requirements
+### 1.6.1 The Common Non-Functional Requirements
 
 These ten are the "dimensions" along which every system can be measured. Every real-world system has to make trade-offs between them.
 
@@ -271,7 +271,7 @@ These ten are the "dimensions" along which every system can be measured. Every r
 
 ---
 
-## Numbers Every Programmer Should Know
+## 1.7 Numbers Every Programmer Should Know
 
 This table is the single most important reference in this course. **Memorize the orders of magnitude.** They will let you reason about why caching helps, why a cross-region call is bad, why disk seek is to be avoided, and why "just put it in memory" works.
 
@@ -294,7 +294,7 @@ Adapted from Jeff Dean's classic talk:
 | Read 1 MB sequentially from disk           | 20,000,000 ns (20 ms) |                                |
 | Round trip CA → Netherlands → CA           | 150,000,000 ns (150 ms) | speed of light over fiber     |
 
-### What this means in practice
+### 1.7.1 What this means in practice
 
 - **Memory is ~100× faster than SSD, ~100,000× faster than disk seek.** That's why caches exist.
 - **Same-datacenter round trip (0.5 ms) is ~300× faster than cross-continent (150 ms).** That's why CDNs and regional replicas matter.
@@ -305,11 +305,11 @@ Adapted from Jeff Dean's classic talk:
 
 ---
 
-## The Evolution of System Design (1995–Present)
+## 1.8 The Evolution of System Design (1995–Present)
 
 System design is not static — it has evolved rapidly over the last 25 years. Let's trace the journey, highlighting key architectural shifts and technologies. We'll look at it in three formats: a summary table, a timeline diagram, and an era-by-era deep dive with code samples.
 
-### Summary Table
+### 1.8.1 Summary Table
 
 | Era               | Key Trends                                       | Technologies & Patterns                                                               |
 |-------------------|--------------------------------------------------|----------------------------------------------------------------------------------------|
@@ -319,7 +319,7 @@ System design is not static — it has evolved rapidly over the last 25 years. L
 | **2015–2020**     | Microservices & event-driven architectures       | API gateways, service meshes, event brokers (Kafka, RabbitMQ), CI/CD pipelines         |
 | **2020–Present**  | Real-time, AI-driven & edge computing            | Serverless, Kubernetes, streaming, edge computing, observability, security, compliance |
 
-### Timeline Diagram
+### 1.8.2 Timeline Diagram
 
 ```mermaid
 timeline
@@ -331,7 +331,7 @@ timeline
     2020-Present : Real-Time, Edge, AI (Kubernetes, serverless, observability)
 ```
 
-### ASCII Timeline (for plain-text viewers)
+### 1.8.3 ASCII Timeline (for plain-text viewers)
 
 ```plaintext
 1995-2005   2005-2010   2010-2015   2015-2020   2020+
@@ -342,9 +342,9 @@ MVC         Replication AWS, GCP,   Event       Edge,
             CDNs        NoSQL       Driven      Serverless
 ```
 
-### Era-by-Era Deep Dive
+### 1.8.4 Era-by-Era Deep Dive
 
-#### 1995–2005: Early Monolithic Web Applications
+#### 1.8.4.1 1995–2005: Early Monolithic Web Applications
 
 - **Stack:** LAMP (Linux, Apache, MySQL, PHP)
 - **Architecture:** Monolithic — front-end, back-end, and DB bundled together
@@ -363,7 +363,7 @@ echo "Hello, World!";
 ?>
 ```
 
-#### 2005–2010: Distributed Systems & Scaling
+#### 1.8.4.2 2005–2010: Distributed Systems & Scaling
 
 - **Challenges:** Social media and e-commerce scale (Facebook, Amazon)
 - **Solutions:** Caching (Memcached, Redis), CDNs, database replication, load balancers
@@ -387,7 +387,7 @@ def handle_request(request):
     print(f"Forwarding {request} to {server}")
 ```
 
-#### 2010–2015: The Cloud Revolution
+#### 1.8.4.3 2010–2015: The Cloud Revolution
 
 - **Cloud Providers:** AWS, Azure, GCP
 - **Deployment:** Virtualized, containerized (Docker)
@@ -416,7 +416,7 @@ RUN npm install
 CMD ["node", "server.js"]
 ```
 
-#### 2015–2020: Microservices & Event-Driven Architectures
+#### 1.8.4.4 2015–2020: Microservices & Event-Driven Architectures
 
 - **Shift:** Monoliths → Microservices
 - **Tech:** API gateways, service meshes, event brokers (Kafka, RabbitMQ)
@@ -445,7 +445,7 @@ async function sendMessage() {
 sendMessage();
 ```
 
-#### 2020–Present: Real-Time, AI-Driven, and Edge Computing
+#### 1.8.4.5 2020–Present: Real-Time, AI-Driven, and Edge Computing
 
 - **Demands:** Low latency, real-time, AI recommendations, streaming, instant messaging
 - **Tech:** Serverless, Kubernetes, edge computing, observability, security, compliance
@@ -471,11 +471,11 @@ Each leap brought new challenges and solutions around scalability, reliability, 
 
 ---
 
-## Course Structure
+## 1.9 Course Structure
 
 This 29-chapter course is designed to take you from beginner to confident architect. It is organized into **foundational chapters (1–15)** followed by **deep-dive case studies (16–28)** and **interview preparation (29)**.
 
-### Foundations
+### 1.9.1 Foundations
 
 1. **Introduction** — System design fundamentals, importance, and the evolution of the discipline *(you are here)*
 2. **Networking & Communication** — IP, DNS, proxies, load balancers, API gateways, CDNs
@@ -493,7 +493,7 @@ This 29-chapter course is designed to take you from beginner to confident archit
 14. **Cloud Architecture & Cost** *(coming soon)*
 15. **The System Design Blueprint** — A 4-step methodology for tackling any design problem
 
-### Case Studies
+### 1.9.2 Case Studies
 
 16. **URL Shortener** (TinyURL)
 17. **Chat / Messaging App** (WhatsApp) *(coming soon)*
@@ -511,7 +511,7 @@ This 29-chapter course is designed to take you from beginner to confident archit
 
 > **About the gaps in numbering:** chapters 11–14, 17–20 and 22 are reserved for planned chapters that haven't been written yet (marked *coming soon* above). They're not missing content — they're TBD slots.
 
-### Wrap-Up
+### 1.9.3 Wrap-Up
 
 29. **Final Prep, Mindset & Moving Forward** — Interview strategies, frameworks, and continuous learning
 
@@ -519,7 +519,7 @@ This 29-chapter course is designed to take you from beginner to confident archit
 
 ---
 
-## The 4-Step Design Framework
+## 1.10 The 4-Step Design Framework
 
 When approaching any system design problem — whether in an interview or in real life — use this structured methodology. Each step builds on the previous one. (Chapter 15 expands on this framework in depth; this section is the preview.)
 
@@ -550,24 +550,24 @@ In more detail:
 
 ---
 
-## Worked Example: A URL Shortener
+## 1.11 Worked Example: A URL Shortener
 
 Let's apply the framework to a simplified example — designing a URL shortener like bit.ly. (Chapter 16 covers this case study in full detail.)
 
-### Requirements
+### 1.11.1 Requirements
 
 - Shorten long URLs
 - Redirect users from short URLs to the originals
 - Handle high read/write traffic
 - Optional: analytics
 
-### High-Level Steps
+### 1.11.2 High-Level Steps
 
 1. Generate a unique short code for each URL.
 2. Store the mapping in a database.
 3. Redirect incoming requests to the original URL.
 
-### High-Level Architecture (ASCII)
+### 1.11.3 High-Level Architecture (ASCII)
 
 ```plaintext
         +--------+        +-----+       +-----------+
@@ -575,7 +575,7 @@ User -> |  API   | <----> | DB  | <---- | Cache     |
         +--------+        +-----+       +-----------+
 ```
 
-### Request Flow (Mermaid)
+### 1.11.4 Request Flow (Mermaid)
 
 ```mermaid
 graph TD
@@ -589,7 +589,7 @@ graph TD
     B -->|302 Redirect| A
 ```
 
-### Simple Pseudocode
+### 1.11.5 Simple Pseudocode
 
 ```python
 import hashlib
@@ -608,7 +608,7 @@ def redirect(code):
         return 404
 ```
 
-### A Flask Implementation
+### 1.11.6 A Flask Implementation
 
 ```python
 # Example: Flask REST API for a TinyURL service
@@ -640,7 +640,7 @@ if __name__ == "__main__":
 - **API Design:** RESTful endpoints, stateless, scalable.
 - **Data Management:** Hashing for the short URL; in-memory store (for illustration only — production would use Redis or DynamoDB).
 
-### Trade-Offs to Consider
+### 1.11.7 Trade-Offs to Consider
 
 - **Database choice:** Use a key-value store (e.g., Redis or DynamoDB) for high throughput; SQL for transactional needs.
 - **Cache:** Add caching for popular short URLs to reduce DB reads.
@@ -651,11 +651,11 @@ if __name__ == "__main__":
 
 ---
 
-## Architectural Patterns: A Preview
+## 1.12 Architectural Patterns: A Preview
 
 A glimpse of what's to come in Chapter 4.
 
-### Monolithic vs. Microservices Architecture
+### 1.12.1 Monolithic vs. Microservices Architecture
 
 ```plaintext
 +------------------------------+         +-----------+    +-----------+
@@ -670,11 +670,11 @@ A glimpse of what's to come in Chapter 4.
 
 ---
 
-## Communication & Load Balancing: A Preview
+## 1.13 Communication & Load Balancing: A Preview
 
 A preview of Chapter 2 (Networking) and Chapter 6 (Scalability).
 
-### NGINX as a Reverse Proxy / Load Balancer
+### 1.13.1 NGINX as a Reverse Proxy / Load Balancer
 
 ```nginx
 http {
@@ -691,7 +691,7 @@ http {
 }
 ```
 
-### A Round-Robin Load Balancer in Python
+### 1.13.2 A Round-Robin Load Balancer in Python
 
 ```python
 class LoadBalancer:
@@ -723,7 +723,7 @@ AppServer3
 
 ---
 
-## Performance Boosters
+## 1.14 Performance Boosters
 
 A preview of Chapter 8.
 
@@ -732,7 +732,7 @@ A preview of Chapter 8.
 - **Database Sharding:** Split big databases for better throughput.
 - **CDNs:** Serve static assets closer to users for lower latency.
 
-### Caching Example: User Profile Lookup
+### 1.14.1 Caching Example: User Profile Lookup
 
 ```python
 import redis
@@ -758,7 +758,7 @@ def fetch_from_db(user_id):
 
 ---
 
-## Security Essentials
+## 1.15 Security Essentials
 
 A preview of Chapter 10. Security is **never** an afterthought.
 
@@ -768,41 +768,41 @@ A preview of Chapter 10. Security is **never** an afterthought.
 
 ---
 
-## Common Beginner Anti-Patterns
+## 1.16 Common Beginner Anti-Patterns
 
 Before you absorb the patterns, learn the **anti-patterns** — the predictable mistakes that turn good intentions into bad systems.
 
-### 1. Premature Scaling
+### 1.16.1 Premature Scaling
 
 Designing for 1 billion users when you have 100. Sharding a database that fits on a single laptop. Building a Kafka pipeline for 50 events per day.
 
 > **Rule of thumb:** Don't optimize for a scale you haven't reached. *Reaching* that scale will teach you what your real bottlenecks are. They are almost never what you predicted.
 
-### 2. Cargo-Cult Architecture
+### 1.16.2 Cargo-Cult Architecture
 
 "Netflix uses microservices, so we will too." Netflix has 4,000 engineers and a custom platform; you have 4 engineers and an MVP. Copying their architecture without their constraints gives you all the complexity and none of the benefits.
 
 > **Rule of thumb:** Choose architecture for *your* constraints. The right answer for a 5-person startup is rarely the same as the right answer for FAANG.
 
-### 3. Distributed Monolith
+### 1.16.3 Distributed Monolith
 
 Splitting your code into 20 microservices that all share one database, all deploy together, and all break together. You get microservices' complexity (network calls, debugging across services) with monolith's coupling (shared schema, lockstep deploys). The worst of both worlds.
 
 > **Rule of thumb:** Microservices need *independent deploys* and *independent data ownership.* If you don't have both, you have a distributed monolith.
 
-### 4. Over-Rotating on Tech Choices
+### 1.16.4 Over-Rotating on Tech Choices
 
 Spending three weeks debating PostgreSQL vs. MySQL when both would work. Switching to MongoDB to be "more scalable" when your data is highly relational.
 
 > **Rule of thumb:** Your data model and query patterns matter 10× more than which DB you pick from the same category. Use Postgres unless you have a specific reason not to.
 
-### 5. Ignoring Day-2 Operations
+### 1.16.5 Ignoring Day-2 Operations
 
 Designing the happy path beautifully. Forgetting backups, monitoring, alerting, on-call runbooks, capacity planning, cost dashboards. Then waking up at 3 AM with no way to diagnose what's wrong.
 
 > **Rule of thumb:** A system that's hard to operate is a system that will fail. Operations is a design concern, not a deployment concern.
 
-### 6. Big Up-Front Design
+### 1.16.6 Big Up-Front Design
 
 Spending 6 months designing the perfect architecture before writing a line of code. Real requirements are discovered by *using* the system, not by thinking about it.
 
@@ -810,18 +810,18 @@ Spending 6 months designing the perfect architecture before writing a line of co
 
 ---
 
-## Tips and Tricks for Mastering System Design
+## 1.17 Tips and Tricks for Mastering System Design
 
 A merged master list, drawn from across the lecture material.
 
-### Approach & Mindset
+### 1.17.1 Approach & Mindset
 
 - **Build from Fundamentals.** Don't just memorize patterns — understand *why* they exist. Whether it's protocols, APIs, consistency models, or scaling techniques, building a strong foundation is critical.
 - **Don't Memorize — Understand.** Focus on underlying principles, not just patterns.
 - **Ask "Why?" Often.** For every decision, know the trade-offs (latency vs. consistency, cost vs. performance, etc.).
 - **Stay Curious.** The field evolves — keep learning about new technologies and paradigms.
 
-### Practice & Frameworks
+### 1.17.2 Practice & Frameworks
 
 - **Use the 4-Step Design Framework:**
   1. Requirements clarification (functional & non-functional)
@@ -831,31 +831,31 @@ A merged master list, drawn from across the lecture material.
 - **Practice Real-World Case Studies.** Analyze the architectures of Netflix, WhatsApp, Uber, Airbnb. Simulate real interview discussions.
 - **Simulate Interview Discussions.** Practice articulating your design decisions and trade-offs out loud, to a peer or to yourself.
 
-### Trade-Offs & Detail
+### 1.17.3 Trade-Offs & Detail
 
 - **Think in Trade-Offs.** There's never a perfect solution — always justify your choices (latency vs. consistency, cost vs. reliability). Practice discussing pros/cons.
 - **Don't Skip the Details.** Dive into network protocols, database indexing, consistency models, sharding, replication, and failover.
 - **Connect the Dots.** Realize how components like caching, load balancing, and sharding interrelate.
 
-### Visualization & Communication
+### 1.17.4 Visualization & Communication
 
 - **Draw Diagrams.** Communicate your design visually — use sequence diagrams, flowcharts, and component diagrams. Start with the big picture before drilling into details.
 - **Diagram First, Details Later.** High-level diagrams help you communicate the architecture before specifics.
 
-### Learning Discipline
+### 1.17.5 Learning Discipline
 
 - **Pause and Research.** If you hit an unfamiliar term (like *TF-IDF* in search systems), pause and read up before continuing. Don't gloss over.
 - **Revisit & Iterate.** Topics are interconnected. Revisit sections to deepen your understanding. Do the course twice — the second run fills gaps you missed the first time.
 - **Don't Rush.** Pause, research, and resume if you hit roadblocks.
 
-### Other Essentials
+### 1.17.6 Other Essentials
 
 - **Security First.** Never treat security as an afterthought.
 - **Prepare for Interviews Methodically.** Practice explaining your design, drawing diagrams, and defending your choices.
 
 ---
 
-## Navigating This Course Effectively
+## 1.18 Navigating This Course Effectively
 
 - **Start with Fundamentals** — build depth and clarity before jumping to advanced topics.
 - **Use Case Studies** to simulate interview discussions and learn from real-world designs.
@@ -867,14 +867,14 @@ A merged master list, drawn from across the lecture material.
 
 ---
 
-## Further Reading
+## 1.19 Further Reading
 
 - [System Design Primer (GitHub)](https://github.com/donnemartin/system-design-primer)
 - [Designing Data-Intensive Applications by Martin Kleppmann](https://dataintensive.net/)
 
 ---
 
-## Conclusion
+## 1.20 Conclusion
 
 Mastering system design is not just about cracking interviews — it's about building scalable, reliable, and maintainable software that powers the world's largest applications. By mastering it, you'll be equipped to build scalable, efficient, and future-proof systems while naturally excelling in interviews.
 

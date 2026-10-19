@@ -6,7 +6,7 @@ In this case study, we'll walk through the **end-to-end architecture** of a mode
 
 ---
 
-## Learning Outcomes
+## 24.1 Learning Outcomes
 
 After working through this case study, you'll be able to:
 
@@ -20,30 +20,30 @@ After working through this case study, you'll be able to:
 
 ## Table of Contents
 
-1. [What Are We Building?](#what-are-we-building)
-2. [Functional Requirements](#functional-requirements)
-3. [Non-Functional Requirements](#non-functional-requirements)
-4. [Architecture Overview](#architecture-overview)
-5. [Core Components](#core-components)
-6. [Scale Estimation](#scale-estimation)
-7. [Storage Estimation](#storage-estimation)
-8. [Network & Bandwidth](#network--bandwidth)
-9. [Bottlenecks & Solutions](#bottlenecks--solutions)
-10. [Communication Patterns](#communication-patterns)
-11. [End-to-End Upload Workflow](#end-to-end-upload-workflow)
-12. [Encoding Pipeline](#encoding-pipeline)
-13. [Storage Design](#storage-design)
-14. [Database Schema](#database-schema)
-15. [API Design](#api-design)
-16. [Search & Recommendations](#search--recommendations)
-17. [Tech Stack](#tech-stack)
-18. [Security & Abuse Prevention](#security--abuse-prevention)
-19. [Tips & Tricks](#tips--tricks)
-20. [Conclusion](#conclusion)
+- [24.2 What Are We Building?](#242-what-are-we-building)
+- [24.3 Functional Requirements](#243-functional-requirements)
+- [24.4 Non-Functional Requirements](#244-non-functional-requirements)
+- [24.5 Architecture Overview](#245-architecture-overview)
+- [24.6 Core Components](#246-core-components)
+- [24.7 Scale Estimation](#247-scale-estimation)
+- [24.8 Storage Estimation](#248-storage-estimation)
+- [24.9 Network & Bandwidth](#249-network--bandwidth)
+- [24.10 Bottlenecks & Solutions](#2410-bottlenecks--solutions)
+- [24.11 Communication Patterns](#2411-communication-patterns)
+- [24.12 End-to-End Upload Workflow](#2412-end-to-end-upload-workflow)
+- [24.13 Encoding Pipeline](#2413-encoding-pipeline)
+- [24.14 Storage Design](#2414-storage-design)
+- [24.15 Database Schema](#2415-database-schema)
+- [24.16 API Design](#2416-api-design)
+- [24.17 Search & Recommendations](#2417-search--recommendations)
+- [24.18 Tech Stack](#2418-tech-stack)
+- [24.19 Security & Abuse Prevention](#2419-security--abuse-prevention)
+- [24.21 Tips & Tricks](#2421-tips--tricks)
+- [24.22 Conclusion](#2422-conclusion)
 
 ---
 
-## What Are We Building?
+## 24.2 What Are We Building?
 
 A platform where users can:
 
@@ -53,7 +53,7 @@ A platform where users can:
 - **Subscribe to channels.**
 - **View personalized recommendations.**
 
-### Core User Workflows
+### 24.2.1 Core User Workflows
 
 | Workflow              | Description                                                                                 |
 |-----------------------|---------------------------------------------------------------------------------------------|
@@ -64,7 +64,7 @@ A platform where users can:
 
 ---
 
-## Functional Requirements
+## 24.3 Functional Requirements
 
 1. **User registration and authentication** (OAuth2/JWT).
 2. **Upload large video files** (chunked, resumable).
@@ -77,7 +77,7 @@ A platform where users can:
 
 ---
 
-## Non-Functional Requirements
+## 24.4 Non-Functional Requirements
 
 - **Low latency streaming** (instant video start, smooth seek).
 - **High availability** (24/7, geo-replicated, fault-tolerant).
@@ -88,9 +88,9 @@ A platform where users can:
 
 ---
 
-## Architecture Overview
+## 24.5 Architecture Overview
 
-### High-Level Block Diagram
+### 24.5.1 High-Level Block Diagram
 
 ```
 [Client Apps]
@@ -108,7 +108,7 @@ A platform where users can:
      +----> [Search & Discovery] <----> [Recommendation Engine]
 ```
 
-### Mermaid Architecture
+### 24.5.2 Mermaid Architecture
 
 ```mermaid
 flowchart TD
@@ -170,7 +170,7 @@ flowchart LR
 
 ---
 
-## Core Components
+## 24.6 Core Components
 
 | Component                 | Role                                                                                       |
 |---------------------------|---------------------------------------------------------------------------------------------|
@@ -187,7 +187,7 @@ flowchart LR
 
 ---
 
-## Scale Estimation
+## 24.7 Scale Estimation
 
 Designing for **100M users, 10M uploads/day, 500M daily views**.
 
@@ -201,7 +201,7 @@ Designing for **100M users, 10M uploads/day, 500M daily views**.
 | Video Metadata Size        | ~1 KB per video                             |
 | Engagement Event Size      | ~500 bytes/event                            |
 
-### Why These Numbers Matter
+### 24.7.1 Why These Numbers Matter
 
 - **Authentication and Profile Management** must scale to millions of users.
 - **Ingestion Pipeline** must handle concurrent uploads and multi-format transcoding.
@@ -211,15 +211,15 @@ Designing for **100M users, 10M uploads/day, 500M daily views**.
 
 ---
 
-## Storage Estimation
+## 24.8 Storage Estimation
 
-### Raw Video Storage
+### 24.8.1 Raw Video Storage
 
 - **Average Upload:** 10 minutes × 5 MB/minute = **50 MB/video.**
 - **Daily Uploads:** 10M × 50 MB = **500 TB/day** raw ingestion.
 - **Temporary Buffer:** Retain for 30 days → **15 PB/month** rolling buffer.
 
-### Encoded Versions
+### 24.8.2 Encoded Versions
 
 - **4-5 resolutions:** Storage multiplies ~3× (240p, 480p, 720p, 1080p).
 - **Daily Storage:** 1.5 PB/day (including transcoded versions).
@@ -237,9 +237,9 @@ print(f"Estimated permanent storage: {permanent_storage_pb:.2f} PB")
 
 ---
 
-## Network & Bandwidth
+## 24.9 Network & Bandwidth
 
-### Daily Video Streaming Egress
+### 24.9.1 Daily Video Streaming Egress
 
 - **Active Users:** 100M × 3 videos/day = 300M video views.
 - **Total Watch Time:** 300M × 10 min = 3B minutes = **50M hours/day.**
@@ -247,11 +247,11 @@ print(f"Estimated permanent storage: {permanent_storage_pb:.2f} PB")
 - **Egress:** 50M hours × 0.45 GB = **22.5 PB/day.**
 - (Note: Some assumptions push this higher; always sanity-check calculations.)
 
-### Peak Load
+### 24.9.2 Peak Load
 
 - **Peak Concurrent Streams:** 10M users × 1 Mbps = **10 Tbps egress.**
 
-### Metadata & Engagement Scale
+### 24.9.3 Metadata & Engagement Scale
 
 - **Video Metadata:** 10M new rows/day (~1 KB each).
 - **Engagement Events:** 100M/day (~500 bytes each) → ~50 GB/day.
@@ -260,7 +260,7 @@ print(f"Estimated permanent storage: {permanent_storage_pb:.2f} PB")
 
 ---
 
-## Bottlenecks & Solutions
+## 24.10 Bottlenecks & Solutions
 
 | Area             | Bottleneck / Challenge                            | Solution(s)                                                |
 |------------------|---------------------------------------------------|------------------------------------------------------------|
@@ -272,7 +272,7 @@ print(f"Estimated permanent storage: {permanent_storage_pb:.2f} PB")
 
 ---
 
-## Communication Patterns
+## 24.11 Communication Patterns
 
 A **hybrid model** ensures both responsiveness and scalability.
 
@@ -285,7 +285,7 @@ A **hybrid model** ensures both responsiveness and scalability.
 
 ---
 
-## End-to-End Upload Workflow
+## 24.12 End-to-End Upload Workflow
 
 1. **User initiates upload:** Client app sends `POST /upload` (chunked upload) to API Gateway.
 2. **Upload & ingestion:** API Gateway routes to Upload Service, which temporarily stores the video. Generates a unique `video_id`. Triggers encoding job via Encoding Job Queue.
@@ -295,7 +295,7 @@ A **hybrid model** ensures both responsiveness and scalability.
 6. **Ready for search/playback:** User can now search for the video, view recommendations, or play.
 7. **Engagement tracking:** Likes, comments, views are sent as async events to Engagement Service.
 
-### Sequence Diagram
+### 24.12.1 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -345,9 +345,9 @@ sequenceDiagram
 
 ---
 
-## Encoding Pipeline
+## 24.13 Encoding Pipeline
 
-### Async Trigger (Pseudocode)
+### 24.13.1 Async Trigger (Pseudocode)
 
 ```python
 def handle_upload(file, metadata):
@@ -356,7 +356,7 @@ def handle_upload(file, metadata):
     publish_event("encoding_requested", {"video_id": video_id, /* ... */})
 ```
 
-### Encoding Job Queue (Python + SQS + ffmpeg)
+### 24.13.2 Encoding Job Queue (Python + SQS + ffmpeg)
 
 ```python
 import boto3
@@ -380,7 +380,7 @@ def process_jobs():
             sqs.delete_message(QueueUrl=QUEUE_URL, ReceiptHandle=msg['ReceiptHandle'])
 ```
 
-### Kafka Producer/Consumer (Node.js)
+### 24.13.3 Kafka Producer/Consumer (Node.js)
 
 ```js
 // Upload Service: publish encoding job
@@ -403,20 +403,20 @@ consumer.run({
 
 ---
 
-## Storage Design
+## 24.14 Storage Design
 
-### Video Files
+### 24.14.1 Video Files
 
 - **Object storage:** AWS S3, Google Cloud Storage, Azure Blob.
 - **CDN:** Cloudflare, Akamai, AWS CloudFront for global edge caching.
 
-### Metadata & Engagement
+### 24.14.2 Metadata & Engagement
 
 - **Relational DB:** PostgreSQL/MySQL for structured metadata.
 - **NoSQL:** MongoDB for flexible user preferences, recommendations.
 - **Cache:** Redis/Memcached for hot data (sessions, metadata).
 
-### Data Storage Decisions
+### 24.14.3 Data Storage Decisions
 
 | Data Type       | Storage Layer                | Tech Examples                  |
 |-----------------|------------------------------|--------------------------------|
@@ -428,7 +428,7 @@ consumer.run({
 
 ---
 
-## Database Schema
+## 24.15 Database Schema
 
 A simplified relational schema (PostgreSQL):
 
@@ -508,9 +508,9 @@ CREATE TABLE video_analytics (
 
 ---
 
-## API Design
+## 24.16 API Design
 
-### REST Endpoints
+### 24.16.1 REST Endpoints
 
 | Endpoint                | Method | Description                          |
 |-------------------------|--------|--------------------------------------|
@@ -521,7 +521,7 @@ CREATE TABLE video_analytics (
 | `/api/like`             | POST   | Like a video                         |
 | `/api/search`           | GET    | Search videos by keyword/tags        |
 
-### Upload (with JWT)
+### 24.16.2 Upload (with JWT)
 
 ```http
 POST /api/upload
@@ -536,7 +536,7 @@ Body: { video_file, title, description }
 }
 ```
 
-### JWT Authentication Middleware (Express.js)
+### 24.16.3 JWT Authentication Middleware (Express.js)
 
 ```js
 const jwt = require('jsonwebtoken');
@@ -559,7 +559,7 @@ function authenticateJWT(req, res, next) {
 }
 ```
 
-### Express Upload Endpoint (Multer)
+### 24.16.4 Express Upload Endpoint (Multer)
 
 ```js
 const express = require('express');
@@ -573,7 +573,7 @@ app.post('/api/upload', upload.single('video'), (req, res) => {
 });
 ```
 
-### React Video Upload Component
+### 24.16.5 React Video Upload Component
 
 ```jsx
 import React, { useState } from "react";
@@ -598,7 +598,7 @@ function VideoUpload() {
 }
 ```
 
-### JWT Issue Example
+### 24.16.6 JWT Issue Example
 
 ```js
 const jwt = require('jsonwebtoken');
@@ -607,14 +607,14 @@ const token = jwt.sign({ userId: 123 }, 'SECRET', { expiresIn: '1h' });
 
 ---
 
-## Search & Recommendations
+## 24.17 Search & Recommendations
 
 - **Real-time indexing:** As soon as videos are uploaded, metadata is indexed for search.
 - **Distributed search infra:** Use Elasticsearch for sharded, full-text, and filtered queries.
 - **Caching:** Hot queries/results (trending, popular) cached in Redis.
 - **Recommendation engine:** Personalizes feeds using behavior data and collaborative filtering.
 
-### Search API Endpoint (Node.js / Express + Elasticsearch)
+### 24.17.1 Search API Endpoint (Node.js / Express + Elasticsearch)
 
 ```js
 app.get('/search', async (req, res) => {
@@ -635,7 +635,7 @@ app.get('/search', async (req, res) => {
 
 ---
 
-## Tech Stack
+## 24.18 Tech Stack
 
 | Layer            | Suggested Tech                    | Why                                                  |
 |------------------|-----------------------------------|------------------------------------------------------|
@@ -652,7 +652,7 @@ app.get('/search', async (req, res) => {
 
 ---
 
-## Security & Abuse Prevention
+## 24.19 Security & Abuse Prevention
 
 - **Authentication:** OAuth2/JWT for all client requests.
 - **Secure uploads:** Signed URLs for direct client uploads to storage.
@@ -661,9 +661,9 @@ app.get('/search', async (req, res) => {
 
 ---
 
-## Beyond MVP — What a Senior Designer Adds
+## 24.20 Beyond MVP — What a Senior Designer Adds
 
-### Adaptive Bitrate Streaming (HLS / DASH)
+### 24.20.1 Adaptive Bitrate Streaming (HLS / DASH)
 
 You don't actually serve one video file — you serve a **manifest** that points to many short segments (~6s each) at multiple bitrates (240p, 480p, 720p, 1080p, 4K). The player picks the bitrate based on the user's network speed and switches mid-stream as conditions change.
 
@@ -672,7 +672,7 @@ You don't actually serve one video file — you serve a **manifest** that points
 
 Both are HTTP-based — work over CDNs, no special protocols needed.
 
-### View Counter at Scale
+### 24.20.2 View Counter at Scale
 
 A naive `UPDATE videos SET view_count = view_count + 1` on every view = lock contention disaster.
 
@@ -685,7 +685,7 @@ A naive `UPDATE videos SET view_count = view_count + 1` on every view = lock con
 
 This easily handles 100K+ views/sec without the DB ever seeing single-row contention.
 
-### VOD vs Live Streaming
+### 24.20.3 VOD vs Live Streaming
 
 Most of this chapter is VOD (encode once, serve forever). Live is different:
 
@@ -694,7 +694,7 @@ Most of this chapter is VOD (encode once, serve forever). Live is different:
 - Manifest updated continuously as new segments are produced.
 - Latency: 10-30 seconds for traditional HLS; <1 second for low-latency HLS / WebRTC.
 
-### Recommendation Engine (At a Glance)
+### 24.20.4 Recommendation Engine (At a Glance)
 
 Two-stage system used by all major platforms:
 
@@ -703,13 +703,13 @@ Two-stage system used by all major platforms:
 
 Total budget: ~100ms end-to-end. Candidate generation does most of the work.
 
-### Content ID (Copyright Detection)
+### 24.20.5 Content ID (Copyright Detection)
 
 YouTube famously runs uploaded videos against a fingerprint database (Shazam-like, but for video + audio). Matches trigger monetization claims, restrictions, or takedowns.
 
 **Pattern:** extract audio/video fingerprints offline; index in a specialized DB (Annoy, FAISS for embeddings). On upload, fingerprint the new video, query the index, evaluate matches against business rules.
 
-### Cost Optimization (Storage Lifecycle)
+### 24.20.6 Cost Optimization (Storage Lifecycle)
 
 A 4-year-old video with 12 lifetime views shouldn't sit on "hot" SSD. Move it to cheaper tiers:
 
@@ -719,7 +719,7 @@ A 4-year-old video with 12 lifetime views shouldn't sit on "hot" SSD. Move it to
 
 Lifecycle policies automate the transitions. Done right, **storage costs can drop 5-10×.**
 
-### Live Chat (for Live Streams)
+### 24.20.7 Live Chat (for Live Streams)
 
 Real-time chat overlay on live streams hits a different scaling problem than the video itself. 100K concurrent chatters all writing → all watchers receiving = huge fan-out.
 
@@ -727,16 +727,16 @@ Real-time chat overlay on live streams hits a different scaling problem than the
 
 ---
 
-## Tips & Tricks
+## 24.21 Tips & Tricks
 
-### System Design Approach
+### 24.21.1 System Design Approach
 
 1. **Start with the user journey.** Map out core workflows before jumping to tech.
 2. **Quantify everything.** Estimate users, uploads, storage, bandwidth.
 3. **Prioritize non-functional requirements.** Latency, availability, and scalability drive your infra decisions.
 4. **Always draw diagrams.** Even ASCII diagrams help clarify your architecture in interviews.
 
-### Architecture
+### 24.21.2 Architecture
 
 5. **Embrace asynchronous processing.** Use queues for uploads, encoding, and engagement events.
 6. **Decouple processing with queues.** All heavy processing (like encoding) should be async via queues.
@@ -744,36 +744,36 @@ Real-time chat overlay on live streams hits a different scaling problem than the
 8. **Always separate hot and cold paths.** Use object storage and CDN for hot content; move old/rarely accessed videos to cold storage.
 9. **Separate reads and writes:** Employ CQRS for heavy analytics.
 
-### Storage & Delivery
+### 24.21.3 Storage & Delivery
 
 10. **Use tiered storage.** Hot/warm/cold storage cuts costs for older/less-viewed content.
 11. **Leverage CDNs.** Global delivery isn't optional for video at scale.
 12. **CDN cache invalidation.** When a video is updated, trigger CDN cache purge.
 13. **Secure video URLs:** Use signed URLs with short TTL for playback links.
 
-### Encoding
+### 24.21.4 Encoding
 
 14. **Autoscale encoding.** Use Kubernetes jobs with GPU support for parallel encoding.
 15. **Chunked uploads.** For large files, implement chunked uploads (Tus or S3 multipart) — resumable & prevents server overloads.
 
-### Engagement
+### 24.21.5 Engagement
 
 16. **Sharded counters.** For views/likes, use sharded counters to avoid single-point bottlenecks.
 17. **Async aggregation.** Aggregate stats like views and likes in the background, not on write path.
 18. **Eventual consistency.** Not all counters (views, likes) need strong consistency.
 19. **Batch & shard engagement data.** Process in batches, store in sharded stores.
 
-### Search & Discovery
+### 24.21.6 Search & Discovery
 
 20. **Real-time indexing.** Use event-driven updates (Kafka → Elasticsearch) for instant searchability.
 21. **Search optimization:** Use Elasticsearch or Meilisearch with real-time indexing.
 
-### Performance
+### 24.21.7 Performance
 
 22. **Cache aggressively.** Use Redis/Memcached for hot metadata, search results, personalized feeds.
 23. **Optimize for hot content.** Pre-cache popular videos and metadata; use CDN edge prefetching.
 
-### Operations
+### 24.21.8 Operations
 
 24. **Cold storage policies.** Automatically move old, rarely accessed videos to cheaper storage.
 25. **Monitoring & autoscaling.** Track ingestion, processing, and streaming metrics. Use cloud-native autoscaling.
@@ -781,14 +781,14 @@ Real-time chat overlay on live streams hits a different scaling problem than the
 27. **API versioning.** Plan for forward/backward compatibility.
 28. **Data consistency.** Use eventual consistency for engagement; strict consistency for user auth and metadata.
 
-### Reliability
+### 24.21.9 Reliability
 
 29. **Schema design matters.** Plan for append-only and high-write tables. Use time-based or hash-based sharding.
 30. **Prepare for failure.** Graceful degradation: even if encoding or recommendation fails, the rest of the platform should function.
 
 ---
 
-## Conclusion
+## 24.22 Conclusion
 
 By combining **microservices**, **object storage**, **CDN**, **caching**, and **event-driven processing**, this architecture ensures that your video sharing platform will be **scalable, reliable, and performant.** Each service is easily maintainable, independently deployable, and can scale to billions of videos and users.
 
@@ -796,7 +796,7 @@ Whether preparing for a system design interview or architecting a real-world sol
 
 ---
 
-## Further Reading
+## 24.23 Further Reading
 
 - [YouTube Architecture (High Scalability)](http://highscalability.com/blog/2012/3/12/you-tube-architecture.html)
 - [YouTube Architecture 101](https://www.infoq.com/articles/YouTube-Architecture/)

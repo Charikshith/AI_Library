@@ -12,7 +12,7 @@ The web forms the backbone of modern applications — social media, e-commerce, 
 
 ---
 
-## Learning Outcomes
+## 5.1 Learning Outcomes
 
 After reading this chapter, you'll be able to:
 
@@ -26,19 +26,19 @@ After reading this chapter, you'll be able to:
 
 ## Table of Contents
 
-1. [How Web Applications Work](#how-web-applications-work)
-2. [Web Sessions — Managing State in Stateless HTTP](#web-sessions--managing-state-in-stateless-http)
-3. [Serialization — Data Exchange & Storage Formats](#serialization--data-exchange--storage-formats)
-4. [CORS — Cross-Origin Resource Sharing & Web Security](#cors--cross-origin-resource-sharing--web-security)
-5. [Best Practices for Scalable & Secure Web Systems](#best-practices-for-scalable--secure-web-systems)
-6. [Combined Tips & Tricks](#combined-tips--tricks)
-7. [Sample Interview Questions](#sample-interview-questions)
-8. [Summary & Key Takeaways](#summary--key-takeaways)
-9. [Further Reading](#further-reading)
+- [5.2 How Web Applications Work](#52-how-web-applications-work)
+- [5.3 Web Sessions — Managing State in Stateless HTTP](#53-web-sessions--managing-state-in-stateless-http)
+- [5.4 Serialization — Data Exchange & Storage Formats](#54-serialization--data-exchange--storage-formats)
+- [5.5 CORS — Cross-Origin Resource Sharing & Web Security](#55-cors--cross-origin-resource-sharing--web-security)
+- [5.7 Best Practices for Scalable & Secure Web Systems](#57-best-practices-for-scalable--secure-web-systems)
+- [5.8 Combined Tips & Tricks](#58-combined-tips--tricks)
+- [5.9 Sample Interview Questions](#59-sample-interview-questions)
+- [5.10 Summary & Key Takeaways](#510-summary--key-takeaways)
+- [5.11 Further Reading](#511-further-reading)
 
 ---
 
-## How Web Applications Work
+## 5.2 How Web Applications Work
 
 Before diving into advanced topics, let's recap the basics.
 
@@ -68,9 +68,9 @@ sequenceDiagram
 
 ---
 
-## Web Sessions — Managing State in Stateless HTTP
+## 5.3 Web Sessions — Managing State in Stateless HTTP
 
-### The Challenge: Stateless HTTP
+### 5.3.1 The Challenge: Stateless HTTP
 
 HTTP is **stateless** — each request is independent and carries no memory of previous interactions, which makes it tricky to implement features like user logins, shopping carts, or preferences.
 
@@ -99,9 +99,9 @@ sequenceDiagram
 
 **Solution:** We need mechanisms to track user sessions and maintain state across requests.
 
-### Techniques for Maintaining State
+### 5.3.2 Techniques for Maintaining State
 
-#### A. Cookies
+#### 5.3.2.1 A. Cookies
 
 - **Definition:** Small data pieces stored on the client's browser.
 - **Use Case:** Session identifiers, preferences, authentication tokens.
@@ -112,7 +112,7 @@ sequenceDiagram
 Set-Cookie: sessionId=abc123; HttpOnly; Secure; SameSite=Strict
 ```
 
-#### B. Session-Based Authentication (Server-Side Sessions + Cookies)
+#### 5.3.2.2 B. Session-Based Authentication (Server-Side Sessions + Cookies)
 
 - The server creates a session and stores session data (like user ID) in memory or a database.
 - A session ID is sent to the client (usually via a cookie).
@@ -202,7 +202,7 @@ app.post('/login', (req, res) => {
 });
 ```
 
-#### C. Token-Based Authentication (JWT, OAuth)
+#### 5.3.2.3 C. Token-Based Authentication (JWT, OAuth)
 
 - All session data is **encoded in a token** (e.g., JWT) that the client sends with each request.
 - The server is stateless — just verifies the token.
@@ -312,7 +312,7 @@ jwt.verify(token, 'your-secret-key', (err, decoded) => {
 
 **Advantages:** Scalable (stateless), easy for microservices.
 
-### Session-Based vs. Token-Based Comparison
+### 5.3.3 Session-Based vs. Token-Based Comparison
 
 | Feature            | Session-based                            | Token-based (JWT/OAuth)                       |
 |--------------------|------------------------------------------|-----------------------------------------------|
@@ -329,7 +329,7 @@ And from a state-storage perspective:
 | Server-side Sessions | Server (e.g., DB, cache)  | More secure                 | Scalability, memory usage     |
 | JWT                  | Client (token)            | Scalable, stateless         | Token invalidation is tricky  |
 
-### Diagram: Session-Based vs. Token-Based Flow
+### 5.3.4 Diagram: Session-Based vs. Token-Based Flow
 
 ```mermaid
 flowchart TD
@@ -348,7 +348,7 @@ flowchart TD
     end
 ```
 
-### Security Concerns & Mitigations
+### 5.3.5 Security Concerns & Mitigations
 
 - **Session Hijacking:** Stolen session IDs grant attackers access.
   - **Mitigation:** Use HTTPS, regenerate session IDs after login/logout, short expiry.
@@ -373,7 +373,7 @@ res.cookie('sessionId', 'abc123', {
 res.cookie('sessionId', value, { secure: true, httpOnly: true, sameSite: 'Strict' });
 ```
 
-### Scaling Session Management
+### 5.3.6 Scaling Session Management
 
 - **Sticky Sessions:** Pin users to the same server (simple, not ideal for scaling).
 - **Distributed Sessions:** Use shared storage like Redis or Memcached.
@@ -414,9 +414,9 @@ graph LR
 
 ---
 
-## Serialization — Data Exchange & Storage Formats
+## 5.4 Serialization — Data Exchange & Storage Formats
 
-### What is Serialization?
+### 5.4.1 What is Serialization?
 
 Serialization is the process of converting complex data structures (like objects) into a format suitable for transmission or storage (e.g., JSON, XML, Protobuf). **Deserialization** is the reverse.
 
@@ -432,9 +432,9 @@ Serialization is the process of converting complex data structures (like objects
 - **Performance:** Impacts bandwidth, memory, and CPU usage.
 - **Interoperability:** Makes communication possible in microservices and distributed architectures.
 
-### Common Serialization Formats
+### 5.4.2 Common Serialization Formats
 
-#### 1. JSON (JavaScript Object Notation)
+#### 5.4.2.1 JSON (JavaScript Object Notation)
 
 - **Human-readable** and text-based.
 - **Simple key-value structure**, ideal for REST APIs and front-end applications.
@@ -511,7 +511,7 @@ A simple JSON object:
 }
 ```
 
-#### 2. XML (Extensible Markup Language)
+#### 5.4.2.2 XML (Extensible Markup Language)
 
 - **Tag-based and hierarchical** (supports complex structures).
 - **Supports complex schemas** and strict schema validation (great for strict industries like banking).
@@ -545,7 +545,7 @@ XML user example:
 </User>
 ```
 
-#### 3. Protocol Buffers (Protobuf)
+#### 5.4.2.3 Protocol Buffers (Protobuf)
 
 - Developed by Google.
 - **Binary format** — compact and fast.
@@ -639,12 +639,12 @@ const User = root.lookupType('User');
 const buffer = User.encode({ id: 1, name: 'Alice' }).finish();
 ```
 
-#### 4. BSON, Avro, and Others
+#### 5.4.2.4 BSON, Avro, and Others
 
 - **BSON:** Binary JSON (used by MongoDB).
 - **Avro:** Common in big data pipelines (supports schema evolution).
 
-### Trade-Offs: Readability, Efficiency, Compatibility
+### 5.4.3 Trade-Offs: Readability, Efficiency, Compatibility
 
 | Format          | Readability     | Efficiency       | Compatibility                                  | Use Cases                |
 |-----------------|-----------------|------------------|------------------------------------------------|--------------------------|
@@ -685,9 +685,9 @@ A use-case-focused table:
 - **Efficiency:** Protobuf and Avro are compact — reduce bandwidth and parsing time.
 - **Compatibility:** XML supports schema evolution; JSON less so; Protobuf/Avro require schema management.
 
-### Serialization in Action
+### 5.4.4 Serialization in Action
 
-#### Where is Serialization Used?
+#### 5.4.4.1 Where is Serialization Used?
 
 - **APIs:**
   - REST APIs → JSON
@@ -699,7 +699,7 @@ A use-case-focused table:
   - MongoDB uses BSON.
   - Big data stores (Hadoop, Kafka) use Avro/Protobuf.
 
-#### Data Flow Diagram
+#### 5.4.4.2 Data Flow Diagram
 
 ```
 +-----------------+         (serialize)         +----------------+
@@ -723,13 +723,13 @@ flowchart LR
   A -- Serialize --> B --> C --> D --> E --> F
 ```
 
-### Performance Considerations
+### 5.4.5 Performance Considerations
 
 - **JSON/XML:** Text-based, larger payload, slow parsing.
 - **Protobuf/Avro:** Binary, compact, fast parsing (but needs schema).
 - **Bandwidth & CPU:** Choosing the right format affects network traffic and system resources.
 
-#### Example: Comparing Payload Sizes
+#### 5.4.5.1 Example: Comparing Payload Sizes
 
 | Format   | Sample Data Size |
 |----------|------------------|
@@ -737,13 +737,13 @@ flowchart LR
 | XML      | 220 bytes        |
 | Protobuf | 50 bytes         |
 
-### When to Use Each Format
+### 5.4.6 When to Use Each Format
 
 - **JSON:** Default for web APIs (REST), easy debugging, wide adoption.
 - **XML:** Needed for strong schema enforcement, legacy systems.
 - **Protobuf:** For microservices, gRPC, or performance-critical systems.
 
-### Serialization — Tips & Best Practices
+### 5.4.7 Serialization — Tips & Best Practices
 
 - **Choose the right format for the use case:**
   - APIs → JSON for REST; Protobuf for gRPC.
@@ -758,7 +758,7 @@ flowchart LR
 - **Use binary formats carefully:** Binary is efficient but not debuggable — use in internal service-to-service communication rather than client-facing APIs.
 - **Validate data:** XML offers robust schema validation; Protobuf can enforce types; JSON is more permissive but use libraries to validate.
 
-### Serialization — Interview Questions
+### 5.4.8 Serialization — Interview Questions
 
 - What is serialization and where is it used?
 - Compare JSON, XML, Protobuf, and Avro.
@@ -769,7 +769,7 @@ flowchart LR
 - How does Avro help in big data systems?
 - What are the trade-offs between readability and efficiency in serialization?
 
-### Serialization — References
+### 5.4.9 Serialization — References
 
 - [Protobuf Documentation](https://developers.google.com/protocol-buffers)
 - [JSON Official Website](https://www.json.org/)
@@ -778,11 +778,11 @@ flowchart LR
 
 ---
 
-## CORS — Cross-Origin Resource Sharing & Web Security
+## 5.5 CORS — Cross-Origin Resource Sharing & Web Security
 
 Modern web applications are no longer siloed on a single domain — they often depend on APIs and services spread across different domains. But this flexibility introduces critical security challenges. Browsers enforce the **Same-Origin Policy (SOP)** to prevent malicious cross-origin requests, but legitimate use cases require controlled exceptions. That's where **CORS** comes in.
 
-### The Problem: Same-Origin Policy (SOP)
+### 5.5.1 The Problem: Same-Origin Policy (SOP)
 
 **Same-Origin Policy** is a browser security feature that restricts web pages from making requests to a different domain (origin) than the one that served the web page. This prevents unauthorized web pages from reading sensitive data from another origin.
 
@@ -803,17 +803,17 @@ Modern web applications are no longer siloed on a single domain — they often d
 +----------+   (Blocked by SOP)      +------------------+
 ```
 
-### The Solution: What is CORS?
+### 5.5.2 The Solution: What is CORS?
 
 **CORS** is a server-side mechanism that allows controlled cross-origin requests. It does so using specific HTTP headers in responses.
 
 > **Key Point:** CORS is always enforced by browsers and is entirely controlled by server-side configuration. If the server doesn't allow it, the browser will block the request.
 
-### How CORS Works
+### 5.5.3 How CORS Works
 
 When a browser detects a cross-origin request, it does one of two things depending on the request's complexity:
 
-#### 1. Simple Requests
+#### 5.5.3.1 Simple Requests
 
 - Use methods like `GET`, `POST` (no custom headers or content types).
 - The browser adds an `Origin` header automatically.
@@ -825,7 +825,7 @@ Access-Control-Allow-Origin: https://app.com
 
 - If the header is absent or incorrect, the browser blocks the response.
 
-#### 2. Preflight Requests
+#### 5.5.3.2 Preflight Requests
 
 - Triggered by methods like `PUT`, `DELETE`, or requests with custom headers (e.g., `Authorization`).
 - **Before** the actual request, the browser sends an `OPTIONS` request to the server.
@@ -849,7 +849,7 @@ Access-Control-Allow-Methods: GET, POST, PUT
 Access-Control-Allow-Headers: Authorization
 ```
 
-### CORS Flow Diagrams
+### 5.5.4 CORS Flow Diagrams
 
 A simple GET flow:
 
@@ -917,7 +917,7 @@ Server (Origin B)
 Client checks CORS headers before allowing response
 ```
 
-### Key CORS Headers
+### 5.5.5 Key CORS Headers
 
 | Header                              | Purpose                                                                                  |
 |-------------------------------------|------------------------------------------------------------------------------------------|
@@ -958,9 +958,9 @@ Access-Control-Allow-Methods: GET, POST
 Access-Control-Allow-Credentials: true
 ```
 
-### Implementing CORS: Code Examples
+### 5.5.6 Implementing CORS: Code Examples
 
-#### Express.js (basic)
+#### 5.5.6.1 Express.js (basic)
 
 ```javascript
 const cors = require('cors');
@@ -995,7 +995,7 @@ app.use(cors({
 }));
 ```
 
-#### Express.js (with origin whitelist function)
+#### 5.5.6.2 Express.js (with origin whitelist function)
 
 ```js
 const express = require('express');
@@ -1043,7 +1043,7 @@ app.use(cors({
 // Your API routes here
 ```
 
-#### Spring Boot
+#### 5.5.6.3 Spring Boot
 
 ```java
 // Controller-level CORS config
@@ -1057,7 +1057,7 @@ public class ApiController {
 }
 ```
 
-#### GraphQL (Apollo Server)
+#### 5.5.6.4 GraphQL (Apollo Server)
 
 ```js
 const { ApolloServer } = require('apollo-server-express');
@@ -1075,7 +1075,7 @@ server.applyMiddleware({
 });
 ```
 
-#### NGINX Reverse Proxy with CORS Headers
+#### 5.5.6.5 NGINX Reverse Proxy with CORS Headers
 
 ```nginx
 location /api/ {
@@ -1085,7 +1085,7 @@ location /api/ {
 }
 ```
 
-### Security Risks & Misconfigurations
+### 5.5.7 Security Risks & Misconfigurations
 
 | Risk                                  | Description                                                                                         | Example                                          |
 |---------------------------------------|-----------------------------------------------------------------------------------------------------|--------------------------------------------------|
@@ -1100,15 +1100,15 @@ location /api/ {
 - Separate public and private APIs and enforce correct CORS headers.
 - Use a **reverse proxy or API gateway** to centralize and standardize CORS handling.
 
-### Handling CORS in REST & GraphQL APIs
+### 5.5.8 Handling CORS in REST & GraphQL APIs
 
 - **REST APIs:** Use built-in CORS tools in frameworks (Express.js, Spring Boot, Django).
 - **GraphQL APIs:** Also require CORS, especially since mutations often use `POST` and custom headers.
 - **Preflight requests** are common for both, especially with complex or authenticated requests.
 
-### Alternatives to CORS
+### 5.5.9 Alternatives to CORS
 
-#### Reverse Proxy
+#### 5.5.9.1 Reverse Proxy
 
 Use NGINX, Apache, or similar as a reverse proxy. Client requests hit the frontend server, which proxies them to the backend, **appearing as same-origin**. CORS is bypassed because the browser sees the request as same-origin.
 
@@ -1139,11 +1139,11 @@ server {
 }
 ```
 
-#### API Gateway
+#### 5.5.9.2 API Gateway
 
 AWS API Gateway, Azure API Management, etc. Centralized CORS policy for all microservices. Simplifies security and reduces misconfiguration risk.
 
-### CORS — Tips and Tricks
+### 5.5.10 CORS — Tips and Tricks
 
 - **Never use wildcard (`*`) origin for sensitive APIs.** Always specify allowed origins.
 - **Set `Access-Control-Allow-Credentials: true` only when absolutely necessary** (e.g., cookies for authentication), and **never with a wildcard origin**.
@@ -1157,7 +1157,7 @@ AWS API Gateway, Azure API Management, etc. Centralized CORS policy for all micr
 - **Monitor logs** for failed preflight requests — these can signal misconfigurations.
 - **Use API Gateways/Reverse Proxies** to centralize and standardize CORS handling.
 
-### CORS — Interview Questions
+### 5.5.11 CORS — Interview Questions
 
 1. What is the Same-Origin Policy, and why does it exist?
 2. How does CORS enable cross-origin requests?
@@ -1167,7 +1167,7 @@ AWS API Gateway, Azure API Management, etc. Centralized CORS policy for all micr
 6. What are alternatives to CORS for handling cross-origin requests?
 7. How do API Gateways and Reverse Proxies help with CORS?
 
-### CORS — References
+### 5.5.12 CORS — References
 
 - [MDN Web Docs — CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS)
 - [OWASP — CORS Security](https://owasp.org/www-community/attacks/CORS_OriginHeaderScrutiny)
@@ -1176,18 +1176,18 @@ AWS API Gateway, Azure API Management, etc. Centralized CORS policy for all micr
 
 ---
 
-## Browser Security Model and Common Headers
+## 5.6 Browser Security Model and Common Headers
 
 Beyond CORS, the browser enforces several protections via HTTP response headers. Configure these on your server (or at the CDN/reverse proxy) to harden your app.
 
-### XSS vs CSRF — Know the Difference
+### 5.6.1 XSS vs CSRF — Know the Difference
 
 | Attack | What it does                                              | Mitigation                                                  |
 |--------|------------------------------------------------------------|-------------------------------------------------------------|
 | **XSS** (Cross-Site Scripting) | Attacker injects JS into your page; runs in your origin | Escape user input, use CSP, `HttpOnly` cookies (JS can't read them) |
 | **CSRF** (Cross-Site Request Forgery) | Attacker tricks user's browser into sending an authenticated request from another site | `SameSite=Lax` or `Strict` cookies, CSRF tokens, origin/referer check |
 
-### Essential Security Headers
+### 5.6.2 Essential Security Headers
 
 | Header                            | What it does                                                                                | Example                                                  |
 |-----------------------------------|----------------------------------------------------------------------------------------------|----------------------------------------------------------|
@@ -1198,7 +1198,7 @@ Beyond CORS, the browser enforces several protections via HTTP response headers.
 | **`Referrer-Policy`**                 | Controls how much of your URL is sent as `Referer` to other sites                  | `strict-origin-when-cross-origin`                        |
 | **`Permissions-Policy`**              | Disables features like camera/geolocation when not needed                          | `camera=(), microphone=()`                               |
 
-### Cookie Attributes — All Three Always
+### 5.6.3 Cookie Attributes — All Three Always
 
 A cookie set without all three of these is a vulnerability waiting to happen:
 
@@ -1210,7 +1210,7 @@ A cookie set without all three of these is a vulnerability waiting to happen:
 
 > **Beginner pitfall:** storing JWT in `localStorage` so JS can read it is **convenient but unsafe.** XSS instantly steals it. Storing it in an `HttpOnly` cookie is safer — JS can't read it, so XSS can't exfiltrate it. The downside: CSRF risk (mitigated by `SameSite`).
 
-### Modern Auth Pattern: BFF + HttpOnly Session Cookie
+### 5.6.4 Modern Auth Pattern: BFF + HttpOnly Session Cookie
 
 The current best-practice pattern for SPAs:
 
@@ -1223,7 +1223,7 @@ This is the recommended pattern by the OAuth working group as of 2023+, replacin
 
 ---
 
-## Best Practices for Scalable & Secure Web Systems
+## 5.7 Best Practices for Scalable & Secure Web Systems
 
 - **Stateless Servers:** Prefer storing minimal state on the server; use tokens.
 - **Centralized Session Store:** For sessions, use distributed stores like Redis.
@@ -1233,11 +1233,11 @@ This is the recommended pattern by the OAuth working group as of 2023+, replacin
 
 ---
 
-## Combined Tips & Tricks
+## 5.8 Combined Tips & Tricks
 
 A consolidated master list drawn from all sections.
 
-### Session Security
+### 5.8.1 Session Security
 
 - Always use **HTTPS** to protect session IDs and tokens.
 - Set `HttpOnly`, `Secure`, and `SameSite` on cookies.
@@ -1246,20 +1246,20 @@ A consolidated master list drawn from all sections.
 - Rotate and expire session tokens regularly.
 - Monitor and log session activity to detect suspicious usage or brute force attacks.
 
-### Scaling Sessions
+### 5.8.2 Scaling Sessions
 
 - Use sticky sessions only when unavoidable; prefer distributed session storage.
 - For distributed systems, externalize session storage (e.g., Redis, Memcached).
 - Prefer stateless JWTs for microservices and APIs, but invalidate tokens on password changes.
 - Centralize session storage (e.g., Redis) when scaling web servers to avoid sticky sessions and data loss.
 
-### JWT Caution
+### 5.8.3 JWT Caution
 
 - **Never store sensitive data in JWT payload;** always validate on the server.
 - Implement token revocation strategies (e.g., blacklists) for sensitive systems.
 - Handle token expiry and renewal explicitly.
 
-### Choosing Serialization
+### 5.8.4 Choosing Serialization
 
 - Use **JSON** for REST APIs (unless bandwidth is a concern).
 - For high-performance or binary protocols, use **Protobuf** or **Avro**.
@@ -1267,19 +1267,19 @@ A consolidated master list drawn from all sections.
 - For human inspection/debugging, choose JSON.
 - Serialize only necessary data; avoid large, nested JSON objects.
 
-### CORS Configuration
+### 5.8.5 CORS Configuration
 
 - **Never use `Access-Control-Allow-Origin: *` with credentials.**
 - Maintain a whitelist of trusted domains.
 - Consider using an API Gateway or Reverse Proxy for complex setups.
 - Monitor CORS headers in production using browser dev tools or `curl`.
 
-### General Security
+### 5.8.6 General Security
 
 - Always validate and sanitize all inputs, even if requests come from "trusted" origins.
 - Use CSRF tokens on state-changing requests.
 
-### Interview Prep
+### 5.8.7 Interview Prep
 
 - Be ready to discuss trade-offs between session management strategies.
 - Explain how you'd handle sessions, serialization, or CORS in cloud or microservice environments.
@@ -1288,9 +1288,9 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## Sample Interview Questions
+## 5.9 Sample Interview Questions
 
-### Sessions & State
+### 5.9.1 Sessions & State
 
 - Why is HTTP stateless, and how do we work around it?
 - Compare session-based and token-based authentication.
@@ -1299,7 +1299,7 @@ A consolidated master list drawn from all sections.
 - What is CSRF, and how do you protect against it?
 - How would you handle token revocation in a stateless JWT system?
 
-### Serialization
+### 5.9.2 Serialization
 
 - What is serialization, and why is it important?
 - Compare JSON, XML, Protobuf, and Avro.
@@ -1307,7 +1307,7 @@ A consolidated master list drawn from all sections.
 - Why does MongoDB use BSON?
 - What security risks come with deserialization, and how do you mitigate them?
 
-### CORS
+### 5.9.3 CORS
 
 - What is the Same-Origin Policy and why does it exist?
 - Explain CORS and how it works.
@@ -1317,7 +1317,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## Summary & Key Takeaways
+## 5.10 Summary & Key Takeaways
 
 - **HTTP is stateless:** Use sessions or tokens to track user state.
 - **Web sessions:** Maintain state via cookies, server-side sessions, or token-based authentication (JWT).
@@ -1327,7 +1327,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## Further Reading
+## 5.11 Further Reading
 
 **Sessions / Authentication:**
 

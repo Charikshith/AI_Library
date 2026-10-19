@@ -4,7 +4,7 @@ Cloud storage services such as **Google Drive** and **Dropbox** support billions
 
 ---
 
-## Learning Outcomes
+## 23.1 Learning Outcomes
 
 After working through this case study, you'll be able to:
 
@@ -18,27 +18,27 @@ After working through this case study, you'll be able to:
 
 ## Table of Contents
 
-1. [Problem Definition & Requirements](#problem-definition--requirements)
-2. [Estimating Scale & Access Patterns](#estimating-scale--access-patterns)
-3. [Identifying Bottlenecks](#identifying-bottlenecks)
-4. [High-Level System Architecture](#high-level-system-architecture)
-5. [Core Services & Responsibilities](#core-services--responsibilities)
-6. [API Design](#api-design)
-7. [Service Communication Patterns](#service-communication-patterns)
-8. [Chunked Uploads & Large File Handling](#chunked-uploads--large-file-handling)
-9. [File Versioning & Restore](#file-versioning--restore)
-10. [Storage & Database Strategies](#storage--database-strategies)
-11. [Caching & Performance](#caching--performance)
-12. [Critical User Flow: File Upload & Sync](#critical-user-flow-file-upload--sync)
-13. [Tech & Infrastructure Stack](#tech--infrastructure-stack)
-14. [Tips & Tricks](#tips--tricks)
-15. [Conclusion](#conclusion)
+- [23.2 Problem Definition & Requirements](#232-problem-definition--requirements)
+- [23.3 Estimating Scale & Access Patterns](#233-estimating-scale--access-patterns)
+- [23.4 Identifying Bottlenecks](#234-identifying-bottlenecks)
+- [23.5 High-Level System Architecture](#235-high-level-system-architecture)
+- [23.6 Core Services & Responsibilities](#236-core-services--responsibilities)
+- [23.7 API Design](#237-api-design)
+- [23.8 Service Communication Patterns](#238-service-communication-patterns)
+- [23.9 Chunked Uploads & Large File Handling](#239-chunked-uploads--large-file-handling)
+- [23.10 File Versioning & Restore](#2310-file-versioning--restore)
+- [23.11 Storage & Database Strategies](#2311-storage--database-strategies)
+- [23.12 Caching & Performance](#2312-caching--performance)
+- [23.13 Critical User Flow: File Upload & Sync](#2313-critical-user-flow-file-upload--sync)
+- [23.14 Tech & Infrastructure Stack](#2314-tech--infrastructure-stack)
+- [23.16 Tips & Tricks](#2316-tips--tricks)
+- [23.17 Conclusion](#2317-conclusion)
 
 ---
 
-## Problem Definition & Requirements
+## 23.2 Problem Definition & Requirements
 
-### What Are We Building?
+### 23.2.1 What Are We Building?
 
 A distributed, cloud-based file storage platform with:
 
@@ -48,7 +48,7 @@ A distributed, cloud-based file storage platform with:
 - **Massive scalability** (millions of users, petabytes of data).
 - **File versioning and recovery.**
 
-### Functional Requirements
+### 23.2.2 Functional Requirements
 
 | Feature                  | Description                                                                |
 |--------------------------|----------------------------------------------------------------------------|
@@ -59,7 +59,7 @@ A distributed, cloud-based file storage platform with:
 | File Versioning          | Maintain and restore previous versions                                     |
 | Soft Delete & Restore    | Trash bin, restore before permanent deletion                               |
 
-### Non-Functional Requirements
+### 23.2.3 Non-Functional Requirements
 
 | Quality                  | Why It Matters                                            |
 |--------------------------|-----------------------------------------------------------|
@@ -72,7 +72,7 @@ A distributed, cloud-based file storage platform with:
 
 > **Trade-offs:** Improving one quality (e.g., durability) can affect others (cost, latency). **Design is about balancing these.**
 
-### Key Assumptions & Constraints
+### 23.2.4 Key Assumptions & Constraints
 
 - Files can be large (up to 5GB) → need chunked, resumable uploads.
 - Users access files from multiple devices → real-time sync.
@@ -85,9 +85,9 @@ A distributed, cloud-based file storage platform with:
 
 ---
 
-## Estimating Scale & Access Patterns
+## 23.3 Estimating Scale & Access Patterns
 
-### Key Metrics
+### 23.3.1 Key Metrics
 
 | Metric                  | Value                       |
 |-------------------------|-----------------------------|
@@ -101,7 +101,7 @@ A distributed, cloud-based file storage platform with:
 
 > **Implication:** Requires horizontally scalable object storage, distributed metadata service, and horizontally scalable sync/notification pipelines.
 
-### Access Patterns
+### 23.3.2 Access Patterns
 
 - **Write-heavy:** Chunked uploads (large payloads), frequent sync events upon file changes, versioning (multiple writes per file).
 - **Read-heavy:** Downloads from many device types, folder listings and metadata lookups, shared link/file previews.
@@ -110,7 +110,7 @@ A distributed, cloud-based file storage platform with:
 
 ---
 
-## Identifying Bottlenecks
+## 23.4 Identifying Bottlenecks
 
 | Bottleneck                | Why It's Painful                                  | Solution Direction                    |
 |---------------------------|----------------------------------------------------|---------------------------------------|
@@ -122,7 +122,7 @@ A distributed, cloud-based file storage platform with:
 
 ---
 
-## High-Level System Architecture
+## 23.5 High-Level System Architecture
 
 ```mermaid
 flowchart LR
@@ -200,7 +200,7 @@ ASCII view:
 
 ---
 
-## Core Services & Responsibilities
+## 23.6 Core Services & Responsibilities
 
 | Service                 | Responsibility                                                                  |
 |-------------------------|---------------------------------------------------------------------------------|
@@ -219,11 +219,11 @@ ASCII view:
 
 ---
 
-## API Design
+## 23.7 API Design
 
 All APIs are **RESTful**, secure, and idempotent. Uploads are resumable and support chunking.
 
-### Chunked File Upload
+### 23.7.1 Chunked File Upload
 
 ```http
 # 1. Initiate upload session
@@ -270,7 +270,7 @@ Authorization: Bearer <token>
 }
 ```
 
-### File Retrieval & Metadata
+### 23.7.2 File Retrieval & Metadata
 
 ```http
 # Download file (with access control)
@@ -280,7 +280,7 @@ GET /files/{fileId}
 GET /files/{fileId}/metadata
 ```
 
-### Sharing & Collaboration
+### 23.7.3 Sharing & Collaboration
 
 ```http
 # Create a shareable link
@@ -291,7 +291,7 @@ Body: { "access": "view", "expiresIn": 604800 }
 GET /files/shared/{token}
 ```
 
-### Sync & Change Tracking
+### 23.7.4 Sync & Change Tracking
 
 ```http
 # Real-time updates for client sync
@@ -299,7 +299,7 @@ GET /sync/updates?since=timestamp
 # Returns: stream or array of changes (new/updated/deleted files)
 ```
 
-### Versioning
+### 23.7.5 Versioning
 
 ```http
 # List all versions for a file
@@ -312,14 +312,14 @@ Body: { "versionId": "v2" }
 
 ---
 
-## Service Communication Patterns
+## 23.8 Service Communication Patterns
 
 - **REST/gRPC:** Synchronous service-to-service calls (fast, low latency).
 - **Pub/Sub queues:** For asynchronous processing (sync events, post-upload tasks).
 - **WebSockets:** Real-time push notifications to clients for file/folder changes.
 - **Event sourcing:** For triggering sync and versioning updates.
 
-### Example: Async Event Publish (Node.js + RabbitMQ)
+### 23.8.1 Example: Async Event Publish (Node.js + RabbitMQ)
 
 ```js
 // Publish a sync update event
@@ -328,7 +328,7 @@ const event = { userId, fileId, eventType: 'UPDATED', timestamp: Date.now() };
 channel.sendToQueue('sync-events', Buffer.from(JSON.stringify(event)));
 ```
 
-### Pseudocode: Pub/Sub Publish
+### 23.8.2 Pseudocode: Pub/Sub Publish
 
 ```python
 event = {
@@ -342,22 +342,22 @@ pubsub.publish("sync_updates", event)
 
 ---
 
-## Chunked Uploads & Large File Handling
+## 23.9 Chunked Uploads & Large File Handling
 
-### Why Chunking?
+### 23.9.1 Why Chunking?
 
 - Efficient for large files (e.g., up to 5GB).
 - Enables resumability (network interruptions don't restart whole upload).
 - Allows parallel uploads for speed.
 
-### Upload Workflow
+### 23.9.2 Upload Workflow
 
 1. **Split file** into fixed-size chunks (e.g., 5MB).
 2. **Upload each chunk** individually (with checksum).
 3. **Track upload progress** in Metadata Service.
 4. **On completion, assemble** chunks into file in Storage Service.
 
-### Chunk Tracking (Python pseudocode)
+### 23.9.3 Chunk Tracking (Python pseudocode)
 
 ```python
 upload_progress = {}
@@ -370,7 +370,7 @@ def is_upload_complete(upload_id, total_chunks):
     return len(upload_progress.get(upload_id, set())) == total_chunks
 ```
 
-### Chunk Upload Endpoint (Python/Flask)
+### 23.9.4 Chunk Upload Endpoint (Python/Flask)
 
 ```python
 @app.route('/upload/<upload_id>/chunk', methods=['PUT'])
@@ -391,7 +391,7 @@ def upload_chunk(upload_id):
     return {'status': 'ok'}
 ```
 
-### Chunk Metadata (NoSQL)
+### 23.9.5 Chunk Metadata (NoSQL)
 
 ```json
 {
@@ -406,12 +406,12 @@ def upload_chunk(upload_id):
 }
 ```
 
-### Retry / Resumable Logic
+### 23.9.6 Retry / Resumable Logic
 
 - If a chunk fails, client retries upload.
 - On session resume, server returns missing chunks so client uploads only those.
 
-### Pseudocode Chunked Upload
+### 23.9.7 Pseudocode Chunked Upload
 
 ```python
 for chunk in file.chunks():
@@ -423,20 +423,20 @@ if all_chunks_uploaded(upload_id):
 
 ---
 
-## File Versioning & Restore
+## 23.10 File Versioning & Restore
 
-### Why?
+### 23.10.1 Why?
 
 - Rollback to previous states.
 - Track history for collaboration.
 
-### Versioning Flow
+### 23.10.2 Versioning Flow
 
 1. Each update creates a new version (if content changes).
 2. Store metadata: version ID, timestamp, checksum.
 3. Allow users to restore any version.
 
-### Change Detection (Hash Comparison)
+### 23.10.3 Change Detection (Hash Comparison)
 
 ```python
 def is_new_version(file_id, new_chunks):
@@ -444,7 +444,7 @@ def is_new_version(file_id, new_chunks):
     return hash(new_chunks) != hash(old_chunks)
 ```
 
-### Versioning APIs
+### 23.10.4 Versioning APIs
 
 ```http
 # List all versions for a file
@@ -460,15 +460,15 @@ Content-Type: application/json
 
 ---
 
-## Storage & Database Strategies
+## 23.11 Storage & Database Strategies
 
-### Object Storage
+### 23.11.1 Object Storage
 
 - Stores file chunks as objects (S3, MinIO, GCS).
 - Enables parallel/chunked uploads.
 - High durability via replication (11 nines).
 
-### SQL vs NoSQL
+### 23.11.2 SQL vs NoSQL
 
 | Data                | DB Type    | Why                              |
 |---------------------|------------|----------------------------------|
@@ -479,7 +479,7 @@ Content-Type: application/json
 | Audit Logs          | NoSQL      | High volume                       |
 | Versioning Metadata | NoSQL      | Large, flexible structures        |
 
-### Sample SQL: File Metadata
+### 23.11.3 Sample SQL: File Metadata
 
 ```sql
 CREATE TABLE files (
@@ -515,7 +515,7 @@ CREATE TABLE files (
 );
 ```
 
-### Partitioning Example
+### 23.11.4 Partitioning Example
 
 ```sql
 -- Postgres: Partition file metadata by user_id
@@ -527,7 +527,7 @@ CREATE TABLE file_metadata (
 ) PARTITION BY HASH (user_id);
 ```
 
-### Sample NoSQL: Chunk Metadata Document
+### 23.11.5 Sample NoSQL: Chunk Metadata Document
 
 ```json
 {
@@ -551,13 +551,13 @@ CREATE TABLE file_metadata (
 
 ---
 
-## Caching & Performance
+## 23.12 Caching & Performance
 
 - **Metadata Cache:** In-memory (Redis) for file/folder info, frequently accessed metadata, permissions ACLs.
 - **File Content Cache:** CDN (e.g., CloudFront) for frequently accessed files/shared links.
 - **Sync & consistency:** Event queues (Kafka) for updates, cache invalidation.
 
-### Metadata Caching Example
+### 23.12.1 Metadata Caching Example
 
 ```python
 redis.set(f"file_meta:{file_id}", json.dumps(metadata), ex=300)  # 5-min expiry
@@ -565,7 +565,7 @@ redis.set(f"file_meta:{file_id}", json.dumps(metadata), ex=300)  # 5-min expiry
 
 ---
 
-## Critical User Flow: File Upload & Sync
+## 23.13 Critical User Flow: File Upload & Sync
 
 1. **Client → API Gateway:** Initiates file upload.
 2. **API Gateway → Upload Service:** Begins upload session, returns Upload ID.
@@ -582,7 +582,7 @@ redis.set(f"file_meta:{file_id}", json.dumps(metadata), ex=300)  # 5-min expiry
 9. **Sync Service:** Publishes change event to Sync Queue. Pushes updates via WebSocket to all devices.
 10. **Client:** Receives confirmation after upload, deduplication, metadata, and sync complete.
 
-### Sequence Diagram
+### 23.13.1 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -651,7 +651,7 @@ sequenceDiagram
 
 ---
 
-## Tech & Infrastructure Stack
+## 23.14 Tech & Infrastructure Stack
 
 | Layer         | Technology                                |
 |---------------|-------------------------------------------|
@@ -662,7 +662,7 @@ sequenceDiagram
 | API Gateway   | Kong, NGINX                               |
 | Scaling       | Auto-scaling groups, Kubernetes HPA       |
 
-### Example: Kubernetes Deployment
+### 23.14.1 Example: Kubernetes Deployment
 
 ```yaml
 apiVersion: apps/v1
@@ -686,7 +686,7 @@ spec:
         - containerPort: 8080
 ```
 
-### Example: Kubernetes HPA
+### 23.14.2 Example: Kubernetes HPA
 
 ```yaml
 apiVersion: autoscaling/v2
@@ -711,9 +711,9 @@ spec:
 
 ---
 
-## Beyond MVP — What a Senior Designer Adds
+## 23.15 Beyond MVP — What a Senior Designer Adds
 
-### Block-Level Deduplication (Massive Cost Savings)
+### 23.15.1 Block-Level Deduplication (Massive Cost Savings)
 
 Naive: store each user's copy of "Annual_Report.pdf" separately. 1M users × 5MB = 5TB.
 
@@ -723,7 +723,7 @@ If users share documents, copies, or even similar files (templates), storage can
 
 **Pitfall:** dedup across users is a privacy concern (one user can probe whether another user has a specific file). Most modern systems dedup *per user* only.
 
-### Conflict Resolution: LWW vs Three-Way Merge
+### 23.15.2 Conflict Resolution: LWW vs Three-Way Merge
 
 When two devices edit the same file offline, you have a conflict. Two strategies:
 
@@ -734,7 +734,7 @@ When two devices edit the same file offline, you have a conflict. Two strategies
 
 For binary files, **LWW is the only realistic option** — there's no meaningful way to merge two divergent PowerPoints. Save both as "Annual_Report.pptx" and "Annual_Report (alice's conflicted copy 2024-06-15).pptx".
 
-### Offline Editing
+### 23.15.3 Offline Editing
 
 The client maintains a **local journal** of edits made while offline. On reconnect:
 
@@ -744,21 +744,21 @@ The client maintains a **local journal** of edits made while offline. On reconne
 
 This is where vector clocks / version vectors earn their keep: comparing "what does each side know?" rather than just timestamps.
 
-### Full-Text Search Across Documents
+### 23.15.4 Full-Text Search Across Documents
 
 Asynchronously index document text into Elasticsearch. PDF/DOCX extraction is a separate pipeline. **Pitfall:** search must respect access control — Alice should never see Bob's documents in her results, even if they match.
 
-### Thumbnails and Previews
+### 23.15.5 Thumbnails and Previews
 
 For images, videos, and documents: generate thumbnails asynchronously (image-magick, ffmpeg, libreoffice headless). Store at multiple sizes. Served from CDN with long TTLs (content is immutable).
 
-### Trash and Soft Delete
+### 23.15.6 Trash and Soft Delete
 
 Never hard-delete on user request. Move to "trash"; purge after 30 days. This is essential because users *will* delete things by mistake.
 
 Implementation: `deleted_at` column. Trash view = `WHERE deleted_at IS NOT NULL`. Background job hard-deletes after retention period.
 
-### Sharing and Permissions Model
+### 23.15.7 Sharing and Permissions Model
 
 Real sharing is complex:
 
@@ -772,40 +772,40 @@ Modeling this needs more than a `permissions` JSON field. Most production system
 
 ---
 
-## Tips & Tricks
+## 23.16 Tips & Tricks
 
-### Architecture & Scaling
+### 23.16.1 Architecture & Scaling
 
 - **Think in microservices:** Decompose by domain (upload, metadata, versioning, sync). Each service should scale independently and be stateless where possible.
 - **Design for scale from day 1:** Plan for sharding/partitioning of metadata DBs. Use object storage for infinite file scalability.
 - **Partition by user/folder:** Distributes load and eases scaling.
 
-### Uploads
+### 23.16.2 Uploads
 
 - **Chunk everything:** Not just uploads, but also downloads for large files.
 - **Make uploads resumable:** Track chunk progress and implement retry logic. Tune chunk size between 5–10MB.
 - **Chunk resumability:** Always track chunk upload progress and allow clients to retry failed chunks without restarting the whole upload.
 
-### Performance
+### 23.16.3 Performance
 
 - **Cache aggressively:** Metadata caching (Redis) for low-latency file listings and access. Permission checks should hit Redis, not DB.
 - **Metadata hotspots:** Use in-memory caching for folder listings and shared link lookups.
 - **Permission checks:** Cache ACLs in Redis to speed up frequent validations.
 - **Use pub/sub for sync:** Event-driven updates scale better than polling.
 
-### Storage Optimization
+### 23.16.4 Storage Optimization
 
 - **Separate metadata and file content:** Use object storage for files, databases for metadata.
 - **Deduplicate early:** Run deduplication on chunks before storage to cut costs. Check chunk hashes; maintain reference counts for garbage collection.
 - **Version only on change:** Only create new file versions when content actually changes (hash comparison).
 - **Cost control:** Apply storage lifecycle policies to delete old versions or trash after a retention period.
 
-### Reliability
+### 23.16.5 Reliability
 
 - **Design for failure:** Assume network and storage failures; design for resumable/retryable uploads.
 - **Enforce idempotency:** All APIs, especially for uploads and sync, must be idempotent to handle client retries safely.
 
-### Security & Observability
+### 23.16.6 Security & Observability
 
 - **Secure by default:** Enforce strict access controls, encrypt data at rest and in transit, audit all access.
 - **Monitor everything:** Track uploads, download times, errors, API performance. Use Prometheus, ELK, distributed tracing.
@@ -813,7 +813,7 @@ Modeling this needs more than a `permissions` JSON field. Most production system
 
 ---
 
-## Conclusion
+## 23.17 Conclusion
 
 Designing a cloud storage backend is a challenging, rewarding system design exercise. By combining a microservices architecture, robust object storage, hybrid SQL/NoSQL databases, aggressive caching, and dynamic scaling, we meet both the functional and non-functional requirements of a modern cloud storage system.
 
@@ -828,7 +828,7 @@ Designing a cloud storage backend is a challenging, rewarding system design exer
 
 ---
 
-## Further Reading
+## 23.18 Further Reading
 
 - [Dropbox Tech Blog: Magic Pocket Architecture](https://dropbox.tech/infrastructure/magic-pocket-architecture)
 - [Dropbox Tech Blog: Magic Pocket Part 1](https://dropbox.tech/infrastructure/magic-pocket-part-1)

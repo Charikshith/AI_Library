@@ -6,7 +6,7 @@ In this chapter we'll explore the foundational architectural patterns — Monoli
 
 ---
 
-## Learning Outcomes
+## 4.1 Learning Outcomes
 
 After reading this chapter, you'll be able to:
 
@@ -20,27 +20,27 @@ After reading this chapter, you'll be able to:
 
 ## Table of Contents
 
-1. [What is Software Architecture?](#what-is-software-architecture)
-2. [Key Design Considerations](#key-design-considerations)
-3. [Common Architectural Patterns](#common-architectural-patterns)
-   - [Monolithic Architecture](#1-monolithic-architecture)
-   - [Layered (N-Tier) Architecture](#2-layered-n-tier-architecture)
-   - [Client-Server Architecture](#3-client-server-architecture)
-   - [Microservices Architecture](#4-microservices-architecture)
-   - [Event-Driven Architecture](#5-event-driven-architecture)
-4. [Multi-Tier Architecture — A Deep Dive](#multi-tier-architecture--a-deep-dive)
-5. [Microservices Architecture — A Deep Dive](#microservices-architecture--a-deep-dive)
-6. [Event-Driven Architecture — A Deep Dive](#event-driven-architecture--a-deep-dive)
-7. [Factors Influencing Architecture Selection](#factors-influencing-architecture-selection)
-8. [Practical Trade-offs](#practical-trade-offs)
-9. [Tips & Tricks](#tips--tricks)
-10. [Sample Interview Questions](#sample-interview-questions)
-11. [Summary & Key Takeaways](#summary--key-takeaways)
-12. [Further Reading](#further-reading)
+- [4.2 What is Software Architecture?](#42-what-is-software-architecture)
+- [4.3 Key Design Considerations](#43-key-design-considerations)
+- [4.4 Common Architectural Patterns](#44-common-architectural-patterns)
+   - [4.4.1 Monolithic Architecture](#441-monolithic-architecture)
+   - [4.4.2 Layered (N-Tier) Architecture](#442-layered-n-tier-architecture)
+   - [4.4.3 Client-Server Architecture](#443-client-server-architecture)
+   - [4.4.4 Microservices Architecture](#444-microservices-architecture)
+   - [4.4.5 Event-Driven Architecture](#445-event-driven-architecture)
+- [4.5 Multi-Tier Architecture — A Deep Dive](#45-multi-tier-architecture--a-deep-dive)
+- [4.6 Microservices Architecture — A Deep Dive](#46-microservices-architecture--a-deep-dive)
+- [4.7 Event-Driven Architecture — A Deep Dive](#47-event-driven-architecture--a-deep-dive)
+- [4.8 Factors Influencing Architecture Selection](#48-factors-influencing-architecture-selection)
+- [4.10 Practical Trade-offs](#410-practical-trade-offs)
+- [4.11 Tips & Tricks](#411-tips--tricks)
+- [4.12 Sample Interview Questions](#412-sample-interview-questions)
+- [4.13 Summary & Key Takeaways](#413-summary--key-takeaways)
+- [4.14 Further Reading](#414-further-reading)
 
 ---
 
-## What is Software Architecture?
+## 4.2 What is Software Architecture?
 
 At its core, **software architecture** defines the **high-level structure** of your system — describing how its components are organized and how they interact. It encompasses:
 
@@ -52,7 +52,7 @@ At its core, **software architecture** defines the **high-level structure** of y
 
 > *"Software architecture is the high-level structure of a software system — much like a blueprint for a building."*
 
-### Why Does It Matter?
+### 4.2.1 Why Does It Matter?
 
 The architectural choices you make will directly impact:
 
@@ -65,7 +65,7 @@ The architectural choices you make will directly impact:
 
 ---
 
-## Key Design Considerations
+## 4.3 Key Design Considerations
 
 Before selecting an architecture, consider these core aspects:
 
@@ -80,13 +80,13 @@ Before selecting an architecture, consider these core aspects:
 
 ---
 
-## Common Architectural Patterns
+## 4.4 Common Architectural Patterns
 
-### 1. Monolithic Architecture
+### 4.4.1 Monolithic Architecture
 
 A **monolithic architecture** bundles all components of an application into a single, tightly-coupled unit where everything is deployed together.
 
-#### Diagram
+#### 4.4.1.1 Diagram
 
 ```mermaid
 flowchart TB
@@ -127,7 +127,7 @@ ASCII view:
 +-------------------------------+
 ```
 
-#### Example Code: Flask Monolith
+#### 4.4.1.2 Example Code: Flask Monolith
 
 ```python
 # Everything in one place (e.g., Flask app)
@@ -179,7 +179,7 @@ if __name__ == '__main__':
     app.run()
 ```
 
-#### Pros & Cons
+#### 4.4.1.3 Pros & Cons
 
 | Pros                                            | Cons                                                     |
 |-------------------------------------------------|----------------------------------------------------------|
@@ -188,7 +188,7 @@ if __name__ == '__main__':
 | No inter-service communication complexity       | High risk of system-wide failure due to a single bug     |
 | Easy to test                                    | Updates require redeploying the whole app                |
 
-#### Use Cases
+#### 4.4.1.4 Use Cases
 
 - Small-scale applications
 - Startups / MVPs
@@ -196,11 +196,11 @@ if __name__ == '__main__':
 
 ---
 
-### 2. Layered (N-Tier) Architecture
+### 4.4.2 Layered (N-Tier) Architecture
 
 **Layered architecture** divides the system into layers, each with a specific responsibility (e.g., Presentation, Business Logic, Data Access).
 
-#### Diagram
+#### 4.4.2.1 Diagram
 
 ```mermaid
 flowchart TD
@@ -244,7 +244,7 @@ ASCII view:
 +--------------------+
 ```
 
-#### Code Structure
+#### 4.4.2.2 Code Structure
 
 ```plaintext
 /app
@@ -256,7 +256,7 @@ ASCII view:
       user_repository.py
 ```
 
-#### Example Code: Python Flask 3-Layer
+#### 4.4.2.3 Example Code: Python Flask 3-Layer
 
 ```python
 # Presentation Layer
@@ -293,7 +293,7 @@ def fetch_user_from_db(user_id):
     pass
 ```
 
-#### Pros & Cons
+#### 4.4.2.4 Pros & Cons
 
 | Pros                                      | Cons                                         |
 |-------------------------------------------|----------------------------------------------|
@@ -301,7 +301,7 @@ def fetch_user_from_db(user_id):
 | Easier to maintain and scale              | Layers may become tightly coupled            |
 | Easy to test                              | Can become rigid; changes in one layer may impact others |
 
-#### Use Cases
+#### 4.4.2.5 Use Cases
 
 - Enterprise applications (CRM, ERP)
 - Banking / financial systems
@@ -309,11 +309,11 @@ def fetch_user_from_db(user_id):
 
 ---
 
-### 3. Client-Server Architecture
+### 4.4.3 Client-Server Architecture
 
 **Client-server** divides the system into clients (requesters) and servers (responders).
 
-#### Diagram
+#### 4.4.3.1 Diagram
 
 ```mermaid
 sequenceDiagram
@@ -329,20 +329,20 @@ graph LR
   Client2[Client] --> Server
 ```
 
-#### Examples
+#### 4.4.3.2 Examples
 
 - Web browser (client) communicates with web server (server).
 - Mobile app (client) calls backend API (server).
 - Email client connects to mail server.
 
-#### Pros & Cons
+#### 4.4.3.3 Pros & Cons
 
 | Pros                   | Cons                                 |
 |------------------------|--------------------------------------|
 | Centralized control    | Server can become a bottleneck       |
 | Easier management      | Limited offline capability           |
 
-#### Use Cases
+#### 4.4.3.4 Use Cases
 
 - Web applications
 - Email systems
@@ -350,7 +350,7 @@ graph LR
 
 ---
 
-### 4. Microservices Architecture
+### 4.4.4 Microservices Architecture
 
 **Microservices** is a software design pattern that structures an application as a collection of small, independent services. Each service is responsible for a specific business capability and can be deployed, updated, and scaled independently.
 
@@ -360,7 +360,7 @@ graph LR
 - **Loosely coupled:** Services interact via well-defined APIs, minimizing dependencies.
 - **Scalable & fault-tolerant:** Each microservice can be scaled horizontally and failures are isolated.
 
-#### Diagram
+#### 4.4.4.1 Diagram
 
 ```mermaid
 flowchart LR
@@ -425,7 +425,7 @@ ASCII view:
          +---API Gateway-----+
 ```
 
-#### Example Code
+#### 4.4.4.2 Example Code
 
 **Node.js (Express) microservice:**
 
@@ -501,12 +501,12 @@ if __name__ == "__main__":
     app.run(port=5001)
 ```
 
-#### Communication
+#### 4.4.4.3 Communication
 
 - **Synchronous:** REST, gRPC
 - **Asynchronous:** Message queues (Kafka, RabbitMQ)
 
-#### Pros & Cons
+#### 4.4.4.4 Pros & Cons
 
 | Pros                                        | Cons                                               |
 |---------------------------------------------|----------------------------------------------------|
@@ -515,7 +515,7 @@ if __name__ == "__main__":
 | Better fault isolation                      | Data consistency, distributed tracing challenges   |
 | Easier modular updates                      | Network overhead, more API call latency            |
 
-#### Use Cases
+#### 4.4.4.5 Use Cases
 
 - Large-scale applications
 - Cloud-native apps (Netflix, Amazon, Uber)
@@ -523,11 +523,11 @@ if __name__ == "__main__":
 
 ---
 
-### 5. Event-Driven Architecture
+### 4.4.5 Event-Driven Architecture
 
 In **event-driven architecture (EDA)**, components communicate asynchronously via events/messages rather than direct calls, enabling **loose coupling** and **real-time responses**.
 
-#### Diagram
+#### 4.4.5.1 Diagram
 
 ```mermaid
 flowchart LR
@@ -608,7 +608,7 @@ ASCII view:
 (e.g., Kafka, RabbitMQ)
 ```
 
-#### Example Code: Event Publishing
+#### 4.4.5.2 Example Code: Event Publishing
 
 **Node.js + Kafka:**
 
@@ -685,7 +685,7 @@ event = {'username': 'alice'}
 on_user_created(event)
 ```
 
-#### Pros & Cons
+#### 4.4.5.3 Pros & Cons
 
 | Pros                                       | Cons                                           |
 |--------------------------------------------|------------------------------------------------|
@@ -694,7 +694,7 @@ on_user_created(event)
 | Flexible and resilient                     | Requires good monitoring                       |
 | Scales well under high traffic             | Ensuring ordering / consistency is hard        |
 
-#### Use Cases
+#### 4.4.5.4 Use Cases
 
 - Real-time systems (chat, notifications)
 - IoT applications
@@ -703,11 +703,11 @@ on_user_created(event)
 
 ---
 
-## Multi-Tier Architecture — A Deep Dive
+## 4.5 Multi-Tier Architecture — A Deep Dive
 
 **Multi-tier architecture** is a software design pattern that organizes an application into multiple logical layers (or "tiers"), each responsible for a specific set of tasks. This pattern powers everything from small desktop apps to global-scale web services like Amazon and Netflix.
 
-### Key Benefits
+### 4.5.1 Key Benefits
 
 - **Separation of concerns:** Each layer handles a specific role, making the codebase easier to manage.
 - **Improved scalability:** Layers can be scaled independently.
@@ -716,7 +716,7 @@ on_user_created(event)
 - **Organizes applications into independent layers.**
 - **Used in:** Web apps, enterprise systems, cloud architectures.
 
-### Types of Multi-Tier Architectures
+### 4.5.2 Types of Multi-Tier Architectures
 
 | Type      | Layers                                       | Use Case                          |
 |-----------|----------------------------------------------|-----------------------------------|
@@ -724,7 +724,7 @@ on_user_created(event)
 | 3-Tier    | UI ↔ Business Logic ↔ DB                     | Standard web apps                 |
 | N-Tier    | UI ↔ API ↔ Logic ↔ Cache ↔ DB                | Large-scale / cloud, microservices|
 
-### 2-Tier Architecture
+### 4.5.3 2-Tier Architecture
 
 The client contains both the UI and application logic, communicating directly with the database.
 
@@ -768,7 +768,7 @@ conn.close()
 
 **Use case:** A desktop app directly querying a local SQL database.
 
-### 3-Tier Architecture
+### 4.5.4 3-Tier Architecture
 
 Adds a **Business Logic Layer** between the UI and the database.
 
@@ -861,7 +861,7 @@ project/
 
 **Use case:** Traditional web applications (React front-end → Node.js/Express API → PostgreSQL DB).
 
-### N-Tier Architecture
+### 4.5.5 N-Tier Architecture
 
 Extends 3-tier by adding specialized layers (caching, API gateway, microservices, etc.).
 
@@ -944,9 +944,9 @@ def get_product(product_id):
 
 **Use case:** Large-scale enterprise software, microservices-based applications, e-commerce platforms.
 
-### Performance and Scalability — How Do Tiers Impact Your System?
+### 4.5.6 Performance and Scalability — How Do Tiers Impact Your System?
 
-#### Latency Considerations
+#### 4.5.6.1 Latency Considerations
 
 - **More tiers = higher latency** (if not optimized).
 - Each request passes through more processing steps.
@@ -956,13 +956,13 @@ def get_product(product_id):
 - **Caching:** Store frequently accessed data for quick retrieval (e.g., Redis, Memcached).
 - **Load Balancing:** Distribute requests across servers/layers for resilience and speed.
 
-#### Scaling Strategies
+#### 4.5.6.2 Scaling Strategies
 
 - **Vertical Scaling:** Add resources to a single server (CPU, RAM).
 - **Horizontal Scaling:** Add more servers (better for high-traffic systems).
 - **Optimizations:** Caching, load balancing, and asynchronous messaging can reduce bottlenecks.
 
-### Multi-Tier — Tips and Tricks
+### 4.5.7 Multi-Tier — Tips and Tricks
 
 - **Keep layers independent:** Avoid tight coupling; use clear interfaces/APIs between layers.
 - **Optimize for latency:** Introduce caching and asynchronous processing where possible.
@@ -976,7 +976,7 @@ def get_product(product_id):
 - **Use load balancers:** Distribute API requests with load balancers for horizontal scaling.
 - **Secure APIs:** Validate and sanitize all input at the business logic layer.
 
-### Multi-Tier — Common Interview Questions
+### 4.5.8 Multi-Tier — Common Interview Questions
 
 1. What is Multi-Tier Architecture, and why is it used?
 2. How does a 2-Tier architecture differ from a 3-Tier architecture?
@@ -986,11 +986,11 @@ def get_product(product_id):
 
 ---
 
-## Microservices Architecture — A Deep Dive
+## 4.6 Microservices Architecture — A Deep Dive
 
 Modern applications must be scalable, resilient, and maintainable. As businesses grow and requirements change rapidly, traditional monolithic architectures often fail to keep up. Enter **Microservices Architecture** — adopted by giants like Netflix, Uber, and Amazon.
 
-### Monolith vs. Microservices Comparison
+### 4.6.1 Monolith vs. Microservices Comparison
 
 | Aspect          | Monolithic Architecture     | Microservices Architecture      |
 |-----------------|------------------------------|----------------------------------|
@@ -1020,7 +1020,7 @@ ASCII view of monolith vs microservices:
        +---------API / Events--+------------------------+
 ```
 
-### Identifying and Structuring Microservices
+### 4.6.2 Identifying and Structuring Microservices
 
 **Principles to follow:**
 
@@ -1046,7 +1046,7 @@ ASCII domain model:
 +-------------+      +------------+      +-----------+
 ```
 
-### Example: Node.js Microservice Skeleton
+### 4.6.3 Example: Node.js Microservice Skeleton
 
 ```js
 // orders-service/app.js (Express)
@@ -1066,11 +1066,11 @@ app.listen(port, () => {
 });
 ```
 
-### Communication Between Microservices
+### 4.6.4 Communication Between Microservices
 
 Microservices must interact to fulfill business flows. Two main models:
 
-#### Synchronous Communication
+#### 4.6.4.1 Synchronous Communication
 
 - **REST APIs**
   - Easy to implement and widely supported.
@@ -1124,7 +1124,7 @@ def get_orders(id):
     return response.json()
 ```
 
-#### Asynchronous Communication
+#### 4.6.4.2 Asynchronous Communication
 
 - **Event-driven messaging:** Services publish events (e.g., `OrderCreated`) to a message broker (Kafka, RabbitMQ).
 - Other services subscribe and react to these events.
@@ -1168,7 +1168,7 @@ producer.send('order-events', json.dumps({'order_id': 123, 'status': 'created'})
                                           [Inventory Service]
 ```
 
-### Key Challenges in Microservices
+### 4.6.5 Key Challenges in Microservices
 
 | Challenge             | Description                                                                       | Solutions / Tools                                |
 |-----------------------|-----------------------------------------------------------------------------------|--------------------------------------------------|
@@ -1178,7 +1178,7 @@ producer.send('order-events', json.dumps({'order_id': 123, 'status': 'created'})
 | Security              | Each service needs auth, encrypted communication                                  | OAuth2, JWT, mTLS, API Gateway                   |
 | Operational Complexity| Deployment, orchestration, and monitoring across many services                    | Kubernetes, robust DevOps                        |
 
-### Example: Distributed Tracing (OpenTelemetry — Node.js)
+### 4.6.6 Example: Distributed Tracing (OpenTelemetry — Node.js)
 
 ```js
 // Pseudo-setup for distributed tracing
@@ -1187,7 +1187,7 @@ const provider = new NodeTracerProvider();
 provider.register();
 ```
 
-### Scaling Microservices
+### 4.6.7 Scaling Microservices
 
 Microservices shine in scalability:
 
@@ -1233,13 +1233,13 @@ spec:
 +--------+  +--------+  +--------+
 ```
 
-### Real-World Examples
+### 4.6.8 Real-World Examples
 
 - **Netflix:** Streams video via hundreds of microservices — separate services for streaming, recommendations, personalization, scaled independently.
 - **Uber:** Ride-matching, payments, and navigation are different services.
 - **Amazon:** Search, payments, recommendations are modular, allowing real-time updates and massive scale.
 
-### Microservices — Tips for Success
+### 4.6.9 Microservices — Tips for Success
 
 - **Start with clear service boundaries:** Use DDD to avoid accidental monoliths.
 - **Automate everything:** CI/CD, testing, deployment, and monitoring.
@@ -1252,7 +1252,7 @@ spec:
 - **Right-size your services:** Too fine-grained increases complexity; too coarse defeats the purpose.
 - **Secure all endpoints** and encrypt inter-service traffic.
 
-### Microservices — Interview Questions
+### 4.6.10 Microservices — Interview Questions
 
 - What are microservices and how do they differ from monolithic architecture?
 - How do microservices communicate?
@@ -1268,7 +1268,7 @@ spec:
 
 ---
 
-## Event-Driven Architecture — A Deep Dive
+## 4.7 Event-Driven Architecture — A Deep Dive
 
 **Event-Driven Architecture (EDA)** is a system design paradigm where components communicate through events. Rather than making direct synchronous calls, services publish events (like `OrderPlaced` or `UserRegistered`) and other services consume these events to trigger their own logic.
 
@@ -1278,7 +1278,7 @@ spec:
 - **Loose coupling:** Components interact via events, not direct calls, so they evolve independently.
 - **Scalability & flexibility:** Easily handle spikes in workload without tight dependencies.
 
-### Why Use Event-Driven Architecture?
+### 4.7.1 Why Use Event-Driven Architecture?
 
 - **Asynchronous processing:** Services continue working while events are handled in the background.
 - **Loose coupling:** Components evolve independently, increasing system flexibility.
@@ -1286,7 +1286,7 @@ spec:
 - **Real-time responsiveness:** Ideal for finance, IoT, and notification systems.
 - **Complex workflows:** Multiple services respond to a single event, supporting sophisticated business processes.
 
-### Core Components
+### 4.7.2 Core Components
 
 | Component         | Role                                                          | Example                                  |
 |-------------------|---------------------------------------------------------------|------------------------------------------|
@@ -1295,7 +1295,7 @@ spec:
 | **Event Consumer**| Listens for events and performs actions                       | Payment service, Email notifier          |
 | **Event Storage** | (Optional) Persists events for replay, auditing, or recovery  | Kafka log, AWS Kinesis                   |
 
-#### Event Flow Sequence Diagram
+#### 4.7.2.1 Event Flow Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -1310,7 +1310,7 @@ sequenceDiagram
     Consumer->>Storage: (Optional) Query/Replay Event
 ```
 
-### Synchronous vs. Asynchronous Communication
+### 4.7.3 Synchronous vs. Asynchronous Communication
 
 | Synchronous                                 | Asynchronous (Event-Driven)               |
 |---------------------------------------------|-------------------------------------------|
@@ -1340,22 +1340,22 @@ def on_order_placed(event):
     process_payment(event.data)
 ```
 
-### Messaging Patterns
+### 4.7.4 Messaging Patterns
 
-#### 1. Publish-Subscribe (Pub/Sub)
+#### 4.7.4.1 Publish-Subscribe (Pub/Sub)
 
 - Producers send events to a "topic."
 - All subscribed consumers receive the event, usually once and in real-time.
 - Subscribers receive events in real-time but must be online.
 - **Example:** Notifications to all followers when a user posts.
 
-#### 2. Event Streaming
+#### 4.7.4.2 Event Streaming
 
 - Events are stored in an ordered log; consumers can replay and process at their own pace.
 - Useful when replayability or ordered processing is needed.
 - **Example:** Analytics, audit logs, IoT sensor data, website analytics tracking user activity over time.
 
-#### Mermaid Diagram: Pub/Sub vs. Event Streaming
+#### 4.7.4.3 Mermaid Diagram: Pub/Sub vs. Event Streaming
 
 ```mermaid
 graph LR
@@ -1377,7 +1377,7 @@ graph LR
   end
 ```
 
-#### Code Example: Pub/Sub with Python & Redis
+#### 4.7.4.4 Code Example: Pub/Sub with Python & Redis
 
 ```python
 # Producer
@@ -1395,7 +1395,7 @@ for message in pubsub.listen():
         print('Received:', message['data'])
 ```
 
-### Event-Driven Architecture in Action: E-Commerce Example
+### 4.7.5 Event-Driven Architecture in Action: E-Commerce Example
 
 **Workflow:**
 
@@ -1406,7 +1406,7 @@ for message in pubsub.listen():
 
 This enables independent scaling and failure isolation for each service.
 
-### Challenges in Event-Driven Systems
+### 4.7.6 Challenges in Event-Driven Systems
 
 | Challenge               | Description                                                               | Solutions / Tools                                 |
 |-------------------------|---------------------------------------------------------------------------|---------------------------------------------------|
@@ -1415,7 +1415,7 @@ This enables independent scaling and failure isolation for each service.
 | Fault Tolerance         | Handling failures without data loss                                       | Dead-letter queues, retries, event replay         |
 | Debugging Complexity    | Harder to trace asynchronous flows                                        | Distributed tracing (OpenTelemetry, Jaeger)       |
 
-### Best Practices
+### 4.7.7 Best Practices
 
 1. **Idempotent event processing:** Ensure consumers can safely process the same event multiple times.
 
@@ -1429,7 +1429,7 @@ if not already_processed(event_id):
 3. **Choose the right broker:** Kafka for high-throughput streaming, RabbitMQ for classic queuing, AWS EventBridge for serverless event routing.
 4. **Event versioning:** Use schema registries (e.g., [Apache Avro](https://avro.apache.org/)) to evolve event formats without breaking consumers.
 
-### Common Use Cases
+### 4.7.8 Common Use Cases
 
 - **Logging & auditing:** Capture all system changes for compliance and debugging.
 - **Real-time notifications:** Messaging apps, stock price updates, push notifications.
@@ -1437,7 +1437,7 @@ if not already_processed(event_id):
 - **IoT systems:** High-frequency, real-time sensor data processing.
 - **E-commerce order processing:** Orchestrate complex, multi-step order workflows.
 
-### Event-Driven — Tips & Tricks
+### 4.7.9 Event-Driven — Tips & Tricks
 
 - **Always make consumers idempotent:** Use unique event IDs or database constraints.
 - **Monitor event flows:** Use distributed tracing tools (Jaeger, OpenTelemetry).
@@ -1449,7 +1449,7 @@ if not already_processed(event_id):
 - **Compensating transactions:** Use when eventual consistency isn't enough — e.g., refund a payment if order fails.
 - **Testing:** Simulate failure scenarios and duplicate events during testing.
 
-### Event-Driven — Interview Prep
+### 4.7.10 Event-Driven — Interview Prep
 
 - Explain the difference between Pub/Sub and Event Streaming.
 - How do you ensure idempotency in event consumers?
@@ -1459,7 +1459,7 @@ if not already_processed(event_id):
 
 ---
 
-## Factors Influencing Architecture Selection
+## 4.8 Factors Influencing Architecture Selection
 
 When choosing an architectural style, consider:
 
@@ -1477,7 +1477,7 @@ When choosing an architectural style, consider:
 | Microservices    | Large-scale, cloud-native, independent scaling | Small/simple projects               |
 | Event-Driven     | Real-time, IoT, async, scalable systems        | When strong consistency is needed   |
 
-### Example: When to Use Which?
+### 4.8.1 Example: When to Use Which?
 
 - **Building a CRM for a small business?** Go for **Layered Architecture**.
 - **Launching an MVP for a startup?** Start with **Monolithic**; split into microservices if it grows.
@@ -1486,17 +1486,17 @@ When choosing an architectural style, consider:
 
 ---
 
-## Patterns Worth Knowing (Beyond the Big Four)
+## 4.9 Patterns Worth Knowing (Beyond the Big Four)
 
 The four main patterns above (monolith, layered, microservices, event-driven) are *categories*. The patterns below are *specific techniques* that show up inside or across those categories.
 
-### Modular Monolith
+### 4.9.1 Modular Monolith
 
 A monolith **internally organized as if it were microservices** — clear module boundaries, no cross-module DB access, well-defined interfaces — but deployed as a single binary.
 
 **Why it matters:** combines monolith's deployment simplicity with microservices' modularity. Often the *correct* starting point for a new system. You can split it into actual services later if growth demands it.
 
-### Strangler Fig — How to Migrate Monolith → Microservices
+### 4.9.2 Strangler Fig — How to Migrate Monolith → Microservices
 
 Named after the strangler fig tree that grows around an existing tree and eventually replaces it. Coined by Martin Fowler.
 
@@ -1508,7 +1508,7 @@ Named after the strangler fig tree that grows around an existing tree and eventu
 
 > **Why it works:** no "big bang" rewrite (which almost always fails). You ship incrementally, and at any point you can stop. The new code never has to be perfect because the monolith is always the fallback.
 
-### Backend for Frontend (BFF)
+### 4.9.3 Backend for Frontend (BFF)
 
 Each frontend (web, iOS, Android, smart TV) gets its **own dedicated backend service** that aggregates calls to underlying microservices, shaping responses for that frontend's needs.
 
@@ -1520,7 +1520,7 @@ Clients ──→     ├─ BFF for iOS ─┤ ──→ Microservices
                 └─ BFF for TV  ─┘
 ```
 
-### CQRS (Command Query Responsibility Segregation)
+### 4.9.4 CQRS (Command Query Responsibility Segregation)
 
 **Separate the model used for writes from the model used for reads.** Writes go through a "command" model (often normalized, transactional); reads go through a "query" model (often denormalized, materialized views).
 
@@ -1528,7 +1528,7 @@ Clients ──→     ├─ BFF for iOS ─┤ ──→ Microservices
 
 **Trade-off:** complexity. Don't reach for CQRS unless your read/write asymmetry is extreme.
 
-### Event Sourcing
+### 4.9.5 Event Sourcing
 
 Instead of storing the *current state*, store the *sequence of events* that produced it. Current state is derived by replaying events.
 
@@ -1538,7 +1538,7 @@ Instead of storing the *current state*, store the *sequence of events* that prod
 
 > Often paired with CQRS: events are the write model, projections are the read model.
 
-### Saga Pattern (Distributed Transactions Without 2PC)
+### 4.9.6 Saga Pattern (Distributed Transactions Without 2PC)
 
 In a monolith, you wrap multi-step operations in a database transaction. In microservices, **you can't** — each service has its own DB. The **Saga pattern** is the answer.
 
@@ -1558,7 +1558,7 @@ Two implementation styles:
 - **Choreography:** each service listens for events and decides what to do. No central coordinator. Simple but hard to reason about at scale.
 - **Orchestration:** a central "saga orchestrator" service tells each step what to do. Easier to debug; one more service to operate.
 
-### When NOT to Use Microservices
+### 4.9.7 When NOT to Use Microservices
 
 A microservices anti-checklist. Stay with a monolith if:
 
@@ -1572,7 +1572,7 @@ A microservices anti-checklist. Stay with a monolith if:
 
 ---
 
-## Practical Trade-offs
+## 4.10 Practical Trade-offs
 
 | Pattern         | Pros                  | Cons                              | Use Cases                  |
 |-----------------|-----------------------|-----------------------------------|----------------------------|
@@ -1583,11 +1583,11 @@ A microservices anti-checklist. Stay with a monolith if:
 
 ---
 
-## Tips & Tricks
+## 4.11 Tips & Tricks
 
 A merged master list of advice across all patterns.
 
-### General
+### 4.11.1 General
 
 - **Start simple, scale out.** Begin with monolithic or layered; refactor to microservices when growth demands.
 - **Document boundaries.** In microservices, define clear API contracts and data ownership to avoid integration mess.
@@ -1595,7 +1595,7 @@ A merged master list of advice across all patterns.
 - **Design for change.** Assume requirements will change; favor modular, loosely-coupled designs.
 - **Choose the right pattern.** Not every problem needs microservices. Start with monolithic or multi-tier, and migrate when scaling demands it.
 
-### Automation & Observability
+### 4.11.2 Automation & Observability
 
 - **Automate everything.** Especially with microservices: CI/CD, monitoring, automated testing.
 - **Monitor performance.** Use tools like Prometheus, Grafana, or Datadog to track bottlenecks and system health.
@@ -1603,37 +1603,37 @@ A merged master list of advice across all patterns.
 - **Prepare for debugging.** Implement distributed tracing (OpenTelemetry, Jaeger) early.
 - **Automate testing.** Especially in event-driven and microservices systems, automated integration tests are vital.
 
-### Communication
+### 4.11.3 Communication
 
 - **Choose the right communication pattern.** Use **REST/gRPC** for synchronous, **Kafka/RabbitMQ** for async/event-driven.
 - **Use API gateways** to manage requests in microservices architectures.
 - **Document interfaces** — clearly specify contracts between services and layers.
 - **Version your contracts** — don't break clients when updating APIs.
 
-### Reliability
+### 4.11.4 Reliability
 
 - **Handle failures gracefully.** In event-driven designs, use **dead-letter queues** and **idempotent handlers**.
 - **Embrace eventual consistency** in distributed/event-driven systems — design for eventual rather than immediate.
 - **Use retries, circuit breakers, and graceful degradation** for distributed systems.
 - **Consistency vs. Availability** — understand the CAP theorem and make informed trade-offs.
 
-### Security
+### 4.11.5 Security
 
 - **Security first.** Isolate services, secure APIs, and encrypt inter-service communication.
 - Authentication, authorization, and data protection — especially as services multiply.
 
-### Data
+### 4.11.6 Data
 
 - **Data ownership in microservices.** Each microservice should own its database. Avoid sharing schemas.
 - **Plan for schema changes.** Use event versioning or backward-compatible messages in EDA.
 
-### Evolution
+### 4.11.7 Evolution
 
 - **Plan for evolution.** Choose an architecture that can evolve as your business needs change.
 
 ---
 
-## Sample Interview Questions
+## 4.12 Sample Interview Questions
 
 - What are the differences between monolithic, layered, microservices, and event-driven architectures?
 - How does a 2-Tier architecture differ from a 3-Tier architecture?
@@ -1651,7 +1651,7 @@ A merged master list of advice across all patterns.
 
 ---
 
-## Summary & Key Takeaways
+## 4.13 Summary & Key Takeaways
 
 - **Monolithic:** Simple, good for small apps or prototypes; struggles at scale.
 - **Layered (N-Tier):** Clear separation, maintainable; can have performance overhead.
@@ -1663,7 +1663,7 @@ A merged master list of advice across all patterns.
 
 ---
 
-## Further Reading
+## 4.14 Further Reading
 
 - [Martin Fowler — Microservices](https://martinfowler.com/articles/microservices.html)
 - [Martin Fowler — Patterns of Enterprise Application Architecture](https://martinfowler.com/eaaCatalog/)

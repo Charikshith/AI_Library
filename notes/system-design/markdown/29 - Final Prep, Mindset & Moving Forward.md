@@ -6,18 +6,18 @@ Welcome to the final chapter of your system design journey! Whether you're prepp
 
 ## Table of Contents
 
-1. [The Right Mindset for System Design Interviews](#the-right-mindset-for-system-design-interviews)
-2. [A 4-Step Framework for Structured Responses](#a-4-step-framework-for-structured-responses)
-3. [Handling Open-Ended & Evolving Questions](#handling-open-ended--evolving-questions)
-4. [Communicating Trade-Offs & Constraints Effectively](#communicating-trade-offs--constraints-effectively)
-5. [Simulating Interviews & Building Fluency](#simulating-interviews--building-fluency)
-6. [Wrapping Up & Moving Forward](#wrapping-up--moving-forward)
-7. [Tips and Tricks](#tips-and-tricks)
-8. [Further Reading](#further-reading)
+- [29.1 The Right Mindset for System Design Interviews](#291-the-right-mindset-for-system-design-interviews)
+- [29.2 A 4-Step Framework for Structured Responses](#292-a-4-step-framework-for-structured-responses)
+- [29.3 Handling Open-Ended & Evolving Questions](#293-handling-open-ended--evolving-questions)
+- [29.4 Communicating Trade-Offs & Constraints Effectively](#294-communicating-trade-offs--constraints-effectively)
+- [29.5 Simulating Interviews & Building Fluency](#295-simulating-interviews--building-fluency)
+- [29.6 Wrapping Up & Moving Forward](#296-wrapping-up--moving-forward)
+- [29.12 Tips and Tricks](#2912-tips-and-tricks)
+- [29.13 Further Reading](#2913-further-reading)
 
 ---
 
-## The Right Mindset for System Design Interviews
+## 29.1 The Right Mindset for System Design Interviews
 
 Interviewers aren't just seeking the "right" architecture — they're evaluating **clarity of thought, depth of trade-offs, communication skills, and structured problem-solving.** Here's how to stand out:
 
@@ -29,7 +29,7 @@ Interviewers aren't just seeking the "right" architecture — they're evaluating
 
 ---
 
-## A 4-Step Framework for Structured Responses
+## 29.2 A 4-Step Framework for Structured Responses
 
 A clear structure keeps your solution coherent and adaptable, even as interviewers introduce curveballs. Use this **repeatable 4-step framework** (from Chapter 15):
 
@@ -38,7 +38,7 @@ A clear structure keeps your solution coherent and adaptable, even as interviewe
 3. **High-Level Design** — Sketch out main components, data flow, and key interactions.
 4. **Strategic Tech/Infra Decisions** — Justify your choice of tools, patterns, and protocols.
 
-### Example: Designing a URL Shortener
+### 29.2.1 Example: Designing a URL Shortener
 
 ```mermaid
 graph TD;
@@ -56,7 +56,7 @@ graph TD;
 
 ---
 
-## Handling Open-Ended & Evolving Questions
+## 29.3 Handling Open-Ended & Evolving Questions
 
 System design interviews are **intentionally ambiguous** — interviewers want to see how you react when requirements evolve.
 
@@ -71,11 +71,11 @@ System design interviews are **intentionally ambiguous** — interviewers want t
 
 ---
 
-## Communicating Trade-Offs & Constraints Effectively
+## 29.4 Communicating Trade-Offs & Constraints Effectively
 
 There's **no perfect design** — only the best fit for the given constraints. Always explain *why* you make each decision.
 
-### Examples
+### 29.4.1 Examples
 
 **SQL vs NoSQL?**
 
@@ -99,7 +99,7 @@ There's **no perfect design** — only the best fit for the given constraints. A
 
 ---
 
-## Simulating Interviews & Building Fluency
+## 29.5 Simulating Interviews & Building Fluency
 
 **Practice like you play.**
 
@@ -108,7 +108,7 @@ There's **no perfect design** — only the best fit for the given constraints. A
 - **Mock interviews:** Pair with peers, join circles, seek feedback.
 - **Templates:** Use checklists for requirements and scale estimation.
 
-### Sample Requirements Gathering Template
+### 29.5.1 Sample Requirements Gathering Template
 
 ```markdown
 - Functional Needs:
@@ -122,14 +122,14 @@ There's **no perfect design** — only the best fit for the given constraints. A
   - [ ] Scalability (X requests/sec)
 ```
 
-### Prepare for Both Interview Formats
+### 29.5.2 Prepare for Both Interview Formats
 
 - **Remote interviews:** Practice with screen sharing and diagramming tools.
 - **In-person interviews:** Practice whiteboarding and verbal reasoning.
 
 ---
 
-## Wrapping Up & Moving Forward
+## 29.6 Wrapping Up & Moving Forward
 
 **You've learned:**
 
@@ -148,7 +148,7 @@ There's **no perfect design** — only the best fit for the given constraints. A
 
 ---
 
-## Interview Formats at Top Companies (What to Expect)
+## 29.7 Interview Formats at Top Companies (What to Expect)
 
 Different companies have meaningfully different interview formats. Knowing this helps you tailor your approach.
 
@@ -162,7 +162,7 @@ Different companies have meaningfully different interview formats. Knowing this 
 
 > **General pattern:** 45-60 min for design; expect 5-min intro + 35-50 min design + 5-min Q&A from you.
 
-## How Senior+ Candidates Are Evaluated Differently
+## 29.8 How Senior+ Candidates Are Evaluated Differently
 
 | Level     | Expected behavior                                                                |
 |-----------|-----------------------------------------------------------------------------------|
@@ -173,7 +173,7 @@ Different companies have meaningfully different interview formats. Knowing this 
 
 The interviewer is calibrating you to a level. **You can't just "talk smarter" — you have to demonstrate the behaviors of that level.**
 
-## When You Get Stuck
+## 29.9 When You Get Stuck
 
 It happens. Three moves:
 
@@ -183,7 +183,7 @@ It happens. Three moves:
 
 **Never freeze.** Silence past 10 seconds is worse than thinking out loud.
 
-## After the Interview — Reflect
+## 29.10 After the Interview — Reflect
 
 Whether you passed or failed, write down within 24 hours:
 
@@ -194,7 +194,7 @@ Whether you passed or failed, write down within 24 hours:
 
 Over 5-10 interviews, patterns emerge. This is how you get *much* better, not just more practiced.
 
-## Mock Interview Resources
+## 29.11 Mock Interview Resources
 
 - **Free / peer-based:** [interviewing.io](https://interviewing.io) (anonymous, peer + ex-FAANG), [Pramp](https://www.pramp.com).
 - **Paid:** Exponent, Educative, ByteByteGo.
@@ -204,7 +204,7 @@ Over 5-10 interviews, patterns emerge. This is how you get *much* better, not ju
 
 ---
 
-## Tips and Tricks
+## 29.12 Tips and Tricks
 
 - **Always clarify ambiguous requirements** before jumping into design.
 - **Narrate your thinking:** Don't leave your reasoning silent — talk through trade-offs and options.
@@ -222,7 +222,7 @@ Over 5-10 interviews, patterns emerge. This is how you get *much* better, not ju
 
 ---
 
-## Further Reading
+## 29.13 Further Reading
 
 - [ByteByteGo](https://bytebytego.com/)
 - [InfoQ](https://infoq.com/)

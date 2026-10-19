@@ -14,7 +14,7 @@ This chapter covers:
 
 ---
 
-## Learning Outcomes
+## 9.1 Learning Outcomes
 
 After reading this chapter, you'll be able to:
 
@@ -28,33 +28,33 @@ After reading this chapter, you'll be able to:
 
 ## Table of Contents
 
-1. [Introduction to System Reliability](#introduction-to-system-reliability)
-2. [Core Concepts: Reliability, Availability & Durability](#core-concepts-reliability-availability--durability)
-3. [Key Metrics: MTBF, MTTR, SLAs](#key-metrics-mtbf-mttr-slas)
-4. [Reliability in Distributed & Cloud-Native Systems](#reliability-in-distributed--cloud-native-systems)
-5. [High Availability, Fault Tolerance & Failover](#high-availability-fault-tolerance--failover)
-6. [Graceful Degradation](#graceful-degradation)
-7. [High Availability Patterns](#high-availability-patterns)
-8. [Designing for Redundancy](#designing-for-redundancy)
-9. [Health Monitoring & Self-Healing Systems](#health-monitoring--self-healing-systems)
-10. [Backup & Recovery Strategies](#backup--recovery-strategies)
-11. [Disaster Recovery in Practice](#disaster-recovery-in-practice)
-12. [Combined Tips & Tricks](#combined-tips--tricks)
-13. [Sample Interview Questions](#sample-interview-questions)
-14. [Summary & Key Takeaways](#summary--key-takeaways)
-15. [Further Reading](#further-reading)
+- [9.2 Introduction to System Reliability](#92-introduction-to-system-reliability)
+- [9.3 Core Concepts: Reliability, Availability & Durability](#93-core-concepts-reliability-availability--durability)
+- [9.4 Key Metrics: MTBF, MTTR, SLAs](#94-key-metrics-mtbf-mttr-slas)
+- [9.5 Reliability in Distributed & Cloud-Native Systems](#95-reliability-in-distributed--cloud-native-systems)
+- [9.6 High Availability, Fault Tolerance & Failover](#96-high-availability-fault-tolerance--failover)
+- [9.7 Graceful Degradation](#97-graceful-degradation)
+- [9.8 High Availability Patterns](#98-high-availability-patterns)
+- [9.9 Designing for Redundancy](#99-designing-for-redundancy)
+- [9.10 Health Monitoring & Self-Healing Systems](#910-health-monitoring--self-healing-systems)
+- [9.11 Backup & Recovery Strategies](#911-backup--recovery-strategies)
+- [9.12 Disaster Recovery in Practice](#912-disaster-recovery-in-practice)
+- [9.18 Combined Tips & Tricks](#918-combined-tips--tricks)
+- [9.19 Sample Interview Questions](#919-sample-interview-questions)
+- [9.20 Summary & Key Takeaways](#920-summary--key-takeaways)
+- [9.21 Further Reading](#921-further-reading)
 
 ---
 
-## Introduction to System Reliability
+## 9.2 Introduction to System Reliability
 
 Modern users expect systems to be **always available, consistent, and trustworthy**. Any downtime can result in financial loss, reputational damage, and erosion of user trust. Reliability isn't just about preventing failures — it's about how quickly and gracefully a system can recover when something does go wrong.
 
 ---
 
-## Core Concepts: Reliability, Availability & Durability
+## 9.3 Core Concepts: Reliability, Availability & Durability
 
-### What is System Reliability?
+### 9.3.1 What is System Reliability?
 
 Reliability is a system's ability to **operate continuously without failure**. It encompasses:
 
@@ -63,7 +63,7 @@ Reliability is a system's ability to **operate continuously without failure**. I
 - **Fault Tolerance:** The ability to withstand failures without total disruption.
 - **Availability / Uptime:** The percentage of time the system is working and accessible.
 
-### Availability vs. Durability
+### 9.3.2 Availability vs. Durability
 
 | Concept       | Description                                     | Example                              |
 |---------------|-------------------------------------------------|--------------------------------------|
@@ -81,7 +81,7 @@ Reliability is a system's ability to **operate continuously without failure**. I
 
 ---
 
-## Key Metrics: MTBF, MTTR, SLAs
+## 9.4 Key Metrics: MTBF, MTTR, SLAs
 
 - **MTBF (Mean Time Between Failures):** Average time a system runs before encountering a failure. *Higher MTBF = more stable system.*
 - **MTTR (Mean Time To Recovery):** Average time to recover from a failure. *Lower MTTR = faster recovery.*
@@ -97,7 +97,7 @@ graph TD
     C -->|MTBF| D[Next Failure]
 ```
 
-### SLAs (Service Level Agreements)
+### 9.4.1 SLAs (Service Level Agreements)
 
 Contractual guarantees about system performance (e.g., 99.9% uptime, response time, error rate).
 
@@ -105,7 +105,7 @@ Contractual guarantees about system performance (e.g., 99.9% uptime, response ti
 
 Common metrics: availability, response time, error rate.
 
-### Code Example: MTBF/MTTR Calculation
+### 9.4.2 Code Example: MTBF/MTTR Calculation
 
 ```python
 import statistics
@@ -121,9 +121,9 @@ print(f"MTBF: {mtbf} hrs, MTTR: {mttr} hrs")
 
 ---
 
-## Reliability in Distributed & Cloud-Native Systems
+## 9.5 Reliability in Distributed & Cloud-Native Systems
 
-### Impact of Reliability on System Design
+### 9.5.1 Impact of Reliability on System Design
 
 Design decisions that affect reliability:
 
@@ -132,7 +132,7 @@ Design decisions that affect reliability:
 - **Retry mechanisms and circuit breakers.**
 - **Distributed design patterns:** Replication, quorum.
 
-### Reliability in Distributed Systems
+### 9.5.2 Reliability in Distributed Systems
 
 **Challenges:**
 
@@ -146,7 +146,7 @@ Design decisions that affect reliability:
 - Ensure **fault isolation.**
 - Implement **replication** & **consensus algorithms** (e.g., Paxos, Raft).
 
-### Reliability in Cloud-Native Systems
+### 9.5.3 Reliability in Cloud-Native Systems
 
 Cloud infrastructure is inherently unreliable.
 
@@ -160,9 +160,9 @@ Cloud infrastructure is inherently unreliable.
 
 ---
 
-## High Availability, Fault Tolerance & Failover
+## 9.6 High Availability, Fault Tolerance & Failover
 
-### Redundancy
+### 9.6.1 Redundancy
 
 Redundancy prevents single points of failure. Types include:
 
@@ -178,7 +178,7 @@ LB1 --> S2[Server 2]
 LB1 --> S3[Server 3]
 ```
 
-### Redundancy Strategies
+### 9.6.2 Redundancy Strategies
 
 | Strategy           | Description                                          | Use Case                         |
 |--------------------|------------------------------------------------------|----------------------------------|
@@ -186,7 +186,7 @@ LB1 --> S3[Server 3]
 | **Active-Active**  | Multiple nodes handle requests together              | Load balancing across regions    |
 | **Active-Passive** | One active node, standby nodes activated on failure  | Standby backup DB or service     |
 
-#### N+1 Redundancy
+#### 9.6.2.1 N+1 Redundancy
 
 - One more instance than needed (e.g., 3 servers for a 2-server load).
 - If any one fails, the system remains available.
@@ -197,7 +197,7 @@ Provisioned = N+1
 If one fails, N remain to serve traffic.
 ```
 
-#### Active-Active
+#### 9.6.2.2 Active-Active
 
 - All nodes are active, sharing the workload.
 - High availability and load distribution.
@@ -221,7 +221,7 @@ User --> [LB] --> Node A (active)
                     |--> Node C (active)
 ```
 
-#### Active-Passive
+#### 9.6.2.3 Active-Passive
 
 - Only one node is active; others are on standby.
 - On failure, a passive node becomes active.
@@ -246,7 +246,7 @@ User --> [LB] --> Node A (active)
 
 ---
 
-## Graceful Degradation
+## 9.7 Graceful Degradation
 
 Graceful degradation is about keeping **core functionality alive** during partial failures, even if some features are unavailable.
 
@@ -288,9 +288,9 @@ def handle_request():
 
 ---
 
-## High Availability Patterns
+## 9.8 High Availability Patterns
 
-### Load Balancing
+### 9.8.1 Load Balancing
 
 Distribute traffic evenly across backend nodes. Essential for removing bottlenecks and handling node failures.
 
@@ -308,14 +308,14 @@ server {
 }
 ```
 
-### Replication
+### 9.8.2 Replication
 
 Replicate data across nodes/data centers for availability and durability.
 
 - **Synchronous replication:** Zero data loss, but higher latency.
 - **Asynchronous replication:** Lower latency, but possible data loss on failure.
 
-### Failover
+### 9.8.3 Failover
 
 Automatically switches to a backup node if a primary fails.
 
@@ -329,7 +329,7 @@ livenessProbe:
   periodSeconds: 3
 ```
 
-### High Availability Diagram
+### 9.8.4 High Availability Diagram
 
 ```mermaid
 flowchart LR
@@ -347,19 +347,19 @@ flowchart LR
 
 ---
 
-## Designing for Redundancy
+## 9.9 Designing for Redundancy
 
-### Redundant Components
+### 9.9.1 Redundant Components
 
 Design with multiple instances of key components (servers, databases, etc.) to avoid single points of failure.
 
-### Geographical Redundancy
+### 9.9.2 Geographical Redundancy
 
 - Use **multiple data centers** or **cloud regions** for disaster recovery.
 - Ensures high availability and resilience during regional outages.
 - Distribute components across multiple regions to handle data center/region outages.
 
-### Automated Failover
+### 9.9.3 Automated Failover
 
 - Ensure **failover happens automatically** without manual intervention.
 - Enables seamless service continuity when a primary system fails.
@@ -390,14 +390,14 @@ flowchart TD
 
 ---
 
-## Health Monitoring & Self-Healing Systems
+## 9.10 Health Monitoring & Self-Healing Systems
 
-### Health Monitoring
+### 9.10.1 Health Monitoring
 
 - Track server uptime, API responses, error rates, CPU/memory usage.
 - Alert on anomalies before users notice.
 
-### Self-Healing
+### 9.10.2 Self-Healing
 
 - Systems that **automatically recover** (restart, redeploy, reroute).
 - E.g., Kubernetes restarts crashed pods automatically.
@@ -418,9 +418,9 @@ livenessProbe:
 
 ---
 
-## Backup & Recovery Strategies
+## 9.11 Backup & Recovery Strategies
 
-### What and Why
+### 9.11.1 What and Why
 
 - **Backup:** Creating copies of data to protect against loss.
 - **Recovery:** Restoring data after failure/corruption.
@@ -436,7 +436,7 @@ livenessProbe:
 
 > **Remember:** Backup and recovery **complement** redundancy and replication; they're not substitutes.
 
-### Backup Types
+### 9.11.2 Backup Types
 
 | Type             | Description                          | Pros                | Cons                  |
 |------------------|--------------------------------------|---------------------|-----------------------|
@@ -456,7 +456,7 @@ timeline
 
 **Hybrid approach example:** Weekly full backups, daily incremental backups.
 
-### Recovery Models: Cold, Warm, Hot
+### 9.11.3 Recovery Models: Cold, Warm, Hot
 
 | Model    | Resources Provisioned   | Downtime         | Cost     | Use Case                |
 |----------|-------------------------|------------------|----------|-------------------------|
@@ -471,14 +471,14 @@ graph TD
     D[Offline Backups] -. Restore .-> A
 ```
 
-### Key Metrics: RTO & RPO
+### 9.11.4 Key Metrics: RTO & RPO
 
 - **RTO (Recovery Time Objective):** How quickly can you recover? (e.g., 1 hour)
 - **RPO (Recovery Point Objective):** How much data loss is acceptable? (e.g., 15 minutes)
 
 > **Shorter RTO/RPO = higher cost and complexity.**
 
-#### Real-World Mapping
+#### 9.11.4.1 Real-World Mapping
 
 - **Banking system:** RTO = 5 minutes, RPO = near zero.
 - **Internal tool:** RTO = 1 day, RPO = 12 hours.
@@ -494,7 +494,7 @@ gantt
     Recovery In Progress  :         des3, 04:30, 01:00
 ```
 
-### Designing Your Backup & Recovery Strategy
+### 9.11.5 Designing Your Backup & Recovery Strategy
 
 **Key trade-offs:**
 
@@ -510,7 +510,7 @@ gantt
 - **Incremental:** Daily at 2 AM.
 - **Retention:** 30 days on disk, 1 year in cloud cold storage.
 
-### Best Practices: The 3-2-1 Rule
+### 9.11.6 Best Practices: The 3-2-1 Rule
 
 - **3** copies of your data (primary + 2 backups).
 - **2** different storage media (e.g., disk, cloud).
@@ -521,7 +521,7 @@ gantt
 - **Automate everything:** Automate both backup creation and restore testing. Monitor backup jobs and alert on failures.
 - **Encrypt data:** Use strong encryption at rest (AES-256) and in transit (TLS).
 
-### Sample Backup Automation Code
+### 9.11.7 Sample Backup Automation Code
 
 **Automated daily database backup with AWS S3 (Python):**
 
@@ -567,11 +567,11 @@ psql mydb < mydb_backup_20230601_020000.sql
 
 ---
 
-## Disaster Recovery in Practice
+## 9.12 Disaster Recovery in Practice
 
 In today's digital world, downtime is expensive — not just in dollars, but also in lost trust and missed opportunities. Mission-critical systems in finance, healthcare, e-commerce, and beyond must be designed to recover gracefully from disasters — hardware failures, cyberattacks, or entire regional outages.
 
-### Why Disaster Recovery REALLY Matters
+### 9.12.1 Why Disaster Recovery REALLY Matters
 
 - **Downtime costs money & trust:** Even a few minutes of outage can mean lost revenue and broken user trust.
 - **Beyond backups:** DR is not just about saving data; it's about keeping the *whole system* resilient and available.
@@ -579,7 +579,7 @@ In today's digital world, downtime is expensive — not just in dollars, but als
 
 > DR builds on your backup strategy but focuses on *system-level* recovery — bringing apps, services, and infrastructure *all back online*.
 
-### DR for Mission-Critical Applications
+### 9.12.2 DR for Mission-Critical Applications
 
 **Example targets:**
 
@@ -589,14 +589,14 @@ In today's digital world, downtime is expensive — not just in dollars, but als
 | E-commerce Cart | < 15 min    | < 5 minutes   |
 | Social Media    | < 1 hour    | < 15 minutes  |
 
-### DR Architecture: Key Layers of Redundancy
+### 9.12.3 DR Architecture: Key Layers of Redundancy
 
 - **Compute redundancy:** Multiple servers/VMs/containers.
 - **Storage redundancy:** Replicated databases, distributed storage.
 - **Network redundancy:** Multiple paths, routers, ISPs.
 - **Geo-redundancy:** Multiple regions/data centers.
 
-### Backup vs. Failover: Why You Need Both
+### 9.12.4 Backup vs. Failover: Why You Need Both
 
 - **Backup:** Restores *data* after corruption, deletion, or ransomware.
 - **Failover:** Keeps *services* running by switching to healthy infrastructure during a failure.
@@ -625,7 +625,7 @@ In today's digital world, downtime is expensive — not just in dollars, but als
       Complete Resilience
 ```
 
-### Recovery Automation and Testing
+### 9.12.5 Recovery Automation and Testing
 
 > *"If you haven't tested your DR plan, you don't really have one."*
 
@@ -658,7 +658,7 @@ def promote_secondary():
     ])
 ```
 
-### Circuit Breaker Pattern
+### 9.12.6 Circuit Breaker Pattern
 
 ```python
 class CircuitBreaker:
@@ -683,7 +683,7 @@ class CircuitBreaker:
         self.open = False
 ```
 
-### Geo-Distributed Systems: DR Challenges
+### 9.12.7 Geo-Distributed Systems: DR Challenges
 
 Geo-distribution increases resilience but also complexity:
 
@@ -692,7 +692,7 @@ Geo-distribution increases resilience but also complexity:
 - **Regulatory constraints:** Laws like GDPR may restrict where data can be stored.
 - **Coordinated multi-region failover:** Avoiding split-brain and ensuring quorum is vital.
 
-### Geo-Redundancy & Quorum-Based Design
+### 9.12.8 Geo-Redundancy & Quorum-Based Design
 
 **Geo-Redundancy:**
 
@@ -736,7 +736,7 @@ A[Primary Region] -.sync.-> B[Secondary Region]
 A --> Quorum["Quorum (majority nodes)"]
 ```
 
-### Testing Your DR Plan: Example DR Drill
+### 9.12.9 Testing Your DR Plan: Example DR Drill
 
 1. **Simulate failure:** Shut down a region or primary database.
 2. **Observe automation:** Ensure failover scripts trigger; monitoring and alerting fire.
@@ -745,7 +745,7 @@ A --> Quorum["Quorum (majority nodes)"]
 
 ---
 
-## The 9s of Availability — What "Five Nines" Actually Means
+## 9.13 The 9s of Availability — What "Five Nines" Actually Means
 
 | Availability  | Allowed downtime per year | Per month     | Per day      |
 |---------------|---------------------------|---------------|--------------|
@@ -759,7 +759,7 @@ A --> Quorum["Quorum (majority nodes)"]
 >
 > Most products live at 99.9% (three nines) and that's usually fine.
 
-### Compounding: System ≠ Component Availability
+### 9.13.1 Compounding: System ≠ Component Availability
 
 If your service depends on 3 things, each 99.9% available:
 
@@ -769,11 +769,11 @@ If your service depends on 3 things, each 99.9% available:
 
 ---
 
-## Retry Patterns Done Right
+## 9.14 Retry Patterns Done Right
 
 Retries are the #1 way to convert a single transient failure into a system-wide outage. Done wrong, they're an amplifier. Done right, they're a lifesaver.
 
-### The Five Rules of Retries
+### 9.14.1 The Five Rules of Retries
 
 1. **Only retry idempotent operations.** Retrying a non-idempotent POST can double-charge a credit card.
 2. **Exponential backoff** — `delay = base × 2^attempt`. Not constant delay.
@@ -781,7 +781,7 @@ Retries are the #1 way to convert a single transient failure into a system-wide 
 4. **Cap the retries.** Usually 3-5. Past that, give up and report failure.
 5. **Respect `Retry-After` and `429`.** If the server tells you when to retry, listen.
 
-### Example
+### 9.14.2 Example
 
 ```python
 import random, time
@@ -799,7 +799,7 @@ def with_retry(fn, max_attempts=4, base=0.1):
 
 ---
 
-## Idempotency Keys
+## 9.15 Idempotency Keys
 
 Even with retries done right, network failures can leave you unsure whether a request succeeded. The fix: **idempotency keys.**
 
@@ -818,7 +818,7 @@ Stripe, PayPal, and modern payment APIs all use this. **You should too** for any
 
 ---
 
-## Active-Active vs Active-Passive
+## 9.16 Active-Active vs Active-Passive
 
 | Mode             | Behavior                                                                      | Pros                                  | Cons                                |
 |------------------|-------------------------------------------------------------------------------|---------------------------------------|--------------------------------------|
@@ -829,7 +829,7 @@ Stripe, PayPal, and modern payment APIs all use this. **You should too** for any
 
 ---
 
-## Chaos Engineering — Failure as a Practice
+## 9.17 Chaos Engineering — Failure as a Practice
 
 You don't know if your reliability mechanisms work until you actually break things in production. **Chaos engineering** = deliberately injecting failures (kill pods, drop network packets, fail dependencies) to verify the system survives.
 
@@ -848,44 +848,44 @@ You don't know if your reliability mechanisms work until you actually break thin
 
 ---
 
-## Combined Tips & Tricks
+## 9.18 Combined Tips & Tricks
 
 A consolidated master list drawn from all sections.
 
-### Design Philosophy
+### 9.18.1 Design Philosophy
 
 - **Design for failure:** Assume components/services will fail; plan accordingly. Use retries, circuit breakers, fallback logic.
 - **Cloud-native mindset:** Leverage managed services' redundancy and auto-healing (AWS RDS Multi-AZ, GCP Cloud SQL HA).
 - **Balance cost vs. risk:** Higher SLAs and lower RTO/RPO mean higher cost and complexity. Align with business needs.
 
-### Automation
+### 9.18.2 Automation
 
 - **Automate everything:** Backups, failover, health checks, restore tests.
 - **Use circuit breakers and retries:** Prevent cascading failures due to repeated calls to failing services.
 
-### Testing
+### 9.18.3 Testing
 
 - **Test regularly:** Run DR drills, test backups, simulate failures (chaos engineering).
 - **Test your DR plan:** *If you haven't tested it, you don't have it.*
 - **Test across regions:** Don't assume multi-region just "works" — validate failover and data consistency.
 
-### Monitoring
+### 9.18.4 Monitoring
 
 - **Monitor key metrics:** Track MTBF, MTTR, availability, error rates, backup status.
 - **Monitor and alert:** Don't just collect metrics — act on them.
 - **Implement the 3-2-1 backup rule:** 3 copies, 2 different media, 1 offsite.
 
-### User Experience
+### 9.18.5 User Experience
 
 - **Gracefully degrade:** Prioritize core features; design for partial service during failures.
 - **Document SLAs and recovery objectives:** Explicitly define and communicate RTO/RPO.
 
-### Documentation
+### 9.18.6 Documentation
 
 - **Document and review:** Keep disaster recovery and backup plans up to date and review them periodically.
 - **Document your DR plan:** Ensure everyone knows the process and their role.
 
-### Backup-Specific
+### 9.18.7 Backup-Specific
 
 - **Test restores regularly:** A backup you've never restored is a backup you don't have.
 - **Monitor success & failures:** Set up dashboards/alerts.
@@ -896,7 +896,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## Sample Interview Questions
+## 9.19 Sample Interview Questions
 
 - How would you design a system for 99.99% availability?
 - What's the difference between backup and failover?
@@ -912,7 +912,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## Summary & Key Takeaways
+## 9.20 Summary & Key Takeaways
 
 - **Reliability is foundational** — measured by metrics like MTBF, MTTR, and SLAs.
 - **Design choices must anticipate and tolerate failure.**
@@ -928,7 +928,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## Further Reading
+## 9.21 Further Reading
 
 - [Google SRE Book: Reliability](https://sre.google/sre-book/reliability/)
 - [Google SRE Book: Reliability and Recovery](https://sre.google/sre-book/)

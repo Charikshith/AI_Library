@@ -6,7 +6,7 @@ System design isn't just about data stores and scaling; at its core, it's about 
 
 ---
 
-## Learning Outcomes
+## 3.1 Learning Outcomes
 
 After reading this chapter, you'll be able to:
 
@@ -24,31 +24,31 @@ After reading this chapter, you'll be able to:
 
 ## Table of Contents
 
-1. [The Protocol Landscape](#the-protocol-landscape)
-2. [TCP & UDP — Transport Layer Foundations](#tcp--udp--transport-layer-foundations)
-3. [HTTP — The Backbone of the Web](#http--the-backbone-of-the-web)
-   - [Status Codes Beyond the Basics](#status-codes-beyond-the-basics)
-   - [Conditional Requests & ETag Optimistic Concurrency](#conditional-requests--etag-optimistic-concurrency)
-4. [REST & RESTfulness — API Design Principles](#rest--restfulness--api-design-principles)
-   - [Four Principles of a Good API](#four-principles-of-a-good-api)
-   - [API Design Approaches & Lifecycle](#api-design-approaches--lifecycle)
-   - [API Data Conventions](#api-data-conventions)
-   - [Standard Error Response Shape](#standard-error-response-shape)
-   - [Pagination — Offset vs Cursor](#pagination--offset-vs-cursor)
-   - [Versioning Strategies & Deprecation](#versioning-strategies--deprecation)
-5. [Real-Time Communication Protocols](#real-time-communication-protocols)
-6. [Modern API Protocols — gRPC & GraphQL](#modern-api-protocols--grpc--graphql)
-   - [GraphQL Errors & Partial Data](#graphql-errors--partial-data)
-   - [JSON-RPC — Calling Named Methods](#json-rpc--calling-named-methods)
-7. [Combined Tips & Tricks](#combined-tips--tricks)
-8. [Sample Interview Questions](#sample-interview-questions)
-9. [Quick Reference Table](#quick-reference-table)
-10. [Summary & Key Takeaways](#summary--key-takeaways)
-11. [Further Reading](#further-reading)
+- [3.2 The Protocol Landscape](#32-the-protocol-landscape)
+- [3.3 TCP & UDP — Transport Layer Foundations](#33-tcp--udp--transport-layer-foundations)
+- [3.4 HTTP — The Backbone of the Web](#34-http--the-backbone-of-the-web)
+   - [3.4.10 Status Codes Beyond the Basics](#3410-status-codes-beyond-the-basics)
+   - [3.4.11 Conditional Requests & ETag Optimistic Concurrency](#3411-conditional-requests--etag-optimistic-concurrency)
+- [3.5 REST & RESTfulness — API Design Principles](#35-rest--restfulness--api-design-principles)
+   - [3.5.5 Four Principles of a Good API](#355-four-principles-of-a-good-api)
+   - [3.5.6 API Design Approaches & Lifecycle](#356-api-design-approaches--lifecycle)
+   - [3.5.11 API Data Conventions](#3511-api-data-conventions)
+   - [3.5.12 Standard Error Response Shape](#3512-standard-error-response-shape)
+   - [3.5.13 Pagination — Offset vs Cursor](#3513-pagination--offset-vs-cursor)
+   - [3.5.14 Versioning Strategies & Deprecation](#3514-versioning-strategies--deprecation)
+- [3.6 Real-Time Communication Protocols](#36-real-time-communication-protocols)
+- [3.7 Modern API Protocols — gRPC & GraphQL](#37-modern-api-protocols--grpc--graphql)
+   - [3.7.4.7 GraphQL Errors & Partial Data](#3747-graphql-errors--partial-data)
+   - [3.7.5 JSON-RPC — Calling Named Methods](#375-json-rpc--calling-named-methods)
+- [3.8 Combined Tips & Tricks](#38-combined-tips--tricks)
+- [3.9 Sample Interview Questions](#39-sample-interview-questions)
+- [3.10 Quick Reference Table](#310-quick-reference-table)
+- [3.11 Summary & Key Takeaways](#311-summary--key-takeaways)
+- [3.12 Further Reading](#312-further-reading)
 
 ---
 
-## The Protocol Landscape
+## 3.2 The Protocol Landscape
 
 Before diving into individual protocols, it helps to understand how they layer:
 
@@ -72,18 +72,18 @@ Before diving into individual protocols, it helps to understand how they layer:
 
 ---
 
-## TCP & UDP — Transport Layer Foundations
+## 3.3 TCP & UDP — Transport Layer Foundations
 
 Before any web page loads or an API responds, transport protocols like **TCP** and **UDP** power the underlying communication.
 
-### TCP (Transmission Control Protocol)
+### 3.3.1 TCP (Transmission Control Protocol)
 
 - **Connection-oriented:** Establishes a handshake before sending data (think: phone call).
 - **Reliable and ordered:** Guarantees all bytes arrive, in order, error-checked.
 - **Flow and congestion control:** Built-in.
 - **Common uses:** Web browsing (HTTP/HTTPS), file transfer (FTP/SFTP), email (SMTP, IMAP, POP3), databases.
 
-#### TCP Three-Way Handshake (Mermaid)
+#### 3.3.1.1 TCP Three-Way Handshake (Mermaid)
 
 ```mermaid
 sequenceDiagram
@@ -96,7 +96,7 @@ sequenceDiagram
     Note over Client,Server: Connection established
 ```
 
-#### TCP Three-Way Handshake (ASCII versions)
+#### 3.3.1.2 TCP Three-Way Handshake (ASCII versions)
 
 ```
 Client         Server
@@ -125,7 +125,7 @@ Data can now flow reliably!
 2. **SYN-ACK:** Server acknowledges and agrees.
 3. **ACK:** Client confirms, and the connection is established.
 
-#### Code: TCP Server in Python (echo server)
+#### 3.3.1.3 Code: TCP Server in Python (echo server)
 
 ```python
 import socket
@@ -143,7 +143,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             conn.sendall(data)
 ```
 
-#### Code: TCP Client in Python
+#### 3.3.1.4 Code: TCP Client in Python
 
 ```python
 import socket
@@ -157,14 +157,14 @@ print(response.decode())
 s.close()
 ```
 
-### UDP (User Datagram Protocol)
+### 3.3.2 UDP (User Datagram Protocol)
 
 - **Connectionless:** No setup, just sends packets (think: postcards).
 - **Fast, minimal overhead**, but **unreliable**: No guarantee packets arrive or are ordered.
 - **No retransmission, no error correction.**
 - **Common uses:** Video streaming, online gaming, VoIP, DNS lookups.
 
-#### UDP Packet Flow
+#### 3.3.2.1 UDP Packet Flow
 
 ```mermaid
 sequenceDiagram
@@ -184,7 +184,7 @@ Sender               Receiver
 
 **Postcard analogy:** Each UDP datagram is like dropping a postcard in the mail. It might arrive, might not, and order isn't guaranteed.
 
-#### Code: UDP Client in Python
+#### 3.3.2.2 Code: UDP Client in Python
 
 ```python
 import socket
@@ -208,7 +208,7 @@ print(f"Received from {addr}: {data.decode()}")
 s.close()
 ```
 
-### TCP vs UDP — Comparison
+### 3.3.3 TCP vs UDP — Comparison
 
 A quick comparison:
 
@@ -232,7 +232,7 @@ A more detailed (interview-friendly) table:
 | **Overhead**        | High (due to handshaking, sequencing, and acknowledgments)                         | Low (minimal protocol overhead)                                    |
 | **Use Cases**       | Web browsing (HTTP/HTTPS), file transfers (FTP, SFTP), email, database communication | Video streaming, online gaming, VoIP calls, DNS lookups          |
 
-### When to Use Which?
+### 3.3.4 When to Use Which?
 
 **Use TCP when:**
 
@@ -252,11 +252,11 @@ A more detailed (interview-friendly) table:
 
 ---
 
-## HTTP — The Backbone of the Web
+## 3.4 HTTP — The Backbone of the Web
 
 **HTTP (HyperText Transfer Protocol)** is the foundation of data communication on the web. Whether you're loading a web page, making an API call, or streaming content, HTTP is working behind the scenes.
 
-### What is HTTP?
+### 3.4.1 What is HTTP?
 
 - **HyperText Transfer Protocol** — foundation of web communication.
 - **Text-based, stateless** — each request is independent.
@@ -265,7 +265,7 @@ A more detailed (interview-friendly) table:
 - **Methods:** GET, POST, PUT, DELETE, PATCH, etc.
 - **Status codes:** 200 (OK), 404 (Not Found), 500 (Server Error), etc.
 
-### The Client-Server Model
+### 3.4.2 The Client-Server Model
 
 HTTP follows a **client-server architecture**:
 
@@ -281,20 +281,20 @@ sequenceDiagram
 - **Client:** Initiates requests (e.g., browser, mobile app)
 - **Server:** Processes requests, sends responses (web server, API, etc.)
 
-### Components of an HTTP Request
+### 3.4.3 Components of an HTTP Request
 
 - **Method:** Defines the action (`GET`, `POST`, etc.)
 - **URL:** The resource being requested
 - **Headers:** Metadata (e.g., `User-Agent`, `Content-Type`, `Authorization`)
 - **Body (optional):** Data sent in `POST`/`PUT`/`PATCH` requests
 
-### Components of an HTTP Response
+### 3.4.4 Components of an HTTP Response
 
 - **Status Code:** Indicates success or failure (e.g., `200 OK`, `404 Not Found`)
 - **Headers:** Metadata about the response
 - **Body (optional):** The actual content returned
 
-### The HTTP Request-Response Cycle
+### 3.4.5 The HTTP Request-Response Cycle
 
 ```mermaid
 sequenceDiagram
@@ -332,7 +332,7 @@ ASCII view:
      |---(4) Render---->|
 ```
 
-### Anatomy of an HTTP Request
+### 3.4.6 Anatomy of an HTTP Request
 
 ```http
 GET /api/products/123 HTTP/1.1
@@ -349,7 +349,7 @@ Authorization: Bearer <token>
 | Headers   | Metadata (auth, content-type, cookies, etc.)         |
 | Body      | Data to send (only for POST/PUT/PATCH)               |
 
-### Anatomy of an HTTP Response
+### 3.4.7 Anatomy of an HTTP Response
 
 ```http
 HTTP/1.1 200 OK
@@ -369,7 +369,7 @@ Set-Cookie: sessionId=abc123; HttpOnly
 | Headers      | Metadata (content-type, cache-control, etc.)       |
 | Body         | The actual content (HTML, JSON, image, etc.)       |
 
-### HTTP Methods
+### 3.4.8 HTTP Methods
 
 | Method  | Purpose                       | Idempotent? | Safe? | Example Use Case                 |
 |---------|-------------------------------|-------------|-------|----------------------------------|
@@ -400,7 +400,7 @@ Content-Type: application/json
 { "email": "alice@example.com" }
 ```
 
-### HTTP Status Codes
+### 3.4.9 HTTP Status Codes
 
 | Range | Description    | Examples                                                |
 |-------|----------------|---------------------------------------------------------|
@@ -421,7 +421,7 @@ Content-Type: application/json
 - **404 Not Found:** Resource missing
 - **500 Internal Server Error:** Server crashed
 
-### Status Codes Beyond the Basics
+### 3.4.10 Status Codes Beyond the Basics
 
 A handful of less common codes carry precise meanings that clients can act on. Using them correctly saves every client from parsing message strings to guess what went wrong.
 
@@ -442,7 +442,7 @@ Content-Type: application/json
 { "error": { "code": "rate_limited", "message": "Limit of 100 requests per minute exceeded." } }
 ```
 
-### Conditional Requests & ETag Optimistic Concurrency
+### 3.4.11 Conditional Requests & ETag Optimistic Concurrency
 
 An **ETag** is a version tag the server attaches to a resource (a hash of the content, or a row version number). Clients send it back in a *conditional request* header, and the server only acts if the condition still holds.
 
@@ -472,7 +472,7 @@ sequenceDiagram
 
 This is called *optimistic* concurrency because nothing is locked while the user edits; conflicts are detected at write time instead. On the server, the check usually becomes a conditional update such as `UPDATE docs SET ..., version = 8 WHERE id = 42 AND version = 7`, where zero affected rows means a `412` (see the isolation section of the Storage chapter for the database side). An API can also return `428 Precondition Required` to insist that clients always send `If-Match` on writes.
 
-### The Stateless Nature of HTTP
+### 3.4.12 The Stateless Nature of HTTP
 
 **Stateless** means each HTTP request is an independent transaction — no memory of previous requests.
 
@@ -504,7 +504,7 @@ graph TD
 
 *Stateless HTTP with session management using cookies.*
 
-### HTTP/1.1, HTTP/2, and HTTP/3 — One Sentence Each
+### 3.4.13 HTTP/1.1, HTTP/2, and HTTP/3 — One Sentence Each
 
 | Version  | Year | One-line summary                                                              | Key benefit                             |
 |----------|------|-------------------------------------------------------------------------------|------------------------------------------|
@@ -516,7 +516,7 @@ graph TD
 
 **For system design interviews:** "We'll use HTTP/2 for the API since it lets the browser parallelize 100 requests over one connection. For mobile clients on flaky networks, HTTP/3's connection migration is a nice-to-have."
 
-### HTTPS — Secure HTTP
+### 3.4.14 HTTPS — Secure HTTP
 
 - **HTTPS = HTTP + SSL/TLS encryption.**
 - Uses **port 443** instead of port 80.
@@ -539,7 +539,7 @@ HTTP (port 80)         HTTPS (port 443, encrypted)
 
 **Always use HTTPS** for any sensitive data (login, payments, banking, e-commerce, APIs).
 
-### Code: HTTP in Action
+### 3.4.15 Code: HTTP in Action
 
 **cURL example:**
 
@@ -601,7 +601,7 @@ app.get('/users/:id', (req, res) => {
 });
 ```
 
-### HTTP — Interview-Ready Questions
+### 3.4.16 HTTP — Interview-Ready Questions
 
 - What is HTTP and how does it work?
 - Why is HTTP considered stateless, and how do you manage state?
@@ -615,11 +615,11 @@ app.get('/users/:id', (req, res) => {
 
 ---
 
-## REST & RESTfulness — API Design Principles
+## 3.5 REST & RESTfulness — API Design Principles
 
 **REST (Representational State Transfer)** is the de facto standard for designing web APIs. Introduced by **Roy Fielding** in his 2000 doctoral dissertation, it's an architectural style — *not a protocol* — for designing networked applications.
 
-### What is REST?
+### 3.5.1 What is REST?
 
 REST leverages **standard HTTP methods** (GET, POST, PUT, DELETE) and stateless communication to enable simple, scalable data exchange.
 
@@ -629,14 +629,14 @@ REST leverages **standard HTTP methods** (GET, POST, PUT, DELETE) and stateless 
 - Each client request contains all necessary information.
 - The server does **not** store session data between requests.
 
-### Why REST Matters
+### 3.5.2 Why REST Matters
 
 - **Simplicity & Scalability:** Uses standard HTTP methods; easy to understand and implement. Statelessness enables horizontal scaling.
 - **Interoperability:** Platform-agnostic — works across browsers, mobile, IoT, and more.
 - **Efficiency:** Enables caching, reduces server loads, and improves response times.
 - **Real-World Use:** Powering APIs for Twitter, GitHub, Google, and countless more.
 
-### Core REST Constraints
+### 3.5.3 Core REST Constraints
 
 RESTful architecture is defined by several key constraints:
 
@@ -649,7 +649,7 @@ RESTful architecture is defined by several key constraints:
 | Uniform Interface       | Standardized communication between client and server                                 |
 | Code-on-Demand (optional)| Servers can send executable code (e.g., JavaScript) to clients to extend functionality |
 
-### REST Architecture Diagram
+### 3.5.4 REST Architecture Diagram
 
 ```mermaid
 graph TD
@@ -677,7 +677,7 @@ Or, in simple ASCII:
                  HTTP Response
 ```
 
-### Four Principles of a Good API
+### 3.5.5 Four Principles of a Good API
 
 Before the REST mechanics, a frame that applies to any API style (REST, GraphQL, gRPC). A useful test: a good API is one a developer can use correctly without opening the docs.
 
@@ -690,7 +690,7 @@ Before the REST mechanics, a frame that applies to any API style (REST, GraphQL,
 
 The sections that follow are mostly ways of delivering these four: naming and methods (consistent), resource modelling (simple), auth and rate limits (secure), pagination and caching (performant).
 
-### API Design Approaches & Lifecycle
+### 3.5.6 API Design Approaches & Lifecycle
 
 **Three ways to start a design:**
 
@@ -716,9 +716,9 @@ flowchart LR
 
 Deprecation and retirement are part of the design: decide up front how you will version, how much notice clients get, and how you will see who still calls the old version (see [Versioning Strategies & Deprecation](#versioning-strategies--deprecation) below).
 
-### RESTful API Design Principles
+### 3.5.7 RESTful API Design Principles
 
-#### 1. Resource-Based Approach
+#### 3.5.7.1 Resource-Based Approach
 
 Design endpoints around _resources_, not _actions_. Treat every entity (user, order, product) as a resource, accessed via unique URIs.
 
@@ -731,7 +731,7 @@ Design endpoints around _resources_, not _actions_. Treat every entity (user, or
 **Don't:** `POST /createUser`
 **Do:** `POST /users`
 
-#### 2. Proper HTTP Methods Usage
+#### 3.5.7.2 Proper HTTP Methods Usage
 
 | HTTP Method | Purpose                | Example                  |
 |-------------|------------------------|--------------------------|
@@ -741,7 +741,7 @@ Design endpoints around _resources_, not _actions_. Treat every entity (user, or
 | PATCH       | Partial update         | `PATCH /users/123`       |
 | DELETE      | Remove resource        | `DELETE /users/123`      |
 
-#### 3. Stateless Interactions
+#### 3.5.7.3 Stateless Interactions
 
 Each request must be self-contained. For authentication, use stateless mechanisms like JWT tokens rather than server-side sessions.
 
@@ -750,13 +750,13 @@ GET /users/42 HTTP/1.1
 Authorization: Bearer <jwt-token>
 ```
 
-#### 4. Consistent URL Structure
+#### 3.5.7.4 Consistent URL Structure
 
 - Use **plural nouns**: `/users`, `/orders`.
 - **Avoid verbs** in URLs: `/users/activate` ❌ → Use `PATCH /users/{id}` ✅.
 - **Versioning:** `/v1/users` for backward compatibility.
 
-### Resource Structure Diagram
+### 3.5.8 Resource Structure Diagram
 
 ```text
 /-------------------\
@@ -774,9 +774,9 @@ POST   /orders
 DELETE /products/42
 ```
 
-### Resource & Endpoint Examples
+### 3.5.9 Resource & Endpoint Examples
 
-#### Get a User
+#### 3.5.9.1 Get a User
 
 ```http
 GET /users/123 HTTP/1.1
@@ -794,7 +794,7 @@ Accept: application/json
 }
 ```
 
-#### Create a New Order
+#### 3.5.9.2 Create a New Order
 
 ```http
 POST /orders HTTP/1.1
@@ -814,7 +814,7 @@ HTTP/1.1 201 Created
 Location: /orders/789
 ```
 
-### JSON vs. XML in REST APIs
+### 3.5.10 JSON vs. XML in REST APIs
 
 | Feature         | JSON                                  | XML                                    |
 |-----------------|---------------------------------------|----------------------------------------|
@@ -839,7 +839,7 @@ Accept: application/xml
 
 Server returns the requested format if supported.
 
-### API Data Conventions
+### 3.5.11 API Data Conventions
 
 Small choices about data types are hard to change once clients depend on them. These defaults avoid the common traps:
 
@@ -853,7 +853,7 @@ Small choices about data types are hard to change once clients depend on them. T
 | **Filtering & sorting** | Explicit query parameters, checked against an allow-list of fields | `?status=paid&created_after=2026-01-01&sort=-created_at` | Prevents clients from filtering or sorting on unindexed columns, which would turn one request into a full table scan |
 | **Unknown fields** | Clients must ignore fields they don't recognise | A new `tracking_url` field appears in the response | This rule is what makes adding response fields a safe change |
 
-### Standard Error Response Shape
+### 3.5.12 Standard Error Response Shape
 
 Status codes say *which class* of failure happened; the body must say *exactly what* went wrong, in a form code can branch on. Use **one error shape for every endpoint**:
 
@@ -888,7 +888,7 @@ Status codes say *which class* of failure happened; the body must say *exactly w
 
 Never leak stack traces, SQL, or internal hostnames in `message`. If you want a published standard instead of a home-grown shape, RFC 9457 "Problem Details" (`application/problem+json`) defines similar fields (`type`, `title`, `status`, `detail`).
 
-### Pagination — Offset vs Cursor
+### 3.5.13 Pagination — Offset vs Cursor
 
 Any endpoint that returns a list needs a page size limit (with a server-enforced maximum) and a way to fetch the next page. There are two main designs:
 
@@ -931,7 +931,7 @@ SELECT * FROM products WHERE id > 125 ORDER BY id LIMIT 25;
 
 **Keep cursors opaque.** Encode the position (for example base64 of `{"id":125}`, or of a `(created_at, id)` pair when sorting by time) so clients treat it as a token rather than building it themselves. That leaves you free to change the sort key or encoding later. The sort must be on a unique, indexed key; add `id` as a tie-breaker when sorting by a non-unique column.
 
-### Versioning Strategies & Deprecation
+### 3.5.14 Versioning Strategies & Deprecation
 
 **First, avoid needing a new version.** Most changes can be made additively, so existing clients keep working:
 
@@ -967,19 +967,19 @@ SELECT * FROM products WHERE id > 125 ORDER BY id LIMIT 25;
 
 Keep every supported version under automated tests until the day it is removed.
 
-### Real-World REST API Examples
+### 3.5.15 Real-World REST API Examples
 
-#### Twitter API
+#### 3.5.15.1 Twitter API
 
 - **Fetch tweets:** `GET /tweets/{id}`
 - **Post a tweet:** `POST /tweets`
 
-#### GitHub API
+#### 3.5.15.2 GitHub API
 
 - **Get repo details:** `GET /repos/{owner}/{repo}`
 - **Create an issue:** `POST /repos/{owner}/{repo}/issues`
 
-#### Sequence diagram of a Twitter API call
+#### 3.5.15.3 Sequence diagram of a Twitter API call
 
 ```mermaid
 sequenceDiagram
@@ -993,7 +993,7 @@ sequenceDiagram
     API-->>Client: JSON Response (Tweet details)
 ```
 
-### Code: A Full RESTful API in Node.js/Express
+### 3.5.16 Code: A Full RESTful API in Node.js/Express
 
 ```js
 const express = require('express');
@@ -1069,7 +1069,7 @@ def create_order():
     return jsonify({'status': 'created'}), 201
 ```
 
-### Best Practices
+### 3.5.17 Best Practices
 
 - **Use proper HTTP status codes:** `200`, `201`, `204`, `400`, `401`, `403`, `404`, `500`.
 - **Version your API:** `/v1/users` vs. `/v2/users`.
@@ -1078,14 +1078,14 @@ def create_order():
 - **Consistent URL structure:** Plural nouns for collections, no verbs in URLs.
 - **HATEOAS:** (Hypermedia as the Engine of Application State) — for discoverable APIs in advanced scenarios.
 
-### Common Pitfalls
+### 3.5.18 Common Pitfalls
 
 - **Verbs in URLs:** `/createUser` ❌ → `POST /users` ✅.
 - **Don't ignore error handling:** Always return meaningful status codes/messages.
 - **Don't expose internal data structures.**
 - **Don't forget input validation.**
 
-### REST — Interview Questions
+### 3.5.19 REST — Interview Questions
 
 - What are the core constraints of REST?
 - Explain the difference between PUT and PATCH.
@@ -1093,7 +1093,7 @@ def create_order():
 - How does caching work in RESTful APIs?
 - Compare REST, GraphQL, and gRPC.
 
-### REST — Further Reading
+### 3.5.20 REST — Further Reading
 
 - [RESTful API Design — Best Practices in a Nutshell](https://restfulapi.net/)
 - [OpenAPI Specification](https://swagger.io/specification/)
@@ -1101,11 +1101,11 @@ def create_order():
 
 ---
 
-## Real-Time Communication Protocols
+## 3.6 Real-Time Communication Protocols
 
 In modern system design, delivering **instant updates** to users — whether in chat apps, stock tickers, online games, or live notifications — is a critical requirement. Traditional HTTP request-response models often fall short due to their inherent latency and inefficiency.
 
-### What is Real-Time Communication?
+### 3.6.1 What is Real-Time Communication?
 
 **Real-time communication** refers to the continuous exchange of data with minimal latency between clients and servers. Unlike traditional HTTP, where data is fetched only on explicit user requests, real-time systems push updates instantly, enabling interactive and responsive user experiences.
 
@@ -1117,7 +1117,7 @@ In modern system design, delivering **instant updates** to users — whether in 
 - Live sports score streaming
 - Notification systems
 
-### Why Not Just Use HTTP?
+### 3.6.2 Why Not Just Use HTTP?
 
 HTTP follows a **request-response** model:
 
@@ -1139,7 +1139,7 @@ Client: <-------- [Response] <-------- Server
 | Overhead       | Repeated connections    | Persistent connection |
 | Server Push    | No                      | Yes                   |
 
-### Server-Sent Events (SSE) — The Forgotten Middle Option
+### 3.6.3 Server-Sent Events (SSE) — The Forgotten Middle Option
 
 Most courses jump straight from "long polling" to "WebSockets," but **SSE** is the right answer for many one-way real-time use cases.
 
@@ -1165,7 +1165,7 @@ Most courses jump straight from "long polling" to "WebSockets," but **SSE** is t
 
 > **Rule of thumb:** Need one-way push? Use SSE. Need bidirectional? Use WebSocket. Need legacy compatibility? Long polling.
 
-### Major Approaches to Real-Time Data Exchange
+### 3.6.4 Major Approaches to Real-Time Data Exchange
 
 | Technique                | Description                                                | Bi-directional | Overhead          | Latency   |
 |--------------------------|------------------------------------------------------------|---------------|--------------------|-----------|
@@ -1174,7 +1174,7 @@ Most courses jump straight from "long polling" to "WebSockets," but **SSE** is t
 | Server-Sent Events (SSE) | Server pushes updates to client (unidirectional)           | No            | Medium             | Low       |
 | **Long Polling**         | Client request held open until new data is available       | No            | Lower than polling | Medium    |
 
-### Polling vs. Long Polling vs. WebSockets
+### 3.6.5 Polling vs. Long Polling vs. WebSockets
 
 | Protocol      | Real-Time | Bi-Directional | Persistent | Overhead |
 |---------------|-----------|----------------|------------|----------|
@@ -1182,20 +1182,20 @@ Most courses jump straight from "long polling" to "WebSockets," but **SSE** is t
 | Long Polling  | Yes       | No             | No         | Moderate |
 | WebSockets    | Yes       | Yes            | Yes        | Low      |
 
-### WebSockets: Persistent, Full-Duplex Communication
+### 3.6.6 WebSockets: Persistent, Full-Duplex Communication
 
 WebSockets provide a **persistent, full-duplex TCP connection** between client and server. Once established, data can flow in both directions at any time, with minimal overhead.
 
 **Analogy:** Like a phone call (continuous conversation) vs. sending letters (HTTP requests).
 
-#### How WebSockets Work — Step-by-Step
+#### 3.6.6.1 How WebSockets Work — Step-by-Step
 
 1. **Handshake:** Client sends HTTP request with an `Upgrade: websocket` header.
 2. **Upgrade:** Server replies with `101 Switching Protocols` if it supports WebSockets.
 3. **Data Exchange:** Both client and server can send/receive messages in real time (as frames).
 4. **Close:** Either party can terminate the connection.
 
-#### WebSocket Handshake Diagrams
+#### 3.6.6.2 WebSocket Handshake Diagrams
 
 ```mermaid
 sequenceDiagram
@@ -1252,7 +1252,7 @@ Upgrade: websocket
 Connection: Upgrade
 ```
 
-#### Code: WebSocket Server in Node.js
+#### 3.6.6.3 Code: WebSocket Server in Node.js
 
 ```js
 const WebSocket = require('ws');
@@ -1281,7 +1281,7 @@ wss.on('connection', (ws) => {
 });
 ```
 
-#### Code: WebSocket Client
+#### 3.6.6.4 Code: WebSocket Client
 
 Vanilla JavaScript:
 
@@ -1311,7 +1311,7 @@ ws.onopen = () => ws.send('Hello, WebSocket!');
 ws.onmessage = (event) => console.log('Received:', event.data);
 ```
 
-#### When to Use WebSockets?
+#### 3.6.6.5 When to Use WebSockets?
 
 - High-frequency, bidirectional data exchange.
 - Low latency is critical (e.g., multiplayer gaming, chat, live trading).
@@ -1323,14 +1323,14 @@ ws.onmessage = (event) => console.log('Received:', event.data);
 - Online games (Fortnite, Call of Duty)
 - Collaborative tools (Google Docs)
 
-#### Advantages
+#### 3.6.6.6 Advantages
 
 - **Persistent connection:** No need to reconnect for every message.
 - **Low overhead:** Eliminates repeated HTTP requests.
 - **Truly real-time:** Both sides can push data instantly.
 - **Efficient:** Saves bandwidth and reduces server load.
 
-### Long Polling: Simulating Real-Time over HTTP
+### 3.6.7 Long Polling: Simulating Real-Time over HTTP
 
 **Long polling** is a technique where the client sends an HTTP request and the server *holds* the connection open until new data is available. Once data is sent, the client immediately re-requests, creating a loop that simulates real-time updates.
 
@@ -1339,14 +1339,14 @@ ws.onmessage = (event) => console.log('Received:', event.data);
 - Regular polling responds immediately (even if there's no new data).
 - **Long polling** holds the request until new data is available.
 
-#### How Long Polling Works — Step-by-Step
+#### 3.6.7.1 How Long Polling Works — Step-by-Step
 
 1. Client sends an HTTP request (e.g., `GET /updates`).
 2. Server holds the request open until new data is ready.
 3. Server responds with new data.
 4. Client immediately sends another request (cycle repeats).
 
-#### Long Polling Flow Diagrams
+#### 3.6.7.2 Long Polling Flow Diagrams
 
 ```mermaid
 sequenceDiagram
@@ -1389,7 +1389,7 @@ sequenceDiagram
     Server-->>Client: Response 2 (New data)
 ```
 
-#### Code: Long Polling in Node.js/Express
+#### 3.6.7.3 Code: Long Polling in Node.js/Express
 
 A simple version with a `clients` queue:
 
@@ -1465,7 +1465,7 @@ setInterval(() => sendEvent({ message: "New update!" }), 5000);
 app.listen(3000, () => console.log('Long polling server on port 3000'));
 ```
 
-#### Code: Long Polling Client
+#### 3.6.7.4 Code: Long Polling Client
 
 ```js
 async function poll() {
@@ -1488,7 +1488,7 @@ async function poll() {
 poll();
 ```
 
-#### When to Use Long Polling?
+#### 3.6.7.5 When to Use Long Polling?
 
 - **WebSockets not supported** (legacy infrastructure, restrictive firewalls).
 - **Low/periodic update frequency is acceptable.**
@@ -1498,20 +1498,20 @@ poll();
 - Notifications (Twitter, social media)
 - IoT device updates (intermittent connectivity)
 
-#### Advantages
+#### 3.6.7.6 Advantages
 
 - Works with standard HTTP infrastructure (proxies, firewalls).
 - No need for special protocol support.
 - Reduces unnecessary polling compared to fixed-interval polling.
 - Easier to implement in REST-based systems.
 
-#### Limitations
+#### 3.6.7.7 Limitations
 
 - Higher latency than WebSockets.
 - Not truly bi-directional; mostly server-to-client.
 - Slightly more overhead due to repeated HTTP requests.
 
-### WebSockets vs. Long Polling — When to Use Which?
+### 3.6.8 WebSockets vs. Long Polling — When to Use Which?
 
 | Feature               | WebSockets                            | Long Polling                       |
 |-----------------------|---------------------------------------|------------------------------------|
@@ -1539,7 +1539,7 @@ A more decision-oriented version:
 - **WebSockets:** Slack chat, Fortnite, real-time stock tickers
 - **Long Polling:** Twitter notifications, IoT sensors
 
-### Quick Decision Guide
+### 3.6.9 Quick Decision Guide
 
 ```mermaid
 graph TD
@@ -1549,7 +1549,7 @@ graph TD
     A -->|No| D
 ```
 
-### Real-Time — Tips for System Design Interviews
+### 3.6.10 Real-Time — Tips for System Design Interviews
 
 - **Scalability — WebSockets:** Require load balancers that support sticky sessions or WebSocket proxying (e.g., NGINX with `proxy_pass` + `upgrade` headers).
 - **Scalability — Long Polling:** Easier to scale horizontally; requests are stateless. Can leverage existing RESTful infrastructure.
@@ -1560,7 +1560,7 @@ graph TD
 - **Rate limiting:** Protect your endpoints from abuse, especially in long polling.
 - **Testing:** Simulate slow clients and network interruptions. Test reconnection and error handling. Use tools like [wscat](https://github.com/websockets/wscat) for WebSocket debugging.
 
-### Real-Time — Further Reading
+### 3.6.11 Real-Time — Further Reading
 
 - [MDN — WebSockets](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API)
 - [Node.js `ws` Documentation](https://github.com/websockets/ws)
@@ -1569,11 +1569,11 @@ graph TD
 
 ---
 
-## Modern API Protocols — gRPC & GraphQL
+## 3.7 Modern API Protocols — gRPC & GraphQL
 
 While **REST** has long been the standard, modern applications often demand more. As system complexity and client demands have grown, REST shows limitations — and protocols like **gRPC** and **GraphQL** address them.
 
-### Why Go Beyond REST?
+### 3.7.1 Why Go Beyond REST?
 
 - **Over-fetching & Under-fetching:** REST endpoints often return too much or too little data.
 - **Multiple round trips:** Fetching related entities may need several requests.
@@ -1594,7 +1594,7 @@ GET /users/123
 }
 ```
 
-### Modern Solutions: gRPC & GraphQL
+### 3.7.2 Modern Solutions: gRPC & GraphQL
 
 | Protocol       | Focus                       | Serialization              | Strengths                          | Best Use Case               |
 |----------------|-----------------------------|----------------------------|------------------------------------|-----------------------------|
@@ -1602,11 +1602,11 @@ GET /users/123
 | **gRPC**       | Performance & Microservices | Protocol Buffers (binary)  | Speed, streaming, multi-language   | Microservices, real-time    |
 | **GraphQL**    | Flexibility                 | JSON                       | Custom data queries, aggregation   | Frontend, mobile, dashboards|
 
-### gRPC — High-Performance Remote Procedure Calls
+### 3.7.3 gRPC — High-Performance Remote Procedure Calls
 
 **gRPC** is a high-performance, open-source RPC framework developed by Google. It shines in microservices architectures and real-time systems.
 
-#### How Does gRPC Work?
+#### 3.7.3.1 How Does gRPC Work?
 
 - **Built on HTTP/2**, allowing:
   - **Multiplexed requests:** Multiple calls over one connection
@@ -1616,7 +1616,7 @@ GET /users/123
 - **Auto-generates code:** For many languages (Go, Java, Python, etc.).
 - **Supports full duplex streaming:** Both client and server can send/receive data in real time.
 
-#### gRPC Communication Flow
+#### 3.7.3.2 gRPC Communication Flow
 
 ```mermaid
 sequenceDiagram
@@ -1633,7 +1633,7 @@ sequenceDiagram
     Server-->>Client: Send Response (ProtoBuf over HTTP/2)
 ```
 
-#### Client-Server Serialization Diagram
+#### 3.7.3.3 Client-Server Serialization Diagram
 
 ```mermaid
 flowchart LR
@@ -1658,7 +1658,7 @@ flowchart LR
     style D fill:#f0f0f0,stroke:#333,stroke-width:1px
 ```
 
-#### gRPC Architecture (ASCII)
+#### 3.7.3.4 gRPC Architecture (ASCII)
 
 ```plaintext
 +-------------+        HTTP/2 + Protobuf        +-------------+
@@ -1679,7 +1679,7 @@ Client (any language)
 gRPC Server (any language)
 ```
 
-#### gRPC Service Definitions — Protobuf
+#### 3.7.3.5 gRPC Service Definitions — Protobuf
 
 A simple Greeter service:
 
@@ -1750,7 +1750,7 @@ message ActivityEvent {
 }
 ```
 
-#### Code: gRPC Python Server
+#### 3.7.3.6 Code: gRPC Python Server
 
 A skeleton Greeter:
 
@@ -1796,7 +1796,7 @@ server.add_insecure_port('[::]:50051')
 server.start()
 ```
 
-#### Code: gRPC Python Client
+#### 3.7.3.7 Code: gRPC Python Client
 
 ```python
 import grpc
@@ -1822,7 +1822,7 @@ response = stub.GetUser(UserRequest(user_id='123'))
 print(response.name, response.email)
 ```
 
-#### Code: gRPC Go Client
+#### 3.7.3.8 Code: gRPC Go Client
 
 ```go
 resp, err := client.GetUser(ctx, &pb.UserRequest{Id: 42})
@@ -1837,7 +1837,7 @@ func (s *server) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResp
 }
 ```
 
-#### When to Use gRPC
+#### 3.7.3.9 When to Use gRPC
 
 - **Microservices communication:** Efficient inter-service calls.
 - **Real-time streaming:** Video, analytics, trading platforms.
@@ -1846,17 +1846,17 @@ func (s *server) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResp
 
 **Not for:** Public APIs requiring easy debugging, browser-based clients (gRPC-Web exists but is still limited compared to REST/GraphQL).
 
-### GraphQL — Flexible Query Language for APIs
+### 3.7.4 GraphQL — Flexible Query Language for APIs
 
 **GraphQL** is a flexible query language and runtime for APIs developed by Facebook, enabling clients to request exactly what they need — no more, no less.
 
-#### How GraphQL Works
+#### 3.7.4.1 How GraphQL Works
 
 - **Single endpoint:** Clients query exactly what they need at `/graphql` instead of multiple REST endpoints.
 - **Schema-driven:** Strongly-typed schema defines data and relationships.
 - **Dynamic responses:** Server assembles responses per request.
 
-#### GraphQL Communication Flow
+#### 3.7.4.2 GraphQL Communication Flow
 
 ```mermaid
 sequenceDiagram
@@ -1874,7 +1874,7 @@ sequenceDiagram
 [Client] --(POST /graphql { query })--> [GraphQL Server] --(resolves fields)--> [Database/APIs]
 ```
 
-#### GraphQL Query Example
+#### 3.7.4.3 GraphQL Query Example
 
 ```graphql
 query {
@@ -1906,7 +1906,7 @@ query {
 }
 ```
 
-#### GraphQL Response Example
+#### 3.7.4.4 GraphQL Response Example
 
 ```json
 {
@@ -1939,7 +1939,7 @@ A more nested example:
 }
 ```
 
-#### GraphQL Schema Example (SDL)
+#### 3.7.4.5 GraphQL Schema Example (SDL)
 
 ```graphql
 type User {
@@ -1979,7 +1979,7 @@ type Query {
 }
 ```
 
-#### Code: GraphQL Server (Node.js + Apollo)
+#### 3.7.4.6 Code: GraphQL Server (Node.js + Apollo)
 
 ```js
 const { ApolloServer, gql } = require('apollo-server');
@@ -2014,7 +2014,7 @@ const resolvers = {
 };
 ```
 
-#### GraphQL Errors & Partial Data
+#### 3.7.4.7 GraphQL Errors & Partial Data
 
 GraphQL does not use HTTP status codes to report most failures. A query that reached the server and was executed normally returns **`200 OK`**, and problems are listed in a top-level **`errors`** array next to whatever **`data`** could still be resolved:
 
@@ -2061,7 +2061,7 @@ mutation {
 }
 ```
 
-#### When to Use GraphQL
+#### 3.7.4.8 When to Use GraphQL
 
 - **Frontend optimization:** Mobile/web clients fetch only what they need.
 - **Reducing API requests:** Replace many REST calls with one query.
@@ -2071,7 +2071,7 @@ mutation {
 
 **Not for:** Simple CRUD APIs (REST is enough); scenarios with complex authorization rules can be harder.
 
-### JSON-RPC — Calling Named Methods
+### 3.7.5 JSON-RPC — Calling Named Methods
 
 **JSON-RPC 2.0** is the minimal option: there are no resources and no schema language, just a request that names a method and passes parameters as JSON. Everything goes to **one endpoint** (or over a single socket or stdio stream), and the `id` matches each response to its request.
 
@@ -2099,7 +2099,7 @@ mutation {
 - **Where you meet it:** the **Language Server Protocol (LSP)** between editors and language tools, the **Model Context Protocol (MCP)** between AI apps and tool servers, and Ethereum and other blockchain node APIs.
 - **Trade-offs:** very simple to implement and a natural fit for actions ("run this command") rather than resources, but every call is a `POST` to the same URL, so HTTP caching does not help, and there is no standard schema or tooling comparable to OpenAPI or GraphQL introspection.
 
-### REST vs. gRPC vs. GraphQL — Comparison
+### 3.7.6 REST vs. gRPC vs. GraphQL — Comparison
 
 | Feature             | REST              | gRPC                       | GraphQL                |
 |---------------------|-------------------|----------------------------|------------------------|
@@ -2115,7 +2115,7 @@ mutation {
 | Tooling             | Mature            | Evolving                   | Evolving               |
 | Best For            | Public APIs, CRUD | Microservices, real-time   | Frontend, aggregation  |
 
-### REST vs GraphQL vs gRPC — Visualizing the Data Fetch
+### 3.7.7 REST vs GraphQL vs gRPC — Visualizing the Data Fetch
 
 ```
 REST (Multiple Endpoints)
@@ -2143,7 +2143,7 @@ Client
   |<--UserResponse(name, email, ...)-----------|
 ```
 
-### Example: REST vs GraphQL
+### 3.7.8 Example: REST vs GraphQL
 
 ```http
 # REST: Multiple endpoints
@@ -2162,7 +2162,7 @@ POST /graphql
 }
 ```
 
-### Decision Tree
+### 3.7.9 Decision Tree
 
 ```
 Start
@@ -2176,7 +2176,7 @@ Start
          +-- No: Use REST
 ```
 
-### Modern APIs — Tips & Interview Phrases
+### 3.7.10 Modern APIs — Tips & Interview Phrases
 
 - **gRPC:** Use for internal systems, not public APIs (browsers don't natively support gRPC).
 - **GraphQL:** Use when frontend teams change frequently, or need agility; avoid for simple CRUD APIs.
@@ -2188,7 +2188,7 @@ Start
 - **For real-time needs:** Prefer gRPC (streaming) or GraphQL subscriptions over REST polling.
 - **Beware proxies that may not handle HTTP/2 well** when deploying gRPC.
 
-### Modern APIs — Interview Questions
+### 3.7.11 Modern APIs — Interview Questions
 
 - Compare REST, gRPC, and GraphQL — pros/cons, serialization, real-time capabilities.
 - When would you use gRPC over REST? (microservices, internal APIs, streaming)
@@ -2197,7 +2197,7 @@ Start
 - How would you scale a GraphQL API? (caching, batching, complexity analysis)
 - How do you prevent over-fetching in REST? (fields projection query params or switch to GraphQL)
 
-### Modern APIs — Further Reading
+### 3.7.12 Modern APIs — Further Reading
 
 - [gRPC Official Docs](https://grpc.io/docs/)
 - [GraphQL Official Docs](https://graphql.org/learn/)
@@ -2205,11 +2205,11 @@ Start
 
 ---
 
-## Combined Tips & Tricks
+## 3.8 Combined Tips & Tricks
 
 A consolidated master list, drawn from across all sections.
 
-### Choosing Protocols
+### 3.8.1 Choosing Protocols
 
 - **Protocol choice matters.** Use TCP for reliability, UDP for speed, HTTP for web, WebSockets for real-time, REST for standard APIs, gRPC for microservices, GraphQL for frontend-driven needs.
 - **Always start with requirements.** Is reliability or speed more important? (TCP vs UDP)
@@ -2219,13 +2219,13 @@ A consolidated master list, drawn from across all sections.
 - **gRPC is efficient but not browser-native;** use where clients support it (microservices).
 - **GraphQL optimizes bandwidth;** use when clients need flexibility in data fetching.
 
-### State Management
+### 3.8.2 State Management
 
 - **Handle state properly.** Use tokens or sessions for authentication; avoid storing sensitive data in cookies without encryption.
 - **Stateless protocols** (HTTP, REST) need session management — use cookies, tokens, or sessions.
 - **Use proper HTTP status codes** — they help debugging and client behavior.
 
-### API Hygiene
+### 3.8.3 API Hygiene
 
 - **Use proper HTTP methods.** GET for fetch, POST for create, PUT for update, DELETE for remove.
 - **Paginate API responses.** Never return unbounded lists in REST/GraphQL.
@@ -2234,14 +2234,14 @@ A consolidated master list, drawn from across all sections.
 - **Return helpful error messages** (but not sensitive info).
 - **Support filtering, sorting, and searching via query params.**
 
-### Performance
+### 3.8.4 Performance
 
 - **Optimize for performance:** Use caching (HTTP headers like `Cache-Control`, `ETag`), pagination for large lists, and WebSockets or gRPC streams for real-time data.
 - **Minimize data transfer.** Use compression, caching, and optimize request/response payloads.
 - **Implement rate limiting and throttling** to prevent abuse.
 - **Set appropriate timeouts** in clients and servers to avoid hanging.
 
-### Security
+### 3.8.5 Security
 
 - **Security first.** Always use HTTPS for sensitive data. gRPC and GraphQL need authentication and input validation.
 - **Always prefer HTTPS.** Modern browsers and search engines penalize plain HTTP.
@@ -2251,7 +2251,7 @@ A consolidated master list, drawn from across all sections.
 - **For GraphQL:** Implement query depth and cost analysis to prevent expensive queries (DoS risk).
 - **Understand CORS:** Cross-Origin Resource Sharing controls which domains can access your API.
 
-### Operational Excellence
+### 3.8.6 Operational Excellence
 
 - **WebSockets require special infrastructure.** Load balancing and scaling can be tricky; use sticky sessions or message brokers (Redis Pub/Sub).
 - **Fallback logic:** Try WebSockets, then degrade gracefully to Long Polling if not supported.
@@ -2259,7 +2259,7 @@ A consolidated master list, drawn from across all sections.
 - **Test your API** (unit, integration, and contract tests).
 - **Debug with tools:** [Postman](https://www.postman.com/), browser DevTools, [wscat](https://github.com/websockets/wscat) for WebSockets.
 
-### Interview-Specific
+### 3.8.7 Interview-Specific
 
 - **Understand trade-offs.** WebSockets are great for speed but harder to scale; REST is simple but less flexible; gRPC is fast but requires client code generation.
 - **Be ready to compare protocols and justify your choices** for different scenarios.
@@ -2267,9 +2267,9 @@ A consolidated master list, drawn from across all sections.
 
 ---
 
-## Sample Interview Questions
+## 3.9 Sample Interview Questions
 
-### Foundations
+### 3.9.1 Foundations
 
 - What's the difference between TCP and UDP?
 - Why is TCP considered reliable?
@@ -2277,7 +2277,7 @@ A consolidated master list, drawn from across all sections.
 - How does TCP ensure reliable data transmission?
 - Why is DNS implemented over UDP?
 
-### HTTP
+### 3.9.2 HTTP
 
 - What is HTTP, and how does it work?
 - Why is HTTP stateless, and how do you handle sessions?
@@ -2288,7 +2288,7 @@ A consolidated master list, drawn from across all sections.
 - How do cookies, sessions, and tokens differ?
 - How does caching work in HTTP?
 
-### REST
+### 3.9.3 REST
 
 - What are the core constraints of REST?
 - Explain the difference between PUT and PATCH.
@@ -2296,14 +2296,14 @@ A consolidated master list, drawn from across all sections.
 - How does caching work in RESTful APIs?
 - Compare REST, GraphQL, and gRPC.
 
-### Real-Time
+### 3.9.4 Real-Time
 
 - What is a WebSocket handshake?
 - WebSockets vs. Long Polling — when to use each?
 - How would you scale a WebSocket-based system?
 - What are the main differences between REST, gRPC, and GraphQL for real-time use?
 
-### Modern APIs
+### 3.9.5 Modern APIs
 
 - When would you use gRPC over REST?
 - What are the trade-offs of GraphQL in large systems?
@@ -2313,7 +2313,7 @@ A consolidated master list, drawn from across all sections.
 
 ---
 
-## Quick Reference Table
+## 3.10 Quick Reference Table
 
 | Protocol     | Type              | Reliability | Speed   | Real-Time | Use Cases                                |
 |--------------|-------------------|-------------|---------|-----------|------------------------------------------|
@@ -2330,7 +2330,7 @@ A consolidated master list, drawn from across all sections.
 
 ---
 
-## Summary & Key Takeaways
+## 3.11 Summary & Key Takeaways
 
 - **TCP:** Reliable, ordered, slower. Use for critical data.
 - **UDP:** Fast, unreliable. Use for real-time, loss-tolerant data.
@@ -2345,7 +2345,7 @@ A consolidated master list, drawn from across all sections.
 
 ---
 
-## Further Reading
+## 3.12 Further Reading
 
 **HTTP:**
 

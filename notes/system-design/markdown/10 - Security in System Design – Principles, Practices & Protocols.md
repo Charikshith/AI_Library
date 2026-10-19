@@ -8,7 +8,7 @@ This chapter covers: the CIA triad, threat modeling, authentication & authorizat
 
 ---
 
-## Learning Outcomes
+## 10.1 Learning Outcomes
 
 After reading this chapter, you'll be able to:
 
@@ -22,29 +22,29 @@ After reading this chapter, you'll be able to:
 
 ## Table of Contents
 
-1. [Why Security Matters](#why-security-matters)
-2. [Security in Distributed Systems](#security-in-distributed-systems)
-3. [The CIA Triad](#the-cia-triad)
-4. [Threat Modeling & Attack Vectors](#threat-modeling--attack-vectors)
-5. [Common Attacks](#common-attacks)
-6. [Security in the SDLC](#security-in-the-sdlc)
-7. [Authentication & Authorization](#authentication--authorization)
-8. [Data Protection & Secure Communication](#data-protection--secure-communication)
-9. [Network & Infrastructure Security](#network--infrastructure-security)
-10. [Network Segmentation & Isolation](#network-segmentation--isolation)
-11. [Zero Trust Security Model](#zero-trust-security-model)
-12. [Securing Cloud Environments](#securing-cloud-environments)
-13. [Serverless & Container Security](#serverless--container-security)
-14. [Security in Microservices](#security-in-microservices)
-15. [Common Vulnerabilities — OWASP Top 10](#common-vulnerabilities--owasp-top-10)
-16. [Combined Tips & Tricks](#combined-tips--tricks)
-17. [Sample Interview Questions](#sample-interview-questions)
-18. [Summary & Quick Reference](#summary--quick-reference)
-19. [Further Reading](#further-reading)
+- [10.2 Why Security Matters](#102-why-security-matters)
+- [10.3 Security in Distributed Systems](#103-security-in-distributed-systems)
+- [10.4 The CIA Triad](#104-the-cia-triad)
+- [10.5 Threat Modeling & Attack Vectors](#105-threat-modeling--attack-vectors)
+- [10.6 Common Attacks](#106-common-attacks)
+- [10.7 Security in the SDLC](#107-security-in-the-sdlc)
+- [10.22.2 Authentication & Authorization](#10222-authentication--authorization)
+- [10.9 Data Protection & Secure Communication](#109-data-protection--secure-communication)
+- [10.10 Network & Infrastructure Security](#1010-network--infrastructure-security)
+- [10.11 Network Segmentation & Isolation](#1011-network-segmentation--isolation)
+- [10.12 Zero Trust Security Model](#1012-zero-trust-security-model)
+- [10.13 Securing Cloud Environments](#1013-securing-cloud-environments)
+- [10.14 Serverless & Container Security](#1014-serverless--container-security)
+- [10.15 Security in Microservices](#1015-security-in-microservices)
+- [10.16 Common Vulnerabilities — OWASP Top 10](#1016-common-vulnerabilities--owasp-top-10)
+- [10.22 Combined Tips & Tricks](#1022-combined-tips--tricks)
+- [10.23 Sample Interview Questions](#1023-sample-interview-questions)
+- [10.24 Summary & Quick Reference](#1024-summary--quick-reference)
+- [10.25 Further Reading](#1025-further-reading)
 
 ---
 
-## Why Security Matters
+## 10.2 Why Security Matters
 
 - **User trust:** Users won't share data with insecure platforms.
 - **Data protection:** Prevent leaks, theft, and accidental exposure.
@@ -55,7 +55,7 @@ After reading this chapter, you'll be able to:
 
 ---
 
-## Security in Distributed Systems
+## 10.3 Security in Distributed Systems
 
 Distributed architectures = more components, more entry points, more vulnerabilities.
 
@@ -70,7 +70,7 @@ Distributed architectures = more components, more entry points, more vulnerabili
 
 ---
 
-## The CIA Triad
+## 10.4 The CIA Triad
 
 The backbone of security:
 
@@ -102,17 +102,17 @@ graph LR
 
 ---
 
-## Threat Modeling & Attack Vectors
+## 10.5 Threat Modeling & Attack Vectors
 
 **Threat modeling** helps you think like an attacker.
 
-### Steps
+### 10.5.1 Steps
 
 - **Identify attack surface:** Exposed APIs, UIs, network endpoints.
 - **Entry points:** Vulnerable integrations, user errors.
 - **Assets to protect:** Sensitive data, financial transactions, IP.
 
-### STRIDE Model
+### 10.5.2 STRIDE Model
 
 (See `image-26.png` for STRIDE diagram.)
 
@@ -123,7 +123,7 @@ graph LR
 - **D**enial of Service
 - **E**levation of Privilege
 
-### Common Attack Vectors
+### 10.5.3 Common Attack Vectors
 
 | Vector                 | Description                            | Defense                                  |
 |------------------------|----------------------------------------|------------------------------------------|
@@ -145,27 +145,27 @@ Attackers probe every interface — APIs, open ports, misconfigured servers.
 
 ---
 
-## Common Attacks
+## 10.6 Common Attacks
 
-### DDoS (Distributed Denial of Service)
+### 10.6.1 DDoS (Distributed Denial of Service)
 
 - **Description:** Flooding system with traffic to disrupt service.
 - **Target:** Availability.
 - **Mitigation:** Rate limiting, traffic scrubbing (e.g., Cloudflare), autoscaling and failover.
 
-### Man-in-the-Middle (MITM)
+### 10.6.2 Man-in-the-Middle (MITM)
 
 - **Description:** Attacker intercepts communication.
 - **Targets:** Confidentiality & Integrity.
 - **Protection:** HTTPS (TLS), certificate pinning, VPNs.
 
-### Injection Attacks (e.g., SQL Injection)
+### 10.6.3 Injection Attacks (e.g., SQL Injection)
 
 - **Description:** Attacker sends malicious input to execute unwanted commands.
 - **Impacts:** Data integrity, confidentiality.
 - **Mitigation:** Input validation, parameterized queries, WAF (Web Application Firewall).
 
-### Spoofing Attacks
+### 10.6.4 Spoofing Attacks
 
 - **Description:** Impersonation of another user or system.
 - **Types:** IP spoofing, email spoofing, DNS spoofing.
@@ -173,11 +173,11 @@ Attackers probe every interface — APIs, open ports, misconfigured servers.
 
 ---
 
-## Security in the SDLC
+## 10.7 Security in the SDLC
 
 **Embed security from the start (Shift Left):** Integrate security practices early in the development process to prevent vulnerabilities instead of fixing them later.
 
-### Phases
+### 10.7.1 Phases
 
 - **Requirements:** Threat modeling — identify and assess potential security threats before development begins.
 - **Design:** Secure architecture — create system designs that minimize attack surfaces and enforce least privilege.
@@ -188,9 +188,9 @@ Attackers probe every interface — APIs, open ports, misconfigured servers.
 
 ---
 
-## Authentication & Authorization
+## 10.8 Authentication & Authorization
 
-### Authentication vs. Authorization
+### 10.8.1 Authentication vs. Authorization
 
 | Concept            | What is it?                                       | Example                       | Mnemonic                |
 |--------------------|---------------------------------------------------|-------------------------------|-------------------------|
@@ -199,9 +199,9 @@ Attackers probe every interface — APIs, open ports, misconfigured servers.
 
 **Key point:** You *authenticate* first, then the system *authorizes* your actions.
 
-### Common Authentication Methods
+### 10.8.2 Common Authentication Methods
 
-#### 1. Basic Authentication
+#### 10.8.2.1 Basic Authentication
 
 Username and password sent with every request (use only with HTTPS).
 
@@ -210,15 +210,15 @@ GET /protected HTTP/1.1
 Authorization: Basic dXNlcjpwYXNz
 ```
 
-#### 2. OAuth 2.0
+#### 10.8.2.2 OAuth 2.0
 
 Delegated access: third-party apps access user data without seeing credentials. Example: "Login with Google" or "Login with Facebook".
 
-#### 3. OpenID Connect
+#### 10.8.2.3 OpenID Connect
 
 Built on OAuth2; adds an identity layer for authentication. Use case: Single Sign-On (SSO) across multiple apps.
 
-#### 4. JWT (JSON Web Token)
+#### 10.8.2.4 JWT (JSON Web Token)
 
 Stateless: server issues a signed token after login; client sends it with each request.
 
@@ -231,7 +231,7 @@ Stateless: server issues a signed token after login; client sends it with each r
 }
 ```
 
-### Session-Based vs. Token-Based Authentication
+### 10.8.3 Session-Based vs. Token-Based Authentication
 
 | Feature            | Session-Based                  | Token-Based (e.g., JWT)          |
 |--------------------|--------------------------------|----------------------------------|
@@ -254,40 +254,40 @@ Stateless: server issues a signed token after login; client sends it with each r
 3. Client sends JWT in `Authorization` header.
 4. Cons: Requires secure token storage and handling.
 
-### Access Control Models (Authorization)
+### 10.8.4 Access Control Models (Authorization)
 
-#### 1. RBAC — Role-Based Access Control
+#### 10.8.4.1 RBAC — Role-Based Access Control
 
 - Assign permissions to roles, roles to users.
 - **Example roles:** `admin`, `editor`, `viewer`.
 - **Pros:** Simple, scalable for standard teams.
 - **Cons:** Not granular for complex orgs.
 
-#### 2. ABAC — Attribute-Based Access Control
+#### 10.8.4.2 ABAC — Attribute-Based Access Control
 
 - Access based on user attributes (department, project, clearance).
 - **Pros:** Fine-grained control.
 - **Cons:** Harder to manage at scale.
 
-#### 3. DAC — Discretionary Access Control
+#### 10.8.4.3 DAC — Discretionary Access Control
 
 - Resource owners set access permissions.
 - **Example:** File-sharing apps.
 
-#### 4. MAC — Mandatory Access Control
+#### 10.8.4.4 MAC — Mandatory Access Control
 
 - Central authority enforces strict policies.
 - **Example:** Military/government systems.
 
-### Single Sign-On (SSO) & Identity Federation
+### 10.8.5 Single Sign-On (SSO) & Identity Federation
 
 - **SSO:** User logs in once, gains access to multiple apps/services without re-authenticating.
 - **Identity Federation:** Trust external identity providers (Google, Facebook, Microsoft) for authentication across organizational boundaries.
 - **Benefit:** Fewer passwords, less friction, better user experience.
 
-### Code Examples
+### 10.8.6 Code Examples
 
-#### JWT Authentication with Node.js / Express
+#### 10.8.6.1 JWT Authentication with Node.js / Express
 
 ```javascript
 const jwt = require('jsonwebtoken');
@@ -331,7 +331,7 @@ function authenticate(req, res, next) {
 }
 ```
 
-#### RBAC Middleware
+#### 10.8.6.2 RBAC Middleware
 
 ```javascript
 function authorizeRoles(...allowedRoles) {
@@ -350,7 +350,7 @@ app.get('/admin', authenticateJWT, authorizeRoles('admin'), (req, res) => {
 });
 ```
 
-### Diagrams
+### 10.8.7 Diagrams
 
 **Authentication & Authorization Flow:**
 
@@ -392,7 +392,7 @@ graph TD
   API-->|Policy Check| RBAC_ABAC[RBAC/ABAC]
 ```
 
-### Authentication / Authorization Tips
+### 10.8.8 Authentication / Authorization Tips
 
 - **Always use HTTPS** even for development.
 - **Keep JWTs short-lived:** Use refresh tokens for longer sessions.
@@ -407,9 +407,9 @@ graph TD
 
 ---
 
-## Data Protection & Secure Communication
+## 10.9 Data Protection & Secure Communication
 
-### Encryption: The Heart of Data Protection
+### 10.9.1 Encryption: The Heart of Data Protection
 
 Encryption converts readable data (**plaintext**) into an unreadable format (**ciphertext**) using a secret key.
 
@@ -419,7 +419,7 @@ flowchart LR
     Ciphertext -->|"Decrypt (Key)"| Plaintext
 ```
 
-### Symmetric vs. Asymmetric Encryption
+### 10.9.2 Symmetric vs. Asymmetric Encryption
 
 | Symmetric Encryption                 | Asymmetric Encryption                                  |
 |--------------------------------------|--------------------------------------------------------|
@@ -462,14 +462,14 @@ decrypted = cipher.decrypt(ciphertext)
 assert decrypted == plaintext
 ```
 
-### TLS Handshake (Simplified)
+### 10.9.3 TLS Handshake (Simplified)
 
 1. **Client Hello:** Client proposes cipher suites.
 2. **Server Hello:** Server selects cipher suite, sends certificate (with public key).
 3. **Key Exchange:** Client encrypts a random symmetric key with server's public key.
 4. **Secure Session:** Both use the symmetric key for fast, secure data transfer.
 
-### Encryption: At Rest & In Transit
+### 10.9.4 Encryption: At Rest & In Transit
 
 | Encryption at Rest                              | Encryption in Transit               |
 |-------------------------------------------------|--------------------------------------|
@@ -484,7 +484,7 @@ graph TD
     Database-->|"Backup (Encrypted)"|CloudStorage
 ```
 
-### TLS/SSL and HTTPS
+### 10.9.5 TLS/SSL and HTTPS
 
 - **HTTPS = HTTP over TLS.** Adds a secure encryption layer (TLS) on top of HTTP. TLS = Transport Layer Security; SSL = Secure Sockets Layer.
 - **Ensures confidentiality, integrity, and authenticity:** Protects data from being read, altered, or spoofed during transmission.
@@ -505,9 +505,9 @@ const options = {
 https.createServer(options, app).listen(443);
 ```
 
-### Hashing & Salting: Secure Password Storage
+### 10.9.6 Hashing & Salting: Secure Password Storage
 
-#### Hashing
+#### 10.9.6.1 Hashing
 
 Hashing converts input data into a fixed-length string using a mathematical algorithm. It is a **one-way** operation.
 
@@ -523,7 +523,7 @@ Hashing converts input data into a fixed-length string using a mathematical algo
 - **Vulnerable to rainbow table attacks:** Precomputed hash databases can reveal common passwords.
 - **Identical inputs = identical hashes:** Enables pattern recognition if no extra protection (like salting).
 
-#### Salting
+#### 10.9.6.2 Salting
 
 Salting adds a **unique random value (salt)** to each password **before hashing.** Ensures even identical passwords produce **different hashes.**
 
@@ -539,7 +539,7 @@ Salting adds a **unique random value (salt)** to each password **before hashing.
 - **Adds computational overhead.**
 - **Not encryption:** Doesn't allow password recovery — only verification.
 
-#### Common Secure Hash Algorithms
+#### 10.9.6.3 Common Secure Hash Algorithms
 
 **SHA-256**, **SHA-512**, **bcrypt**, **scrypt**, **Argon2** (preferred for password storage).
 
@@ -574,13 +574,13 @@ hashed = bcrypt.hashpw(password, salt)
 # Store hashed in DB, never store raw password!
 ```
 
-### Public Key Infrastructure (PKI) & Digital Certificates
+### 10.9.7 Public Key Infrastructure (PKI) & Digital Certificates
 
 **PKI** is a framework that manages **digital certificates** and **public-key encryption** to enable secure communication, authentication, and data integrity over untrusted networks.
 
 PKI provides the foundation for **HTTPS**, **digital signatures**, **email encryption**, and **secure user/device authentication.**
 
-#### Key Components
+#### 10.9.7.1 Key Components
 
 - **Certificate Authority (CA):** Issues and verifies digital certificates.
 - **Registration Authority (RA):** Verifies identities before certificate issuance.
@@ -588,7 +588,7 @@ PKI provides the foundation for **HTTPS**, **digital signatures**, **email encry
 - **Digital Certificates:** Bind public keys to verified identities.
 - **Certificate Revocation List (CRL):** Tracks invalid or compromised certificates.
 
-#### Pros of PKI
+#### 10.9.7.2 Pros of PKI
 
 - **Strong security:** Enables encryption, authentication, and data integrity.
 - **Scalability:** Supports secure communication across large distributed systems.
@@ -596,7 +596,7 @@ PKI provides the foundation for **HTTPS**, **digital signatures**, **email encry
 - **Non-repudiation:** Digital signatures prove the origin and authenticity of data.
 - **Automation support:** Modern systems allow automated certificate renewal and management.
 
-#### Cons of PKI
+#### 10.9.7.3 Cons of PKI
 
 - **Complex setup and management:** Requires proper configuration, key rotation, and certificate lifecycle management.
 - **High cost:** Involves infrastructure, licensing, and operational expenses.
@@ -604,7 +604,7 @@ PKI provides the foundation for **HTTPS**, **digital signatures**, **email encry
 - **Revocation challenges:** CRLs or OCSP responses may be slow or unavailable.
 - **User mismanagement:** Improper key handling can compromise security.
 
-#### Common Use Cases
+#### 10.9.7.4 Common Use Cases
 
 - **HTTPS (SSL/TLS):** Secure web communication.
 - **Email encryption:** Protects message content (S/MIME).
@@ -620,7 +620,7 @@ graph TD
     ServerCertificate --> Browser
 ```
 
-### Secure API Communication
+### 10.9.8 Secure API Communication
 
 **Key techniques:**
 
@@ -659,7 +659,7 @@ token = jwt.encode({'user': 'alice'}, SECRET, algorithm='HS256')
 payload = jwt.decode(token, SECRET, algorithms=['HS256'])
 ```
 
-### Data Protection — Cheat Sheet
+### 10.9.9 Data Protection — Cheat Sheet
 
 | Concept            | What to Use/Do                       | Why                        |
 |--------------------|--------------------------------------|----------------------------|
@@ -672,9 +672,9 @@ payload = jwt.decode(token, SECRET, algorithms=['HS256'])
 
 ---
 
-## Network & Infrastructure Security
+## 10.10 Network & Infrastructure Security
 
-### Why Network Security Matters
+### 10.10.1 Why Network Security Matters
 
 - **External Threats:** DDoS, intrusion attempts, IP spoofing, etc.
 - **Internal Risks:** Misconfiguration, lateral movement after a breach.
@@ -683,7 +683,7 @@ payload = jwt.decode(token, SECRET, algorithms=['HS256'])
 
 (See `image-31.png` for network security overview.)
 
-### Firewalls
+### 10.10.2 Firewalls
 
 **Purpose:** Filter traffic based on IP, port, protocol.
 
@@ -721,7 +721,7 @@ resource "aws_security_group" "web_sg" {
 }
 ```
 
-### Reverse Proxies
+### 10.10.3 Reverse Proxies
 
 **Purpose:** Route incoming requests, mask backend identities, add security layers (SSL termination, load balancing).
 
@@ -765,9 +765,9 @@ graph LR
     Proxy --Response--> User
 ```
 
-### Firewall vs. Reverse Proxy
+### 10.10.4 Firewall vs. Reverse Proxy
 
-#### Firewall
+#### 10.10.4.1 Firewall
 
 A **security barrier** that filters incoming and outgoing network traffic based on defined security rules.
 
@@ -775,7 +775,7 @@ A **security barrier** that filters incoming and outgoing network traffic based 
 
 **Cons:** Can't inspect application-level payloads deeply (unless NGFW); needs constant rule updates; doesn't provide caching/load balancing.
 
-#### Reverse Proxy
+#### 10.10.4.2 Reverse Proxy
 
 Sits in front of web servers and acts as an **intermediary** for client requests.
 
@@ -783,7 +783,7 @@ Sits in front of web servers and acts as an **intermediary** for client requests
 
 **Cons:** Adds complexity; can be a single point of failure if not redundant; slight latency; misconfiguration risk.
 
-#### Comparison Table
+#### 10.10.4.3 Comparison Table
 
 | Feature             | **Firewall**                                    | **Reverse Proxy**                                    |
 |---------------------|-------------------------------------------------|------------------------------------------------------|
@@ -820,9 +820,9 @@ flowchart LR
     style Database fill:#fff3cd,stroke:#f0ad4e,stroke-width:1.5px,color:black;
 ```
 
-### API Traffic Control: Rate Limiting, Throttling, IP Filtering
+### 10.10.5 API Traffic Control: Rate Limiting, Throttling, IP Filtering
 
-#### Rate Limiting
+#### 10.10.5.1 Rate Limiting
 
 Controls how many requests a client (IP, user, API key) can make within a specified time period.
 
@@ -834,7 +834,7 @@ Controls how many requests a client (IP, user, API key) can make within a specif
 
 **Tools:** NGINX, Kong Gateway, Cloudflare, AWS API Gateway.
 
-#### Throttling
+#### 10.10.5.2 Throttling
 
 **Softer version** of rate limiting: rather than rejecting excess requests, throttling **queues or delays** them.
 
@@ -846,7 +846,7 @@ Controls how many requests a client (IP, user, API key) can make within a specif
 
 **Use cases:** Payment gateways, file uploads / video streaming, real-time APIs.
 
-#### IP Filtering
+#### 10.10.5.3 IP Filtering
 
 Allows or blocks traffic based on the **source IP address.** First layer of defense at network or application level.
 
@@ -858,7 +858,7 @@ Allows or blocks traffic based on the **source IP address.** First layer of defe
 
 **Implementation:** Firewall rules (AWS Security Groups, NACLs), reverse proxies, API Gateways.
 
-#### Summary Table
+#### 10.10.5.4 Summary Table
 
 | Technique         | Purpose                                 | Behavior               | Pros                           | Cons                        |
 |-------------------|------------------------------------------|------------------------|--------------------------------|-----------------------------|
@@ -893,20 +893,20 @@ flowchart LR
 
 ---
 
-## Network Segmentation & Isolation
+## 10.11 Network Segmentation & Isolation
 
 **Network segmentation** is the practice of dividing a network into smaller logical or physical subnetworks (segments) to limit lateral movement, enforce granular security policies, and improve performance. **Isolation** means enforcing strict controls (often via firewalls or access control) so that one segment cannot freely access another.
 
 > **Lateral Movement:** The technique attackers use to move within a network after gaining initial access — typically moving from one compromised system to others, in search of sensitive data, credentials, or critical assets.
 
-### Why It Matters
+### 10.11.1 Why It Matters
 
 - Reduces blast radius when a system is compromised.
 - Enforces least-privilege access between services.
 - Improves performance and traffic management.
 - Helps meet compliance and audit requirements (PCI, HIPAA, etc.).
 
-### Common Segmentation Patterns
+### 10.11.2 Common Segmentation Patterns
 
 - **Perimeter (Internet) → DMZ → Application → Database.**
 - **VLAN-based segmentation** (L2 segmentation inside LANs).
@@ -915,7 +915,7 @@ flowchart LR
 - **Microsegmentation** (host-level segmentation using software agents, service mesh, cloud security groups).
 - **Zero Trust segmentation** (authenticate & authorize every connection).
 
-### Techniques / Tools
+### 10.11.3 Techniques / Tools
 
 - **VLANs** (switch-level segmentation).
 - **Subnets + routing** (logical segments).
@@ -926,21 +926,21 @@ flowchart LR
 - **Host-based firewalls** (iptables, Windows Firewall).
 - **Network access control (NAC)** and identity-aware proxies.
 
-### Pros
+### 10.11.4 Pros
 
 - Limits lateral movement and attack surface.
 - Better compliance and auditability.
 - Fine-grained policy control.
 - Can improve network performance.
 
-### Cons / Trade-offs
+### 10.11.5 Cons / Trade-offs
 
 - Increased management complexity.
 - Misconfiguration risk.
 - Potential operational overhead.
 - Can add latency if traffic traverses multiple enforcement points.
 
-### Best Practices
+### 10.11.6 Best Practices
 
 - Start with a **clear segmentation plan:** Categorize assets by sensitivity & function.
 - Apply **least privilege:** Default deny between segments; allow only required flows.
@@ -951,7 +951,7 @@ flowchart LR
 - **Use monitoring & IDS/IPS** per segment.
 - Test via chaos / attack simulations and pentesting.
 
-### Implementation Checklist
+### 10.11.7 Implementation Checklist
 
 - [ ] Inventory assets and classify by sensitivity (prod, dev, management, public).
 - [ ] Define required flows (source → dest: ports/protocols).
@@ -963,7 +963,7 @@ flowchart LR
 - [ ] Set up automated policy tests and regular audits.
 - [ ] Plan for incident response (how to quarantine a segment).
 
-### Typical Segmented Layout
+### 10.11.8 Typical Segmented Layout
 
 ```mermaid
 flowchart LR
@@ -994,13 +994,13 @@ flowchart LR
   Monitoring -->|Flow logs, Alerts| DBFW
 ```
 
-### When to Use Microsegmentation
+### 10.11.9 When to Use Microsegmentation
 
 - Highly dynamic, east-west traffic heavy environments (K8s, microservices).
 - Environments with strict compliance or where host-level compromise risk is high.
 - When you need policy tied to identity/service, not to network addresses.
 
-### Pitfalls to Avoid
+### 10.11.10 Pitfalls to Avoid
 
 - Over-segmentation causing operational headache.
 - Relying on network segmentation alone (forget host-level controls).
@@ -1009,7 +1009,7 @@ flowchart LR
 
 ---
 
-## Zero Trust Security Model
+## 10.12 Zero Trust Security Model
 
 **Definition:** A cybersecurity framework based on the principle: **"Never trust, always verify."**
 
@@ -1017,7 +1017,7 @@ Zero Trust assumes that **no user, device, or application** — whether inside o
 
 > The traditional perimeter-based security model is obsolete — threats can come from **inside** the network too.
 
-### Key Principles
+### 10.12.1 Key Principles
 
 | Principle                                  | Description                                                                                                          |
 |--------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
@@ -1028,7 +1028,7 @@ Zero Trust assumes that **no user, device, or application** — whether inside o
 | **5. Continuous Monitoring**               | Use real-time analytics and telemetry to detect anomalies and re-evaluate trust dynamically.                         |
 | **6. Strong Identity and Device Management** | Use MFA, SSO, and device posture checks (e.g., OS version, security patches).                                       |
 
-### How Zero Trust Works
+### 10.12.2 How Zero Trust Works
 
 1. **User/Device requests access** → identity verified (via SSO/MFA).
 2. **Policy Engine** evaluates context (who, what, where, how).
@@ -1036,7 +1036,7 @@ Zero Trust assumes that **no user, device, or application** — whether inside o
 4. **Session continuously monitored** for anomalies (behavioral analytics).
 5. **Access revoked** if the session or device becomes non-compliant.
 
-### Zero Trust Architecture Components
+### 10.12.3 Zero Trust Architecture Components
 
 | Component                          | Function                                                                |
 |------------------------------------|-------------------------------------------------------------------------|
@@ -1046,7 +1046,7 @@ Zero Trust assumes that **no user, device, or application** — whether inside o
 | **Telemetry & Analytics**          | Collects logs, detects anomalies, provides continuous trust evaluation. |
 | **Microsegmented Network**         | Isolates systems and limits lateral movement.                           |
 
-### Advantages
+### 10.12.4 Advantages
 
 - Prevents unauthorized access — even if attackers breach the network.
 - Reduces lateral movement and insider threat impact.
@@ -1054,14 +1054,14 @@ Zero Trust assumes that **no user, device, or application** — whether inside o
 - Scales well across cloud, hybrid, and remote environments.
 - Enhances visibility across all access points.
 
-### Challenges
+### 10.12.5 Challenges
 
 - Complex to implement in legacy networks.
 - Requires identity centralization and strong IAM policies.
 - Continuous monitoring can increase operational overhead.
 - Needs integration across identity, network, endpoint, and application layers.
 
-### Comparison: Traditional vs. Zero Trust
+### 10.12.6 Comparison: Traditional vs. Zero Trust
 
 | Aspect          | Traditional Security         | Zero Trust Security               |
 |-----------------|------------------------------|-----------------------------------|
@@ -1071,7 +1071,7 @@ Zero Trust assumes that **no user, device, or application** — whether inside o
 | **Focus**       | Keep outsiders out           | Protect resources everywhere      |
 | **Visibility**  | Limited                      | Continuous monitoring & analytics |
 
-### Zero Trust Architecture Diagram
+### 10.12.7 Zero Trust Architecture Diagram
 
 ```mermaid
 flowchart LR
@@ -1093,7 +1093,7 @@ flowchart LR
     Monitor -->|Anomaly Detection| PolicyEngine
 ```
 
-### Zero Trust in Practice
+### 10.12.8 Zero Trust in Practice
 
 - Use **SSO + MFA** for all users and admins.
 - Enforce **device posture checks** before granting access.
@@ -1106,9 +1106,9 @@ flowchart LR
 
 ---
 
-## Securing Cloud Environments
+## 10.13 Securing Cloud Environments
 
-### Shared Responsibility Model
+### 10.13.1 Shared Responsibility Model
 
 Security in the cloud is a **shared responsibility** between the **cloud provider** and the **customer.**
 
@@ -1117,7 +1117,7 @@ Security in the cloud is a **shared responsibility** between the **cloud provide
 | **Cloud Provider** | Secures physical infrastructure, hardware, network, and foundational services (AWS, Azure, GCP).     |
 | **Customer**       | Secures data, identity, access, and configurations within the cloud environment.                     |
 
-### Key Cloud Security Practices
+### 10.13.2 Key Cloud Security Practices
 
 | Practice                          | Description                                                                                                                |
 |-----------------------------------|----------------------------------------------------------------------------------------------------------------------------|
@@ -1126,7 +1126,7 @@ Security in the cloud is a **shared responsibility** between the **cloud provide
 | **Audit Logging**                 | Enable detailed audit trails (AWS CloudTrail, Azure Monitor, GCP Audit Logs).                                              |
 | **CSPM (Cloud Security Posture Management)** | Continuously scan cloud resources for misconfigurations, policy violations, and compliance gaps.                  |
 
-### AWS IAM Policy Example
+### 10.13.3 AWS IAM Policy Example
 
 ```json
 {
@@ -1143,7 +1143,7 @@ Security in the cloud is a **shared responsibility** between the **cloud provide
 
 > Grants read-only access to all objects in the S3 bucket `mybucket`.
 
-### Additional Cloud Security Best Practices
+### 10.13.4 Additional Cloud Security Best Practices
 
 - **Network segmentation:** Use VPCs, subnets, and security groups to isolate workloads.
 - **Zero Trust principles:** Verify each access request — don't assume trust inside your network.
@@ -1162,9 +1162,9 @@ Security in the cloud is a **shared responsibility** between the **cloud provide
 
 ---
 
-## Serverless & Container Security
+## 10.14 Serverless & Container Security
 
-### Serverless Security
+### 10.14.1 Serverless Security
 
 Serverless functions (AWS Lambda, Azure Functions, GCP Cloud Functions) abstract away infrastructure, but **security of the code and configurations** remains your responsibility.
 
@@ -1177,7 +1177,7 @@ Serverless functions (AWS Lambda, Azure Functions, GCP Cloud Functions) abstract
 | **Logging & Monitoring**          | Use services like AWS CloudWatch Logs or Azure Monitor for visibility and anomaly detection.                 |
 | **Dependency Management**         | Regularly scan third-party libraries for vulnerabilities (AWS CodeGuru, Snyk).                               |
 
-### Container Security
+### 10.14.2 Container Security
 
 Containers (Docker, Kubernetes workloads) share the host kernel, requiring **strong isolation and image hygiene.**
 
@@ -1191,14 +1191,14 @@ Containers (Docker, Kubernetes workloads) share the host kernel, requiring **str
 | **Runtime Protection**            | Employ tools like **Falco** or **AppArmor** to detect abnormal container activity.                |
 | **Patch & Update**                | Regularly rebuild and update images with the latest OS and library patches.                       |
 
-### Summary Table
+### 10.14.3 Summary Table
 
 | Area           | Key Security Measures                                                   | Tools/Services                                                                        |
 |----------------|-------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
 | **Serverless** | IAM least privilege, input validation, API Gateway protection           | AWS Lambda + CloudWatch, Azure Functions + Defender, GCP Functions + Security Scanner |
 | **Containers** | Image scanning, non-root execution, network policies, runtime hardening | Trivy, Clair, Falco, AppArmor, Kubernetes NetworkPolicies                             |
 
-### Best Practices Across Both
+### 10.14.4 Best Practices Across Both
 
 - Adopt the **Principle of Least Privilege** everywhere.
 - Automate security checks in **CI/CD pipelines.**
@@ -1208,9 +1208,9 @@ Containers (Docker, Kubernetes workloads) share the host kernel, requiring **str
 
 ---
 
-## Security in Microservices
+## 10.15 Security in Microservices
 
-### 1. Service-to-Service Authentication
+### 10.15.1 Service-to-Service Authentication
 
 Each microservice must verify the identity of the other before sharing data.
 
@@ -1221,7 +1221,7 @@ Each microservice must verify the identity of the other before sharing data.
 
 *Example:* Service A → includes JWT in request → Service B verifies signature and claims.
 
-### 2. API Gateway
+### 10.15.2 API Gateway
 
 Acts as a **central entry point** for all external traffic into your microservices.
 
@@ -1232,7 +1232,7 @@ Acts as a **central entry point** for all external traffic into your microservic
 
 *Example:* API Gateway verifies OAuth token before routing request to internal services.
 
-### 3. Service Mesh
+### 10.15.3 Service Mesh
 
 A **service mesh** (Istio, Linkerd, Consul) adds security, observability, and traffic management between microservices without changing application code.
 
@@ -1243,7 +1243,7 @@ A **service mesh** (Istio, Linkerd, Consul) adds security, observability, and tr
 
 *Example:* Service A ↔ Service B communication is automatically encrypted and authenticated by the service mesh.
 
-### Summary Table
+### 10.15.4 Summary Table
 
 | Layer                       | Security Focus                         | Techniques / Tools                   |
 |-----------------------------|----------------------------------------|--------------------------------------|
@@ -1253,7 +1253,7 @@ A **service mesh** (Istio, Linkerd, Consul) adds security, observability, and tr
 | **Secrets Management**      | Protect credentials and tokens         | HashiCorp Vault, AWS Secrets Manager |
 | **Monitoring & Auditing**   | Detect abnormal behavior               | Prometheus, OpenTelemetry, SIEM      |
 
-### Secure Microservices Architecture
+### 10.15.5 Secure Microservices Architecture
 
 ```mermaid
 flowchart LR
@@ -1295,7 +1295,7 @@ flowchart LR
 
 ---
 
-## Common Vulnerabilities — OWASP Top 10
+## 10.16 Common Vulnerabilities — OWASP Top 10
 
 - **Injection:** SQL, NoSQL, OS command injection.
 - **Broken Authentication:** Weak or no authentication.
@@ -1313,7 +1313,7 @@ flowchart LR
 
 ---
 
-## OAuth 2.0 Flows — Pick the Right One
+## 10.17 OAuth 2.0 Flows — Pick the Right One
 
 Most security failures in modern apps come from picking the wrong OAuth flow or skipping steps. Here's the decision tree.
 
@@ -1330,7 +1330,7 @@ Most security failures in modern apps come from picking the wrong OAuth flow or 
 
 ---
 
-## JWT Pitfalls — What Goes Wrong
+## 10.18 JWT Pitfalls — What Goes Wrong
 
 JWT is everywhere, but it's also where the most security mistakes happen.
 
@@ -1346,7 +1346,7 @@ JWT is everywhere, but it's also where the most security mistakes happen.
 
 ---
 
-## Defense in Depth — Layered Security
+## 10.19 Defense in Depth — Layered Security
 
 A single security control will eventually fail. **Layer your defenses** so an attacker has to bypass multiple controls.
 
@@ -1379,7 +1379,7 @@ Internet
 
 ---
 
-## Secrets Management — Don't Put Secrets in Code
+## 10.20 Secrets Management — Don't Put Secrets in Code
 
 Hard-coded API keys, DB passwords, and TLS certs in source repos are how breaches happen. Use a **secrets manager.**
 
@@ -1400,7 +1400,7 @@ Hard-coded API keys, DB passwords, and TLS certs in source repos are how breache
 
 ---
 
-## Common Security Headers — Defaults Every App Should Set
+## 10.21 Common Security Headers — Defaults Every App Should Set
 
 These belong on every HTTP response. Forgetting them is a finding in any security audit.
 
@@ -1415,11 +1415,11 @@ These belong on every HTTP response. Forgetting them is a finding in any securit
 
 ---
 
-## Combined Tips & Tricks
+## 10.22 Combined Tips & Tricks
 
 A consolidated master list from all sections.
 
-### General
+### 10.22.1 General
 
 - **Shift Left:** Start thinking about security early in your project. Embed security throughout the SDLC.
 - **Automate security checks:** Use CI tools to catch issues early. Integrate security tests and vulnerability scans into CI/CD pipelines.
@@ -1428,13 +1428,13 @@ A consolidated master list from all sections.
 - **Review regularly:** Security is an ongoing process, not a one-time setup.
 - **Educate your team:** Security awareness is everyone's job.
 
-### Authentication & Authorization
+### 10.22.2 Authentication & Authorization
 
 - Always use **multi-factor authentication (MFA)** where possible.
 - Store sensitive tokens/secrets in **vaults** (AWS Secrets Manager, HashiCorp Vault).
 - Rotate keys and secrets regularly. Automate rotation.
 
-### Data Protection
+### 10.22.3 Data Protection
 
 - **Encrypt everywhere:** Both at rest and in transit — never skip one.
 - Use **parameterized queries** to prevent SQL injection.
@@ -1442,21 +1442,21 @@ A consolidated master list from all sections.
 - **Hash, don't encrypt, passwords:** And always salt them.
 - **Automate certificate renewal:** Use tools like Let's Encrypt with auto-renewal.
 
-### Network Security
+### 10.22.4 Network Security
 
 - Regularly **scan for open ports** and **unused services.**
 - Use **security groups** and **VPCs** in the cloud for isolation.
 - **Harden your APIs:** Rate limiting, IP filtering, input validation, strong authentication.
 - **Trust but verify:** Use mTLS, certificate pinning, threat modeling.
 
-### Monitoring & Logging
+### 10.22.5 Monitoring & Logging
 
 - Log **all security events** and review them regularly.
 - Set up **alerting** for suspicious activities.
 - **Enable logging and monitoring:** Know when and where breaches or anomalies happen.
 - **Log everything (securely):** Centralize logs and protect them with encryption.
 
-### Operations
+### 10.22.6 Operations
 
 - **Embrace CSPM:** Use tools to continuously assess your cloud security posture.
 - **Practice incident response:** Regularly test your recovery and incident response plans.
@@ -1464,7 +1464,7 @@ A consolidated master list from all sections.
 
 ---
 
-## Sample Interview Questions
+## 10.23 Sample Interview Questions
 
 1. How would you design a secure authentication system for a distributed application?
 2. Explain how the CIA triad applies to system design.
@@ -1485,7 +1485,7 @@ A consolidated master list from all sections.
 
 ---
 
-## Summary & Quick Reference
+## 10.24 Summary & Quick Reference
 
 - **Security** is ongoing. It must be built into every phase and layer of your system.
 - **CIA triad:** Confidentiality, Integrity, Availability.
@@ -1495,7 +1495,7 @@ A consolidated master list from all sections.
 - **Harden your network** with firewalls, segmentation, zero trust, monitoring.
 - **DR is more than backups** — it's about system continuity.
 
-### Quick Reference: Security by Layer
+### 10.24.1 Quick Reference: Security by Layer
 
 | Layer         | Key Controls                                |
 |---------------|---------------------------------------------|
@@ -1508,7 +1508,7 @@ A consolidated master list from all sections.
 
 ---
 
-## Further Reading
+## 10.25 Further Reading
 
 - [OWASP Authentication Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html)
 - [JWT.io Introduction](https://jwt.io/introduction)

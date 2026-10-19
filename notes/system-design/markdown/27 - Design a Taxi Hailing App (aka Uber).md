@@ -6,7 +6,7 @@ Building a taxi-hailing platform like Uber isn't just about connecting drivers a
 
 ---
 
-## Learning Outcomes
+## 27.1 Learning Outcomes
 
 After working through this case study, you'll be able to:
 
@@ -20,25 +20,25 @@ After working through this case study, you'll be able to:
 
 ## Table of Contents
 
-1. [Understanding the Problem](#understanding-the-problem)
-2. [Functional & Non-Functional Requirements](#functional--non-functional-requirements)
-3. [Assumptions & Constraints](#assumptions--constraints)
-4. [Real-Time, Mapping & System Challenges](#real-time-mapping--system-challenges)
-5. [Estimating Scale & Usage](#estimating-scale--usage)
-6. [Core Microservices Architecture](#core-microservices-architecture)
-7. [API Gateway & Communication Patterns](#api-gateway--communication-patterns)
-8. [End-to-End Ride Booking Flow](#end-to-end-ride-booking-flow)
-9. [Real-Time Communication Design](#real-time-communication-design)
-10. [Data Storage & Geospatial Indexing](#data-storage--geospatial-indexing)
-11. [Strategic Tech & Infra Decisions](#strategic-tech--infra-decisions)
-12. [Key Bottlenecks & Scaling Challenges](#key-bottlenecks--scaling-challenges)
-13. [Sample Code](#sample-code)
-14. [Tips & Tricks](#tips--tricks)
-15. [Conclusion](#conclusion)
+- [27.2 Understanding the Problem](#272-understanding-the-problem)
+- [27.3 Functional & Non-Functional Requirements](#273-functional--non-functional-requirements)
+- [27.4 Assumptions & Constraints](#274-assumptions--constraints)
+- [27.5 Real-Time, Mapping & System Challenges](#275-real-time-mapping--system-challenges)
+- [27.6 Estimating Scale & Usage](#276-estimating-scale--usage)
+- [27.7 Core Microservices Architecture](#277-core-microservices-architecture)
+- [27.8 API Gateway & Communication Patterns](#278-api-gateway--communication-patterns)
+- [27.9 End-to-End Ride Booking Flow](#279-end-to-end-ride-booking-flow)
+- [27.10 Real-Time Communication Design](#2710-real-time-communication-design)
+- [27.11 Data Storage & Geospatial Indexing](#2711-data-storage--geospatial-indexing)
+- [27.12 Strategic Tech & Infra Decisions](#2712-strategic-tech--infra-decisions)
+- [27.13 Key Bottlenecks & Scaling Challenges](#2713-key-bottlenecks--scaling-challenges)
+- [27.14 Sample Code](#2714-sample-code)
+- [27.16 Tips & Tricks](#2716-tips--tricks)
+- [27.17 Conclusion](#2717-conclusion)
 
 ---
 
-## Understanding the Problem
+## 27.2 Understanding the Problem
 
 **Goal:** Build a scalable, reliable, and low-latency taxi-hailing platform to match millions of riders and drivers in real-time, process payments, and handle geo-location tracking.
 
@@ -56,9 +56,9 @@ After working through this case study, you'll be able to:
 
 ---
 
-## Functional & Non-Functional Requirements
+## 27.3 Functional & Non-Functional Requirements
 
-### Functional Requirements (MVP)
+### 27.3.1 Functional Requirements (MVP)
 
 **Rider:**
 
@@ -82,7 +82,7 @@ After working through this case study, you'll be able to:
 - Update ride status (assigned, en route, completed).
 - Calculate fares and process payments.
 
-### Non-Functional Requirements
+### 27.3.2 Non-Functional Requirements
 
 - **Scalability:** Handle millions of users and concurrent ride sessions.
 - **Availability:** 99.99% uptime, especially during peak.
@@ -92,9 +92,9 @@ After working through this case study, you'll be able to:
 
 ---
 
-## Assumptions & Constraints
+## 27.4 Assumptions & Constraints
 
-### Assumptions
+### 27.4.1 Assumptions
 
 - All users/drivers have GPS-enabled smartphones.
 - Third-party APIs (Google Maps, Stripe) are reliable.
@@ -102,7 +102,7 @@ After working through this case study, you'll be able to:
 - Only in-app digital payments at launch.
 - WebSockets (or MQTT) used for real-time comms.
 
-### Constraints
+### 27.4.2 Constraints
 
 - Third-party APIs have rate limits/latency.
 - Connectivity may be unreliable (tunnels, rural zones).
@@ -112,7 +112,7 @@ After working through this case study, you'll be able to:
 
 ---
 
-## Real-Time, Mapping & System Challenges
+## 27.5 Real-Time, Mapping & System Challenges
 
 - **Real-time system complexity:** Match riders and drivers within <2 seconds. Millions of concurrent connections. Location updates every 2-3 seconds.
 - **Map & geolocation:** Live user/driver positions, route recalculation. GPS inaccuracies, map API rate limits. Geocoding and spatial indexing.
@@ -120,7 +120,7 @@ After working through this case study, you'll be able to:
 
 ---
 
-## Estimating Scale & Usage
+## 27.6 Estimating Scale & Usage
 
 | Metric                       | Estimate                        |
 |------------------------------|---------------------------------|
@@ -135,7 +135,7 @@ After working through this case study, you'll be able to:
 
 ---
 
-## Core Microservices Architecture
+## 27.7 Core Microservices Architecture
 
 ```
                 +-----------------------+
@@ -168,7 +168,7 @@ After working through this case study, you'll be able to:
                                                +-----------------------+
 ```
 
-### Mermaid View
+### 27.7.1 Mermaid View
 
 ```mermaid
 flowchart TD
@@ -207,7 +207,7 @@ flowchart TD
   C7 -- Notification Queue --> G1[Push/SMS Gateway]
 ```
 
-### Service Responsibilities
+### 27.7.2 Service Responsibilities
 
 | Service          | Responsibilities                                                  | Storage           |
 |------------------|-------------------------------------------------------------------|-------------------|
@@ -223,26 +223,26 @@ flowchart TD
 
 ---
 
-## API Gateway & Communication Patterns
+## 27.8 API Gateway & Communication Patterns
 
 - **External API:** REST/GraphQL via API Gateway.
 - **Internal service-to-service:** gRPC or async messaging (Kafka, NATS).
 - **Real-time events:** WebSockets/MQTT for persistent connections.
 
-### API Gateway Responsibilities
+### 27.8.1 API Gateway Responsibilities
 
 - Authentication & rate limiting.
 - Routing to appropriate microservice.
 - Aggregating responses for frontend.
 
-### gRPC Example (Go)
+### 27.8.2 gRPC Example (Go)
 
 ```go
 driverClient := pb.NewDriverServiceClient(conn)
 resp, err := driverClient.GetAvailableDrivers(ctx, &pb.DriverRequest{Location: location})
 ```
 
-### OpenAPI Spec (Sample)
+### 27.8.3 OpenAPI Spec (Sample)
 
 ```yaml
 paths:
@@ -262,7 +262,7 @@ paths:
 
 ---
 
-## End-to-End Ride Booking Flow
+## 27.9 End-to-End Ride Booking Flow
 
 1. **Rider requests a trip:** Client sends ride request via API Gateway. Gateway handles authentication, rate limiting, forwards to Ride Matching Service.
 2. **Matching engine:** Location Service uses spatial queries (geohashing/H3) to fetch nearby drivers. Driver Service checks status (with Driver Cache for low latency). Matching Service selects the best driver.
@@ -271,7 +271,7 @@ paths:
 5. **Payment processing:** Trip completion triggers Payment Service (often via async queue). Payment Service updates Payment DB, talks to external gateway (Stripe).
 6. **Notifications:** All status changes pushed via Notification Service (in-app, push, SMS).
 
-### Sequence Diagram
+### 27.9.1 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -295,7 +295,7 @@ sequenceDiagram
     Notification->>Rider: Push notification
 ```
 
-### More Detailed Sequence
+### 27.9.2 More Detailed Sequence
 
 ```mermaid
 sequenceDiagram
@@ -323,7 +323,7 @@ sequenceDiagram
 
 ---
 
-## Real-Time Communication Design
+## 27.10 Real-Time Communication Design
 
 - **Tech stack:** WebSockets or MQTT for persistent comms; Pub/Sub (Redis/Kafka) for event propagation.
 - **Fallback:** Mobile polling if connection unreliable.
@@ -334,7 +334,7 @@ sequenceDiagram
 - Pickup status, in-progress updates, trip completion.
 - ETA changes, trip cancellation, surge updates.
 
-### Code: WebSocket Server (Python FastAPI)
+### 27.10.1 Code: WebSocket Server (Python FastAPI)
 
 ```python
 from fastapi import FastAPI, WebSocket
@@ -353,7 +353,7 @@ async def location_ws(websocket: WebSocket, user_id: str):
         print(f"Connection closed for {user_id}: {e}")
 ```
 
-### Code: WebSocket Server (Node.js `ws`)
+### 27.10.2 Code: WebSocket Server (Node.js `ws`)
 
 ```js
 const WebSocket = require('ws');
@@ -368,7 +368,7 @@ wss.on('connection', function connection(ws) {
 });
 ```
 
-### Code: Python Starlette WebSocket Endpoint
+### 27.10.3 Code: Python Starlette WebSocket Endpoint
 
 ```python
 from starlette.endpoints import WebSocketEndpoint
@@ -383,7 +383,7 @@ class LocationUpdateEndpoint(WebSocketEndpoint):
         await websocket.send_json({"status": "ok"})
 ```
 
-### Code: Kafka Location Publish
+### 27.10.4 Code: Kafka Location Publish
 
 ```python
 from kafka import KafkaProducer
@@ -394,7 +394,7 @@ location_update = {'driver_id': 123, 'lat': 37.77, 'lng': -122.41}
 producer.send('driver-location-updates', json.dumps(location_update).encode())
 ```
 
-### Code: WebSocket Client (JavaScript)
+### 27.10.5 Code: WebSocket Client (JavaScript)
 
 ```javascript
 ws.onmessage = (event) => {
@@ -407,14 +407,14 @@ ws.onmessage = (event) => {
 
 ---
 
-## Data Storage & Geospatial Indexing
+## 27.11 Data Storage & Geospatial Indexing
 
 - **User/Trip data:** SQL (PostgreSQL, MySQL) for strong consistency.
 - **Location & ride logs:** NoSQL (MongoDB, Cassandra) for high write throughput.
 - **Caching:** Redis for hot driver/location data, sessions.
 - **Geospatial indexing:** Geohashing or H3 for efficient proximity queries.
 
-### Driver Location Schema
+### 27.11.1 Driver Location Schema
 
 ```sql
 CREATE TABLE driver_locations (
@@ -430,14 +430,14 @@ SELECT driver_id FROM driver_locations
 WHERE geohash LIKE '9q8y%' AND last_updated > NOW() - INTERVAL '1 minute';
 ```
 
-### PostGIS Proximity Query
+### 27.11.2 PostGIS Proximity Query
 
 ```sql
 SELECT driver_id FROM drivers
 WHERE ST_DWithin(location, ST_MakePoint($1, $2)::geography, 1000);
 ```
 
-### Redis Geo Commands
+### 27.11.3 Redis Geo Commands
 
 ```python
 import redis
@@ -448,7 +448,7 @@ r.geoadd("drivers", (77.5946, 12.9716, "driver_123"))
 r.georadius("drivers", 77.5946, 12.9716, 3, unit='km')
 ```
 
-### Sample Event Message
+### 27.11.4 Sample Event Message
 
 ```json
 {
@@ -462,7 +462,7 @@ r.georadius("drivers", 77.5946, 12.9716, 3, unit='km')
 
 ---
 
-## Strategic Tech & Infra Decisions
+## 27.12 Strategic Tech & Infra Decisions
 
 | Area                 | Choices                                                  |
 |----------------------|----------------------------------------------------------|
@@ -474,14 +474,14 @@ r.georadius("drivers", 77.5946, 12.9716, 3, unit='km')
 | **Fault Tolerance**  | Multi-region replication, HA, event streaming            |
 | **Consistency**      | Strong for ride assignment; eventual for location        |
 
-### Tech Stack Summary
+### 27.12.1 Tech Stack Summary
 
 - **Communication:** REST/gRPC (internal), WebSockets/MQTT (real-time), Kafka/Redis PubSub (event streaming).
 - **Storage:** PostgreSQL/MySQL for users/trips/payments; MongoDB/Cassandra for logs; Redis for caching.
 - **Geospatial indexing:** [H3](https://h3geo.org/) or Geohash for driver-location queries.
 - **Infra:** Kubernetes for orchestration, auto-scaling/load balancing, multi-region replication.
 
-### Kubernetes Deployment Example
+### 27.12.2 Kubernetes Deployment Example
 
 ```yaml
 apiVersion: apps/v1
@@ -507,20 +507,20 @@ spec:
 
 ---
 
-## Key Bottlenecks & Scaling Challenges
+## 27.13 Key Bottlenecks & Scaling Challenges
 
-### Real-Time Location & Matching
+### 27.13.1 Real-Time Location & Matching
 
 - Frequent driver updates: write-heavy, low-latency.
 - Scaling matching engine: needs to match in <2s.
 - Pushing location to all parties instantly.
 
-### Third-Party Dependencies
+### 27.13.2 Third-Party Dependencies
 
 - Maps: rate limits, costs, external latency.
 - Payments: timeouts, retries, fraud checks.
 
-### Platform-Wide Scaling
+### 27.13.3 Platform-Wide Scaling
 
 - Push notifications at massive scale.
 - Synchronizing state (eventual consistency).
@@ -528,9 +528,9 @@ spec:
 
 ---
 
-## Sample Code
+## 27.14 Sample Code
 
-### Request Ride (Pseudocode)
+### 27.14.1 Request Ride (Pseudocode)
 
 ```python
 def request_ride(user_id, src, dst):
@@ -540,7 +540,7 @@ def request_ride(user_id, src, dst):
     return ride_id
 ```
 
-### Matching Logic
+### 27.14.2 Matching Logic
 
 ```python
 def match(user_id, src, dst):
@@ -551,7 +551,7 @@ def match(user_id, src, dst):
     return ride_id
 ```
 
-### Trip Completion + Payment
+### 27.14.3 Trip Completion + Payment
 
 ```python
 def complete_trip(trip_id, user_id, driver_id, fare):
@@ -561,9 +561,9 @@ def complete_trip(trip_id, user_id, driver_id, fare):
 
 ---
 
-## Beyond MVP — What a Senior Designer Adds
+## 27.15 Beyond MVP — What a Senior Designer Adds
 
-### Geohash vs. S2 vs. H3 — Spatial Indexing in Practice
+### 27.15.1 Geohash vs. S2 vs. H3 — Spatial Indexing in Practice
 
 | System    | Origin | Shape    | Strengths                                    | Weaknesses                  |
 |-----------|--------|----------|----------------------------------------------|----------------------------|
@@ -573,7 +573,7 @@ def complete_trip(trip_id, user_id, driver_id, fare):
 
 **Uber uses H3** because hexagons match real driver movement better than square cells. For interview purposes, geohash is fine to discuss.
 
-### Surge Pricing
+### 27.15.2 Surge Pricing
 
 Price multiplier based on local supply (drivers) and demand (ride requests). Computed continuously per geohash/H3 cell:
 
@@ -585,7 +585,7 @@ In practice: smoothed with rolling averages to avoid wild flapping; capped to av
 
 **Why it matters in design:** surge is a *signal* that flows from the location service → matching service → pricing service → user UI in near-real-time. Latency budget: <1 second.
 
-### ETA Prediction — Smarter than Haversine
+### 27.15.3 ETA Prediction — Smarter than Haversine
 
 Naive: straight-line distance ÷ avg speed. Wrong by ~2× in cities.
 
@@ -597,7 +597,7 @@ Naive: straight-line distance ÷ avg speed. Wrong by ~2× in cities.
 
 Uber's actual ETA model is a gradient-boosted tree trained on petabytes of past trips.
 
-### Driver Disconnection Mid-Trip
+### 27.15.4 Driver Disconnection Mid-Trip
 
 Driver's phone dies. Rider is in the back seat. What now?
 
@@ -607,7 +607,7 @@ Driver's phone dies. Rider is in the back seat. What now?
 - When driver reconnects, location updates resume; if reconnection doesn't happen within N minutes, trip is flagged for support.
 - Fare calculation uses the original quote + adjustments based on actual route (best-effort with sparse data).
 
-### Carpooling / Pool Matching (Uber Pool)
+### 27.15.5 Carpooling / Pool Matching (Uber Pool)
 
 A *much* harder matching problem than 1:1: now you're matching multiple riders to one driver with overlapping routes, dynamically picking up and dropping off mid-trip.
 
@@ -617,7 +617,7 @@ A *much* harder matching problem than 1:1: now you're matching multiple riders t
 
 This is a hard optimization problem; Uber uses approximation algorithms with strict time budgets.
 
-### Fraud Detection
+### 27.15.6 Fraud Detection
 
 Both rider and driver fraud are real:
 
@@ -628,58 +628,58 @@ Both rider and driver fraud are real:
 
 Implementation: ML scoring at signup, at ride request, at payment. High-risk events block or step up verification.
 
-### Multi-Modal (Uber Eats, Uber Freight)
+### 27.15.7 Multi-Modal (Uber Eats, Uber Freight)
 
 The "marketplace" layer (matching supply and demand in real time) generalizes beyond rides. Uber Eats matches restaurants to couriers to customers; Uber Freight matches shippers to truck drivers. Same core architecture, different domain rules.
 
 ---
 
-## Tips & Tricks
+## 27.16 Tips & Tricks
 
-### Real-time Matching
+### 27.16.1 Real-time Matching
 
 - **Spatial indexing** (Geohash, H3) in Location Service for fast nearby driver lookup.
 - Keep driver location in an in-memory, geo-indexed store (Redis GEO commands).
 
-### Communication
+### 27.16.2 Communication
 
 - **WebSockets or MQTT** for persistent connections.
 - For unreliable networks, gracefully fallback to HTTP polling.
 - **gRPC vs REST:** Use gRPC for internal speed/type safety, REST for public APIs.
 
-### Performance
+### 27.16.3 Performance
 
 - **Decouple** write-heavy (location updates) and read-heavy (map/ETA queries) workloads.
 - **Async event streaming** (Kafka, NATS) for decoupling microservices.
 - **Batch location updates** to reduce write load.
 - **Cache aggressively:** Use Redis/Memcached for driver/location/trip hot data.
 
-### Reliability
+### 27.16.4 Reliability
 
 - **Circuit breakers and fallbacks** for third-party APIs.
 - **Idempotency tokens** and **transactional outbox** patterns for payment and ride assignment.
 - **Graceful degradation:** Fallbacks if Maps/Payments APIs fail.
 - **Event-driven architecture:** Decouple services via event streams.
 
-### Security
+### 27.16.5 Security
 
 - Always use **OAuth2/JWT** for authentication.
 - **PCI-compliant** payment processing — never store raw card data.
 - Use HTTPS everywhere, encrypt sensitive data at rest and in transit.
 
-### Edge Cases
+### 27.16.6 Edge Cases
 
 - Prevent **race conditions** with DB transactions or distributed locks.
 - For **missing/stale location data**, interpolate using last known position and timestamp.
 
-### Scaling
+### 27.16.7 Scaling
 
 - **Horizontally scale** stateless services; use distributed caching for hot data.
 - **Autoscale** based on CPU, request latency, connection count.
 - **WebSocket scaling:** Use sticky sessions and sharded pub/sub (Redis Cluster or managed services).
 - **Push notification throttling:** Notification queue and exponential backoff.
 
-### Operations
+### 27.16.8 Operations
 
 - **Monitor third-party API quotas:** Build dashboards and alerts.
 - **Optimize for mobile networks:** Support both persistent (WebSocket) and polling connections.
@@ -688,7 +688,7 @@ The "marketplace" layer (matching supply and demand in real time) generalizes be
 
 ---
 
-## Conclusion
+## 27.17 Conclusion
 
 Designing a taxi-hailing platform is a **prime test of distributed system design** — it requires balancing real-time needs, scalability, fault-tolerance, and user experience. The system delivers seamless real-time experiences for riders and drivers while handling millions of users, payments, and location updates.
 
@@ -696,7 +696,7 @@ The key is to **balance trade-offs:** performance vs. consistency, cost vs. reli
 
 ---
 
-## Further Reading
+## 27.18 Further Reading
 
 - [Uber Engineering Blog](https://eng.uber.com/)
 - [Google Cloud Architecture: Real-Time Ride Hailing](https://cloud.google.com/architecture/real-time-ride-hailing)

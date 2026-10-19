@@ -6,7 +6,7 @@ In this case study, we'll walk through a detailed design — covering CRDT/OT co
 
 ---
 
-## Learning Outcomes
+## 28.1 Learning Outcomes
 
 After working through this case study, you'll be able to:
 
@@ -20,26 +20,26 @@ After working through this case study, you'll be able to:
 
 ## Table of Contents
 
-1. [Problem Overview](#problem-overview)
-2. [Functional & Non-Functional Requirements](#functional--non-functional-requirements)
-3. [Assumptions & Constraints](#assumptions--constraints)
-4. [Collaboration Challenges](#collaboration-challenges)
-5. [Scale Estimation](#scale-estimation)
-6. [Bottlenecks](#bottlenecks)
-7. [High-Level Architecture](#high-level-architecture)
-8. [Document Model Design](#document-model-design)
-9. [Real-Time Sync Flow](#real-time-sync-flow)
-10. [Communication Patterns](#communication-patterns)
-11. [API Endpoints](#api-endpoints)
-12. [Consistency & Conflict Handling](#consistency--conflict-handling)
-13. [Tech Stack & Infrastructure Decisions](#tech-stack--infrastructure-decisions)
-14. [Sample Code](#sample-code)
-15. [Tips & Tricks](#tips--tricks)
-16. [Conclusion](#conclusion)
+- [28.2 Problem Overview](#282-problem-overview)
+- [28.3 Functional & Non-Functional Requirements](#283-functional--non-functional-requirements)
+- [28.4 Assumptions & Constraints](#284-assumptions--constraints)
+- [28.5 Collaboration Challenges](#285-collaboration-challenges)
+- [28.6 Scale Estimation](#286-scale-estimation)
+- [28.7 Bottlenecks](#287-bottlenecks)
+- [28.8 High-Level Architecture](#288-high-level-architecture)
+- [28.9 Document Model Design](#289-document-model-design)
+- [28.10 Real-Time Sync Flow](#2810-real-time-sync-flow)
+- [28.11 Communication Patterns](#2811-communication-patterns)
+- [28.12 API Endpoints](#2812-api-endpoints)
+- [28.13 Consistency & Conflict Handling](#2813-consistency--conflict-handling)
+- [28.14 Tech Stack & Infrastructure Decisions](#2814-tech-stack--infrastructure-decisions)
+- [28.15 Sample Code](#2815-sample-code)
+- [28.17 Tips & Tricks](#2817-tips--tricks)
+- [28.18 Conclusion](#2818-conclusion)
 
 ---
 
-## Problem Overview
+## 28.2 Problem Overview
 
 We want to build a **web-based collaborative document editor** that allows **multiple users to edit the same document in real time**. Core requirements:
 
@@ -52,9 +52,9 @@ We want to build a **web-based collaborative document editor** that allows **mul
 
 ---
 
-## Functional & Non-Functional Requirements
+## 28.3 Functional & Non-Functional Requirements
 
-### Functional Requirements (MVP)
+### 28.3.1 Functional Requirements (MVP)
 
 | Feature                              | Description                                                              |
 |--------------------------------------|--------------------------------------------------------------------------|
@@ -65,7 +65,7 @@ We want to build a **web-based collaborative document editor** that allows **mul
 | Permission control                   | Read/write access for authorized users only.                             |
 | Invite collaborators                 | Via shareable link or email.                                             |
 
-### Non-Functional Requirements
+### 28.3.2 Non-Functional Requirements
 
 - **Performance:** Real-time sync under **100ms** latency.
 - **Scalability:** Support **millions of docs/users.**
@@ -77,9 +77,9 @@ We want to build a **web-based collaborative document editor** that allows **mul
 
 ---
 
-## Assumptions & Constraints
+## 28.4 Assumptions & Constraints
 
-### Assumptions
+### 28.4.1 Assumptions
 
 - Users have reliable internet connections.
 - Clients use modern browsers with WebSocket support.
@@ -87,7 +87,7 @@ We want to build a **web-based collaborative document editor** that allows **mul
 - Collaboration groups are small–medium (2–50 users).
 - Heavy read-write usage (frequent edits).
 
-### Constraints
+### 28.4.2 Constraints
 
 - Real-time sync must work under high concurrency.
 - Document consistency must be maintained even with conflicts.
@@ -97,7 +97,7 @@ We want to build a **web-based collaborative document editor** that allows **mul
 
 ---
 
-## Collaboration Challenges
+## 28.5 Collaboration Challenges
 
 | Challenge                  | Description                                                                 |
 |----------------------------|-----------------------------------------------------------------------------|
@@ -109,7 +109,7 @@ We want to build a **web-based collaborative document editor** that allows **mul
 
 ---
 
-## Scale Estimation
+## 28.6 Scale Estimation
 
 | Metric                       | Value                                      |
 |------------------------------|--------------------------------------------|
@@ -124,7 +124,7 @@ We want to build a **web-based collaborative document editor** that allows **mul
 | Hot Storage                  | 1–5 TB/day                                 |
 | Cold Storage (Archives)      | 100s of TBs                                |
 
-### Traffic Patterns
+### 28.6.1 Traffic Patterns
 
 - **Spikes during working hours** (especially in shared orgs).
 - **Hotspot documents** (meeting notes, templates).
@@ -133,7 +133,7 @@ We want to build a **web-based collaborative document editor** that allows **mul
 
 ---
 
-## Bottlenecks
+## 28.7 Bottlenecks
 
 1. **Operational Transformation (OT) / CRDT overhead:** CPU-intensive, requires fast in-memory ops.
 2. **WebSocket scaling & fan-out:** Persistent, low-latency connections; horizontal scaling needed.
@@ -143,7 +143,7 @@ We want to build a **web-based collaborative document editor** that allows **mul
 
 ---
 
-## High-Level Architecture
+## 28.8 High-Level Architecture
 
 ```mermaid
 graph TD
@@ -202,7 +202,7 @@ ASCII view:
 +-----------------+   +----------------+   +------------------+
 ```
 
-### Component Breakdown
+### 28.8.1 Component Breakdown
 
 - **Client:** Rich text editor, WebSocket for real-time sync.
 - **API Gateway:** Handles auth, routing, rate limiting.
@@ -215,9 +215,9 @@ ASCII view:
 
 ---
 
-## Document Model Design
+## 28.9 Document Model Design
 
-### Why CRDT/OT?
+### 28.9.1 Why CRDT/OT?
 
 With multiple users editing the same doc, we need to:
 
@@ -229,12 +229,12 @@ With multiple users editing the same doc, we need to:
 - **CRDT (e.g., [Yjs](https://github.com/yjs/yjs), [Automerge](https://github.com/automerge/automerge)):** Each client can modify independently; all changes converge automatically.
 - **OT:** Edits are transformed in order to maintain consistency.
 
-### Data Structure
+### 28.9.2 Data Structure
 
 - **Operation-based updates:** Send/receive granular operations (insert, delete) instead of full text blobs.
 - **Version metadata:** For diff, sync, and rollback.
 
-#### Yjs Document Example
+#### 28.9.2.1 Yjs Document Example
 
 ```javascript
 const Y = require('yjs');
@@ -249,7 +249,7 @@ const update = Y.encodeStateAsUpdate(doc);
 socket.send(update);
 ```
 
-#### CRDT-Style Document Structure (Pseudocode)
+#### 28.9.2.2 CRDT-Style Document Structure (Pseudocode)
 
 ```js
 {
@@ -266,7 +266,7 @@ socket.send(update);
 }
 ```
 
-#### Operation-Based Update (JSON)
+#### 28.9.2.3 Operation-Based Update (JSON)
 
 ```json
 {
@@ -303,7 +303,7 @@ A more detailed operation:
 }
 ```
 
-#### Top-Level Document JSON
+#### 28.9.2.4 Top-Level Document JSON
 
 ```json
 {
@@ -320,7 +320,7 @@ A more detailed operation:
 
 ---
 
-## Real-Time Sync Flow
+## 28.10 Real-Time Sync Flow
 
 1. ✍️ User edits doc (inserts text).
 2. 📤 Client sends operation over WebSocket.
@@ -329,7 +329,7 @@ A more detailed operation:
 5. 💾 Autosave to persistent store.
 6. 🕒 Snapshots saved periodically for recovery.
 
-### Sequence Diagram
+### 28.10.1 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -345,7 +345,7 @@ sequenceDiagram
     SyncService->>Storage: Save snapshot (every N ops)
 ```
 
-### Two-User Sync Diagram
+### 28.10.2 Two-User Sync Diagram
 
 ```mermaid
 sequenceDiagram
@@ -365,7 +365,7 @@ sequenceDiagram
     Doc->>Doc: Autosave + snapshot (periodically)
 ```
 
-### Detailed Service-Level Flow
+### 28.10.3 Detailed Service-Level Flow
 
 ```mermaid
 sequenceDiagram
@@ -390,7 +390,7 @@ sequenceDiagram
 
 ---
 
-## Communication Patterns
+## 28.11 Communication Patterns
 
 | Channel         | Protocol       | Purpose                                    |
 |-----------------|----------------|--------------------------------------------|
@@ -406,7 +406,7 @@ sequenceDiagram
 
 ---
 
-## API Endpoints
+## 28.12 API Endpoints
 
 ```http
 GET   /documents/:id              # Fetch document
@@ -419,7 +419,7 @@ POST  /documents/:id/collaborators # Add/remove collaborators
 WebSocket: /ws/collab?doc_id=abc123&token=jwt
 ```
 
-### Sample WebSocket Message (Edit Operation)
+### 28.12.1 Sample WebSocket Message (Edit Operation)
 
 ```json
 {
@@ -447,21 +447,21 @@ WebSocket: /ws/collab?doc_id=abc123&token=jwt
 
 ---
 
-## Consistency & Conflict Handling
+## 28.13 Consistency & Conflict Handling
 
 - **CRDT/OT:** Transform concurrent operations so all clients eventually converge to the same state.
 - **Operation logs:** Each doc maintains a log for replay/resync.
 - **Snapshots + deltas:** For syncing lagging clients.
 - **Reconnection protocol:** Handle clients rejoining after network partition.
 
-### Applying a CRDT Update on Reconnect
+### 28.13.1 Applying a CRDT Update on Reconnect
 
 ```javascript
 const update = receiveUpdateFromServer();
 Y.applyUpdate(localDoc, update);
 ```
 
-### Conflict Resolution (Pseudocode — Lamport Timestamps)
+### 28.13.2 Conflict Resolution (Pseudocode — Lamport Timestamps)
 
 ```python
 def resolve_conflict(local_op, remote_op):
@@ -480,7 +480,7 @@ function resolveConflict(opA, opB) {
 }
 ```
 
-### CRDT Merge Pseudo-code
+### 28.13.3 CRDT Merge Pseudo-code
 
 ```javascript
 function mergeOps(currentState, incomingOp) {
@@ -493,7 +493,7 @@ function mergeOps(currentState, incomingOp) {
 
 ---
 
-## Tech Stack & Infrastructure Decisions
+## 28.14 Tech Stack & Infrastructure Decisions
 
 | Layer         | Choice                                                              |
 |---------------|---------------------------------------------------------------------|
@@ -508,9 +508,9 @@ function mergeOps(currentState, incomingOp) {
 
 ---
 
-## Sample Code
+## 28.15 Sample Code
 
-### WebSocket Real-Time Sync (Node.js + Yjs)
+### 28.15.1 WebSocket Real-Time Sync (Node.js + Yjs)
 
 A basic server:
 
@@ -592,7 +592,7 @@ ws.on('message', (msg) => {
 });
 ```
 
-### Client-Side WebSocket (JS)
+### 28.15.2 Client-Side WebSocket (JS)
 
 ```javascript
 const ws = new WebSocket('wss://api.yourdocs.com/ws/collab?doc_id=abc123&token=xyz');
@@ -605,7 +605,7 @@ function sendLocalOperation(op) {
 }
 ```
 
-### Server-Side WebSocket Handler (Generic)
+### 28.15.3 Server-Side WebSocket Handler (Generic)
 
 ```js
 wsServer.on('connection', (socket, req) => {
@@ -621,9 +621,9 @@ wsServer.on('connection', (socket, req) => {
 
 ---
 
-## Beyond MVP — What a Senior Designer Adds
+## 28.16 Beyond MVP — What a Senior Designer Adds
 
-### OT vs CRDT — Which to Choose and Why
+### 28.16.1 OT vs CRDT — Which to Choose and Why
 
 Both achieve the same goal (concurrent edits converge to the same state). Trade-offs:
 
@@ -637,7 +637,7 @@ Both achieve the same goal (concurrent edits converge to the same state). Trade-
 
 **Google Docs uses OT** for historical reasons. **Modern systems often choose CRDTs** because the simpler mental model and offline support outweigh the storage overhead. For an interview, mention both and explain the choice.
 
-### Presence (Live Cursors, "X is editing")
+### 28.16.2 Presence (Live Cursors, "X is editing")
 
 Showing 5 colored cursors live in the document is a separate problem from text sync.
 
@@ -647,7 +647,7 @@ Showing 5 colored cursors live in the document is a separate problem from text s
 
 **Implementation:** separate "presence" Pub/Sub channel from "edit" channel; presence has a much higher event rate but doesn't need durability.
 
-### Offline Editing
+### 28.16.3 Offline Editing
 
 CRDTs make this natural; OT requires careful design.
 
@@ -659,7 +659,7 @@ CRDTs make this natural; OT requires careful design.
 4. Server merges via CRDT/OT; broadcasts to other clients.
 5. Client may need to reconcile if its local view diverges from server.
 
-### Comments and Suggestions
+### 28.16.4 Comments and Suggestions
 
 These are "out-of-band" content — not part of the document text, but anchored to it.
 
@@ -668,13 +668,13 @@ These are "out-of-band" content — not part of the document text, but anchored 
 
 **Implementation:** separate `comments` and `suggestions` tables, each with an `anchor_op_id` referencing a position in the op log.
 
-### Revision History
+### 28.16.5 Revision History
 
 Every N ops or M minutes, snapshot the doc state. UI shows a timeline; clicking a point restores or compares versions.
 
 **Storage:** keep recent snapshots in primary DB; archive older ones to cheap object storage.
 
-### Scaling WebSocket Fan-Out for Hot Documents
+### 28.16.6 Scaling WebSocket Fan-Out for Hot Documents
 
 A team meeting's shared doc might have 200 editors simultaneously. Each edit goes to 200 connections.
 
@@ -684,28 +684,28 @@ A team meeting's shared doc might have 200 editors simultaneously. Each edit goe
 2. That server fans out locally — no cross-server pub/sub needed for that doc.
 3. For *globally* shared docs (1000+ editors), use a multi-tier fan-out: edge servers handle subsets, aggregate via Pub/Sub.
 
-### Permissions and Sharing
+### 28.16.7 Permissions and Sharing
 
 Same as cloud storage (Chapter 23), but with a twist: real-time. If Alice revokes Bob's access *while Bob is editing*, his next op must fail, and his client must immediately show "you no longer have access."
 
 **Pattern:** push permission changes through the same WebSocket channel; client validates on every op; server rejects ops from users no longer permitted.
 
-### Export and Print
+### 28.16.8 Export and Print
 
 Render the live document model to PDF, DOCX, plain text. Run async — typically takes 1-30 seconds. Results stored in object storage, link emailed/displayed.
 
 ---
 
-## Tips & Tricks
+## 28.17 Tips & Tricks
 
-### Architecture
+### 28.17.1 Architecture
 
 1. **Start with OT/CRDT libraries.** Don't reinvent the wheel: use mature libraries ([Yjs](https://docs.yjs.dev/), [Automerge](https://automerge.org/)) for document sync and conflict resolution.
 2. **WebSocket connection management.** Use connection pools and horizontal scaling (sharding docs across sync nodes). Monitor for "zombie" connections; implement heartbeats/pings.
 3. **Efficient fan-out.** Use Pub/Sub (Redis, Kafka) to broadcast document changes with low latency.
 4. **Stateless services.** Make components stateless where possible for horizontal scaling.
 
-### Performance
+### 28.17.2 Performance
 
 5. **Keep operations small.** Send deltas, not full documents.
 6. **Batch operations.** For high-frequency edits, batch and debounce to avoid flooding the network.
@@ -713,24 +713,24 @@ Render the live document model to PDF, DOCX, plain text. Run async — typically
 8. **Sticky sessions or consistent hashing:** Route users editing the same doc to the same backend node, minimizing fan-out.
 9. **Autosave frequency.** Balance between too-frequent (write pressure) and too-rare (data loss risk).
 
-### Storage
+### 28.17.3 Storage
 
 10. **Snapshots.** Save periodic document snapshots to speed up recovery and reduce replay of long operation logs.
 11. **Autosave & snapshots.** Autosave frequently, snapshot (full doc state) less often.
 
-### Reliability
+### 28.17.4 Reliability
 
 12. **Handle disconnects gracefully.** Have reconnection and catch-up protocols for clients.
 13. **Backpressure handling.** Monitor and throttle clients that send too many ops/sec.
 14. **Optimistic UI:** Apply local edits instantly, then confirm with the server.
 
-### Security
+### 28.17.5 Security
 
 15. **Security first.** All APIs authenticated (JWT/OAuth2); all transport encrypted (TLS).
 16. **Permission caching.** Cache permission checks in memory for active docs to reduce DB load — but always validate on critical writes.
 17. **Always validate server-side.** Never trust client-supplied edit ops blindly.
 
-### Testing & Monitoring
+### 28.17.6 Testing & Monitoring
 
 18. **Testing real-time flows.** Simulate hundreds/thousands of concurrent users in automated tests.
 19. **Monitor for hotspots.** Some docs will be edited much more than others — consider sharding.
@@ -739,7 +739,7 @@ Render the live document model to PDF, DOCX, plain text. Run async — typically
 
 ---
 
-## Conclusion
+## 28.18 Conclusion
 
 Designing a collaborative document editor is a **classic, multidimensional system design challenge**. With a modular, microservices-based architecture, careful real-time conflict handling, and strategic use of modern infrastructure (WebSockets, Kafka, Kubernetes, CRDT/OT), you can build a solution that's robust, fast, and scalable.
 
@@ -749,7 +749,7 @@ By leveraging modern CRDT/OT libraries, scalable WebSocket infrastructure, and m
 
 ---
 
-## Further Reading
+## 28.19 Further Reading
 
 - [Yjs (CRDT for JS)](https://github.com/yjs/yjs)
 - [Yjs Docs](https://docs.yjs.dev/)

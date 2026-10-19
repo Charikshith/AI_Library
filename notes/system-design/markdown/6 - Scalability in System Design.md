@@ -6,7 +6,7 @@ In this chapter, we'll explore the **core principles, strategies, common pitfall
 
 ---
 
-## Learning Outcomes
+## 6.1 Learning Outcomes
 
 After reading this chapter, you'll be able to:
 
@@ -20,23 +20,23 @@ After reading this chapter, you'll be able to:
 
 ## Table of Contents
 
-1. [What is Scalability?](#what-is-scalability)
-2. [Why Systems Need to Scale](#why-systems-need-to-scale)
-3. [Types of Scalability](#types-of-scalability)
-4. [Common Challenges in Scaling](#common-challenges-in-scaling)
-5. [Scaling Strategies — A Deep Dive](#scaling-strategies--a-deep-dive)
-6. [Load Balancing — The Backbone of Scalability](#load-balancing--the-backbone-of-scalability)
-7. [Autoscaling in Cloud Environments](#autoscaling-in-cloud-environments)
-8. [Monitoring & Proactive Scaling](#monitoring--proactive-scaling)
-9. [Cost Optimization Strategies](#cost-optimization-strategies)
-10. [Combined Tips & Tricks](#combined-tips--tricks)
-11. [Sample Interview Questions](#sample-interview-questions)
-12. [Key Takeaways](#key-takeaways)
-13. [Further Reading](#further-reading)
+- [6.2 What is Scalability?](#62-what-is-scalability)
+- [6.3 Why Systems Need to Scale](#63-why-systems-need-to-scale)
+- [6.4 Types of Scalability](#64-types-of-scalability)
+- [6.5 Common Challenges in Scaling](#65-common-challenges-in-scaling)
+- [6.6 Scaling Strategies — A Deep Dive](#66-scaling-strategies--a-deep-dive)
+- [6.7 Load Balancing — The Backbone of Scalability](#67-load-balancing--the-backbone-of-scalability)
+- [6.8 Autoscaling in Cloud Environments](#68-autoscaling-in-cloud-environments)
+- [6.9 Monitoring & Proactive Scaling](#69-monitoring--proactive-scaling)
+- [6.10 Cost Optimization Strategies](#610-cost-optimization-strategies)
+- [6.15 Combined Tips & Tricks](#615-combined-tips--tricks)
+- [6.16 Sample Interview Questions](#616-sample-interview-questions)
+- [6.17 Key Takeaways](#617-key-takeaways)
+- [6.18 Further Reading](#618-further-reading)
 
 ---
 
-## What is Scalability?
+## 6.2 What is Scalability?
 
 > **Scalability** is the capability of a system to handle an increasing load — or its potential to accommodate growth — without sacrificing performance, reliability, or availability.
 
@@ -50,7 +50,7 @@ A scalable system won't break, slow down, or become unreliable as more users com
 
 ---
 
-## Why Systems Need to Scale
+## 6.3 Why Systems Need to Scale
 
 - **User base growth:** Viral success or global expansion increases the number of users dramatically.
 - **Data volume explosion:** IoT, analytics, and sensors can generate data that grows exponentially.
@@ -61,11 +61,11 @@ A scalable system won't break, slow down, or become unreliable as more users com
 
 ---
 
-## Types of Scalability
+## 6.4 Types of Scalability
 
 There are three main ways to scale a system.
 
-### 1. Vertical Scaling ("Scaling Up")
+### 6.4.1 Vertical Scaling ("Scaling Up")
 
 Add more resources (CPU, RAM, Disk) to a single server.
 
@@ -101,7 +101,7 @@ graph TD
 aws ec2 modify-instance-attribute --instance-id i-1234567890abcdef0 --instance-type "{\"Value\": \"t3.2xlarge\"}"
 ```
 
-### 2. Horizontal Scaling ("Scaling Out")
+### 6.4.2 Horizontal Scaling ("Scaling Out")
 
 Add more servers/nodes, distributing traffic and workload.
 
@@ -159,7 +159,7 @@ spec:
         averageUtilization: 70
 ```
 
-### 3. Diagonal Scaling (Hybrid)
+### 6.4.3 Diagonal Scaling (Hybrid)
 
 Begin with vertical scaling for simplicity; transition to horizontal as needed. Common in cloud-native apps.
 
@@ -199,7 +199,7 @@ graph TB
 - **AWS Lambda:** Starts small (vertical), but can auto-scale (horizontal) based on demand.
 - **Twitter:** From monolith (vertical) to microservices (horizontal) as user base grew.
 
-### Scaling Types — Comparison
+### 6.4.4 Scaling Types — Comparison
 
 A summary of all three types side-by-side:
 
@@ -219,7 +219,7 @@ A version focused on pros/cons:
 | **Horizontal**    | Add more nodes/servers                   | High resilience, big scale  | Complex, needs LB/replica  |
 | **Diagonal**      | Start vertical, then go horizontal       | Flexible, cost-efficient    | Coordination complexity    |
 
-### Trade-Offs: Cost, Complexity, and Performance
+### 6.4.5 Trade-Offs: Cost, Complexity, and Performance
 
 |   Strategy   | Cost (Initial) | Cost (Growth) | Complexity | Performance       |
 |--------------|----------------|---------------|------------|-------------------|
@@ -235,7 +235,7 @@ A version focused on pros/cons:
 
 ---
 
-## Common Challenges in Scaling
+## 6.5 Common Challenges in Scaling
 
 | Challenge   | Description                                              | Example                        |
 |-------------|----------------------------------------------------------|--------------------------------|
@@ -246,9 +246,9 @@ A version focused on pros/cons:
 
 ---
 
-## Scaling Strategies — A Deep Dive
+## 6.6 Scaling Strategies — A Deep Dive
 
-### When to Use Which Strategy?
+### 6.6.1 When to Use Which Strategy?
 
 | Approach    | When to Use                            | Real-World Example            |
 |-------------|----------------------------------------|-------------------------------|
@@ -262,7 +262,7 @@ A version focused on pros/cons:
 - **AWS Lambda:** Diagonal + autoscaling.
 - **Startups:** Vertical first, then horizontal as needed.
 
-### Example: Setting up AWS Auto Scaling Group (Horizontal)
+### 6.6.2 Example: Setting up AWS Auto Scaling Group (Horizontal)
 
 ```bash
 aws autoscaling create-auto-scaling-group \
@@ -274,7 +274,7 @@ aws autoscaling create-auto-scaling-group \
   --vpc-zone-identifier "subnet-12345678,subnet-23456789"
 ```
 
-### Practical Tips for Scaling Strategy Choice
+### 6.6.3 Practical Tips for Scaling Strategy Choice
 
 - **Start simple:** Early-stage startups or MVPs should favor vertical scaling to keep things simple and cost-effective.
 - **Know when to switch:** Monitor system metrics. When you approach hardware limits or need high availability, start planning horizontal or diagonal scaling.
@@ -286,11 +286,11 @@ aws autoscaling create-auto-scaling-group \
 
 ---
 
-## Load Balancing — The Backbone of Scalability
+## 6.7 Load Balancing — The Backbone of Scalability
 
 Scalability is at the heart of robust system design. As user bases and data volumes grow, ensuring your application remains fast, available, and cost-effective becomes critical. One of the key enablers is **load balancing** — the art and science of distributing incoming traffic across a pool of servers.
 
-### Why Load Balancing is Essential
+### 6.7.1 Why Load Balancing is Essential
 
 Imagine a high-traffic e-commerce website during Black Friday. Without load balancing, a single server could get overwhelmed, causing slowdowns or outages. With a load balancer, incoming requests are automatically spread across multiple backend servers for maximum uptime and minimum latency.
 
@@ -305,11 +305,11 @@ Imagine a high-traffic e-commerce website during Black Friday. Without load bala
 
 > **Real-World Example:** During a flash sale, Amazon's load balancers distribute millions of requests per second across a massive fleet of servers, ensuring shoppers never see a 503 error.
 
-### Types of Load Balancers
+### 6.7.2 Types of Load Balancers
 
 Load balancers can be categorized by the **network layer** they operate on and by their **deployment model**.
 
-#### By Network Layer
+#### 6.7.2.1 By Network Layer
 
 | Type                | Layer               | Examples                                |
 |---------------------|---------------------|-----------------------------------------|
@@ -330,7 +330,7 @@ Load balancers can be categorized by the **network layer** they operate on and b
 - **Pros:** Intelligent content-aware routing.
 - **Cons:** Slightly more processing overhead.
 
-#### Diagram: Layer 4 vs Layer 7
+#### 6.7.2.2 Diagram: Layer 4 vs Layer 7
 
 ```mermaid
 flowchart LR
@@ -351,7 +351,7 @@ flowchart LR
     class N1,N2 note;
 ```
 
-#### By Deployment Model
+#### 6.7.2.3 By Deployment Model
 
 | Type                 | Examples                                          |
 |----------------------|---------------------------------------------------|
@@ -374,7 +374,7 @@ flowchart LR
 - Managed services provided by cloud vendors.
 - Handles scaling, failover, security out-of-the-box.
 
-### Load Balancing Algorithms
+### 6.7.3 Load Balancing Algorithms
 
 - **Round Robin:** Sequential distribution.
 - **Least Connections:** Server with fewest active connections.
@@ -383,7 +383,7 @@ flowchart LR
 - **Least Response Time:** Fastest responding server.
 - **Adaptive Load Balancing:** Continuously analyzes CPU, memory, and health metrics.
 
-### Code: Load Balancing Algorithms in Python
+### 6.7.4 Code: Load Balancing Algorithms in Python
 
 **Simple round-robin (pseudocode):**
 
@@ -475,7 +475,7 @@ def get_weighted_server():
     return server
 ```
 
-### Load Balancer in Action
+### 6.7.5 Load Balancer in Action
 
 ```mermaid
 sequenceDiagram
@@ -510,7 +510,7 @@ graph LR
 
 **Handling failures gracefully:** If Server 2 crashes, the load balancer detects this via health checks and reroutes all new traffic to Server 1 and Server 3 only, preserving high availability.
 
-### Sample NGINX Load Balancer Config
+### 6.7.6 Sample NGINX Load Balancer Config
 
 ```nginx
 http {
@@ -529,7 +529,7 @@ http {
 }
 ```
 
-### Choosing the Right Load Balancer
+### 6.7.7 Choosing the Right Load Balancer
 
 - **Layer 4:** Choose for raw speed and lower-level TCP/UDP traffic.
 - **Layer 7:** Choose for intelligent routing (APIs, microservices).
@@ -543,7 +543,7 @@ http {
 - **DDoS Protection:** Many cloud/hardware LBs provide built-in attack mitigation.
 - **Session Persistence:** Use IP hashing or sticky sessions if needed.
 
-### Load Balancing — Tips & Best Practices
+### 6.7.8 Load Balancing — Tips & Best Practices
 
 - **Always set up health checks** for your backend servers.
 - **Prefer stateless backend design** for easier load balancing.
@@ -557,11 +557,11 @@ http {
 
 ---
 
-## Autoscaling in Cloud Environments
+## 6.8 Autoscaling in Cloud Environments
 
 In modern cloud architecture, **autoscaling** is a core technique for building highly available, cost-effective, and resilient systems.
 
-### What is Autoscaling?
+### 6.8.1 What is Autoscaling?
 
 **Autoscaling** is the **automatic adjustment of compute resources** (servers, containers, or functions) in response to real-time demand.
 
@@ -570,7 +570,7 @@ In modern cloud architecture, **autoscaling** is a core technique for building h
 
 > *"Autoscaling plays a critical role in keeping system performance available and cost-efficient, especially where demand can vary drastically and unpredictably."*
 
-### How Autoscaling Works
+### 6.8.2 How Autoscaling Works
 
 Autoscaling decisions are **triggered by metrics** such as:
 
@@ -580,7 +580,7 @@ Autoscaling decisions are **triggered by metrics** such as:
 - **Queue length**
 - **Custom business KPIs**
 
-### Autoscaling Types
+### 6.8.3 Autoscaling Types
 
 | Type               | Description                                                      | Example                |
 |--------------------|------------------------------------------------------------------|------------------------|
@@ -597,13 +597,13 @@ graph TD
     A3[Diagonal Scaling] -->|Start vertical, then add servers| D[Hybrid]
 ```
 
-### Scaling Policies
+### 6.8.4 Scaling Policies
 
 - **Reactive Scaling:** Triggers when specific metrics cross thresholds (e.g., CPU > 80%).
 - **Predictive Scaling:** Uses historical trends and ML to forecast and scale *before* demand spikes.
 - **Scheduled Scaling:** Scales resources at set times based on known traffic patterns (e.g., daily peaks, Black Friday).
 
-### Autoscaling Across Major Cloud Providers
+### 6.8.5 Autoscaling Across Major Cloud Providers
 
 All major clouds offer first-class autoscaling features.
 
@@ -621,7 +621,7 @@ A more detailed view:
 | **Azure** | VM Scale Sets, App Service Plans| AKS (Kubernetes) Autoscaling      | Azure Monitor            |
 | **GCP**   | Managed Instance Groups, Functions | Cloud Run, GKE Autoscaling     | Stackdriver/Operations   |
 
-### Example: AWS EC2 Auto Scaling Group (CloudFormation YAML)
+### 6.8.6 Example: AWS EC2 Auto Scaling Group (CloudFormation YAML)
 
 ```yaml
 Resources:
@@ -659,7 +659,7 @@ Resources:
           PropagateAtLaunch: true
 ```
 
-### Example: Azure VM Scale Set (CLI)
+### 6.8.7 Example: Azure VM Scale Set (CLI)
 
 ```bash
 az vmss create \
@@ -677,7 +677,7 @@ az vmss autoscale create \
   --min-count 2 --max-count 10 --count 2
 ```
 
-### Example: GCP Managed Instance Group (gcloud)
+### 6.8.8 Example: GCP Managed Instance Group (gcloud)
 
 ```bash
 gcloud compute instance-groups managed create my-group \
@@ -695,7 +695,7 @@ gcloud compute instance-groups managed set-autoscaling my-group \
 
 ---
 
-## Monitoring & Proactive Scaling
+## 6.9 Monitoring & Proactive Scaling
 
 Effective autoscaling depends on robust monitoring.
 
@@ -706,7 +706,7 @@ Effective autoscaling depends on robust monitoring.
 
 ---
 
-## Cost Optimization Strategies
+## 6.10 Cost Optimization Strategies
 
 Cloud costs can spiral if autoscaling is not managed carefully. Best practices:
 
@@ -720,9 +720,9 @@ Cloud costs can spiral if autoscaling is not managed carefully. Best practices:
 
 ---
 
-## The Fundamental Laws
+## 6.11 The Fundamental Laws
 
-### Amdahl's Law — Why Adding Servers Doesn't Linearly Scale
+### 6.11.1 Amdahl's Law — Why Adding Servers Doesn't Linearly Scale
 
 If 95% of a workload is parallelizable and 5% is serial, the **maximum speedup is 20×** — no matter how many machines you throw at it.
 
@@ -740,17 +740,17 @@ where P = parallel fraction, N = number of processors
 
 **Lesson:** the serial part of your system is the bottleneck. Profile to find it; eliminate it before adding more machines.
 
-### Universal Scalability Law (Gunther)
+### 6.11.2 Universal Scalability Law (Gunther)
 
 In practice, scaling is often *worse* than Amdahl predicts because of **coordination overhead** — locks, consensus, distributed transactions. There's a point past which adding more nodes makes the system *slower*. This is why "just add another microservice" doesn't always help.
 
 ---
 
-## Stateless Service Design
+## 6.12 Stateless Service Design
 
 The single most important enabler of horizontal scaling. A **stateless** service holds no per-request memory between requests; any instance can serve any request.
 
-### Where to Put the State Instead
+### 6.12.1 Where to Put the State Instead
 
 | State                   | Where it goes               | Why                                  |
 |-------------------------|------------------------------|--------------------------------------|
@@ -763,11 +763,11 @@ The single most important enabler of horizontal scaling. A **stateless** service
 
 ---
 
-## Failure Containment Patterns
+## 6.13 Failure Containment Patterns
 
 Scaling isn't only about handling load — it's about preventing one failure from cascading.
 
-### Circuit Breaker
+### 6.13.1 Circuit Breaker
 
 If a downstream service is failing, **stop calling it for a while** so the failing service can recover and your service doesn't waste resources waiting on timeouts.
 
@@ -778,13 +778,13 @@ States:  CLOSED  →  OPEN  →  HALF-OPEN  →  CLOSED
 
 **Implementation:** count failures in a window; trip if >N% fail; after a cooldown, allow one trial request.
 
-### Bulkhead
+### 6.13.2 Bulkhead
 
 Isolate resources so failure in one part of the system can't drown the rest. Just like the watertight compartments on a ship — if one floods, the rest stay dry.
 
 **Example:** dedicate separate thread pools (or connection pools) per downstream service. If the slow payment service eats all 200 threads, your auth calls still have their own pool.
 
-### Rate Limiting
+### 6.13.3 Rate Limiting
 
 Cap how many requests any one client (IP, user, API key) can send in a window. Protects against abuse *and* against your own systems thundering when something goes wrong.
 
@@ -800,13 +800,13 @@ Cap how many requests any one client (IP, user, API key) can send in a window. P
 
 > **Default choice:** token bucket. Easy to reason about, allows reasonable bursts, well-supported in libraries.
 
-### Backpressure
+### 6.13.4 Backpressure
 
 When you can't keep up, **tell upstream to slow down** rather than silently dropping or queuing forever. Standard mechanisms: HTTP 429, gRPC `RESOURCE_EXHAUSTED`, blocking writes on a bounded queue.
 
 ---
 
-## Capacity Planning — Back-of-the-Envelope
+## 6.14 Capacity Planning — Back-of-the-Envelope
 
 Given:
 - p99 latency budget: **100 ms**
@@ -821,11 +821,11 @@ Given:
 
 ---
 
-## Combined Tips & Tricks
+## 6.15 Combined Tips & Tricks
 
 A consolidated master list drawn from all sections.
 
-### General Scaling
+### 6.15.1 General Scaling
 
 - **Start simple:** Use vertical scaling for MVPs; switch to horizontal as needs grow. Don't over-engineer.
 - **Design stateless services:** Easier to distribute and scale horizontally. Use shared databases or distributed caches for state.
@@ -833,7 +833,7 @@ A consolidated master list drawn from all sections.
 - **Know when to switch:** Monitor system metrics; switch when approaching hardware limits or needing high availability.
 - **Document scaling decisions:** Record why/when you chose vertical, horizontal, or diagonal scaling to aid future maintenance.
 
-### Automation & Monitoring
+### 6.15.2 Automation & Monitoring
 
 - **Automate monitoring:** Track key metrics and set up alerts.
 - **Monitor everything:** Use dashboards and alerts (CloudWatch, Prometheus, Grafana).
@@ -841,7 +841,7 @@ A consolidated master list drawn from all sections.
 - **Plan for failure:** Implement health checks and graceful failover in load balancers.
 - **Test under load:** Use chaos engineering and load testing to surface bottlenecks early.
 
-### Load Balancers
+### 6.15.3 Load Balancers
 
 - **Implement load balancers:** Distribute traffic, prevent overload, increase reliability.
 - **Choose the right load balancing strategy:** Match to traffic patterns.
@@ -849,7 +849,7 @@ A consolidated master list drawn from all sections.
 - **For microservices**, consider using a service mesh (Istio, Linkerd) for advanced L7 routing.
 - **Enable SSL termination** at the load balancer to reduce backend CPU load.
 
-### Autoscaling
+### 6.15.4 Autoscaling
 
 - **Set conservative thresholds at first, then tune.** Avoid thrashing (rapid scaling in/out).
 - **Test autoscaling in staging with simulated traffic spikes.**
@@ -859,7 +859,7 @@ A consolidated master list drawn from all sections.
 - **Always review cloud provider pricing calculators** to forecast cost under peak loads.
 - **Limit autoscaling:** Set quotas to avoid runaway costs.
 
-### Cost Optimization
+### 6.15.5 Cost Optimization
 
 - **Avoid over-provisioning.** Use auto-pausing and scale-to-zero features in serverless/cloud.
 - **Use spot/preemptible instances** for batch workloads (up to 80% cheaper).
@@ -868,7 +868,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## Sample Interview Questions
+## 6.16 Sample Interview Questions
 
 1. What does scalability mean in system design?
 2. Compare vertical and horizontal scaling. When would you use each?
@@ -891,7 +891,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## Key Takeaways
+## 6.17 Key Takeaways
 
 - **Scalability is essential** for growth, reliability, and performance in modern architectures.
 - **Vertical, horizontal, and diagonal scaling** serve different needs — choose wisely based on workload and growth patterns.
@@ -903,7 +903,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## Further Reading
+## 6.18 Further Reading
 
 **AWS:**
 

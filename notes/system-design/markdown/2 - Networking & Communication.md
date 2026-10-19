@@ -16,7 +16,7 @@ In this chapter we'll cover every essential networking and communication concept
 
 ---
 
-## Learning Outcomes
+## 2.1 Learning Outcomes
 
 After reading this chapter, you'll be able to:
 
@@ -28,7 +28,7 @@ After reading this chapter, you'll be able to:
 
 ---
 
-## The Networking Stack — A Map
+## 2.2 The Networking Stack — A Map
 
 Before we dive in, here's the mental map for *where each topic in this chapter lives*. Every networking concept fits somewhere in this stack.
 
@@ -52,23 +52,23 @@ When you read "L4 load balancer" later in this chapter, picture a thing that onl
 
 ## Table of Contents
 
-1. [Why Networking Matters in System Design](#why-networking-matters-in-system-design)
-2. [IP Addresses](#ip-addresses)
-3. [DNS — The Domain Name System](#dns--the-domain-name-system)
-4. [The Client-Server Model](#the-client-server-model)
-5. [Proxies — Forward and Reverse](#proxies--forward-and-reverse)
-6. [Load Balancing](#load-balancing)
-7. [API Gateways](#api-gateways)
-8. [Content Delivery Networks (CDNs)](#content-delivery-networks-cdns)
-9. [Combining an API Gateway with a CDN](#combining-an-api-gateway-with-a-cdn)
-10. [Combined Tips & Tricks for System Design Interviews](#combined-tips--tricks-for-system-design-interviews)
-11. [Sample Interview Questions](#sample-interview-questions)
-12. [Summary](#summary)
-13. [Further Reading](#further-reading)
+- [2.3 Why Networking Matters in System Design](#23-why-networking-matters-in-system-design)
+- [2.4 IP Addresses](#24-ip-addresses)
+- [2.5 DNS — The Domain Name System](#25-dns--the-domain-name-system)
+- [2.6 The Client-Server Model](#26-the-client-server-model)
+- [2.7 Proxies — Forward and Reverse](#27-proxies--forward-and-reverse)
+- [2.15.5 Load Balancing](#2155-load-balancing)
+- [2.9 API Gateways](#29-api-gateways)
+- [2.10 Content Delivery Networks (CDNs)](#210-content-delivery-networks-cdns)
+- [2.12 Combining an API Gateway with a CDN](#212-combining-an-api-gateway-with-a-cdn)
+- [2.14 Combined Tips & Tricks for System Design Interviews](#214-combined-tips--tricks-for-system-design-interviews)
+- [2.15 Sample Interview Questions](#215-sample-interview-questions)
+- [2.16 Summary](#216-summary)
+- [2.17 Further Reading](#217-further-reading)
 
 ---
 
-## Why Networking Matters in System Design
+## 2.3 Why Networking Matters in System Design
 
 Every system relies on data exchange between components. Networking enables this by allowing communication between clients, servers, databases, and other services. It's not just about connectivity — it's about ensuring:
 
@@ -77,7 +77,7 @@ Every system relies on data exchange between components. Networking enables this
 - **Reliability & Performance:** Good networking minimizes downtime and latency.
 - **Security:** Protects data and infrastructure from unauthorized access.
 
-### Key Networking Areas
+### 2.3.1 Key Networking Areas
 
 - **Communication:** Client-server, server-database, microservice-to-microservice.
 - **Load Balancing:** Preventing overload and distributing traffic.
@@ -88,11 +88,11 @@ These concepts are foundational to nearly every chapter that follows: protocols 
 
 ---
 
-## IP Addresses
+## 2.4 IP Addresses
 
 > *Imagine trying to send a letter without an address. The postal service wouldn't know where to deliver it, and your letter would never reach its destination. The same principle applies to the internet. Every device needs an address to send and receive data — this is where IP addresses come in.*
 
-### What is an IP Address?
+### 2.4.1 What is an IP Address?
 
 An **IP address (Internet Protocol address)** is a unique numerical label assigned to each device connected to a computer network that uses the Internet Protocol for communication. Think of it as a home address for your computer or phone — without it, your device would never receive the data it requests.
 
@@ -101,13 +101,13 @@ An **IP address (Internet Protocol address)** is a unique numerical label assign
 - Identifies a device on a network.
 - Enables routing of data between devices.
 
-### Why Are IP Addresses Important in System Design?
+### 2.4.2 Why Are IP Addresses Important in System Design?
 
 - **Foundation of all networking:** Without IP addresses, devices couldn't locate or communicate with each other.
 - **Crucial for scalability:** Managing and segmenting networks using IPs enables systems to grow.
 - **Security and management:** Allows for isolation between internal and external systems, vital for cloud and corporate environments.
 
-### IPv4 (Internet Protocol Version 4)
+### 2.4.3 IPv4 (Internet Protocol Version 4)
 
 - **Most widely used addressing system.**
 - **32-bit address format** (e.g., `192.168.1.1`).
@@ -133,7 +133,7 @@ local_ip = socket.gethostbyname(hostname)
 print(f"My IPv4 address: {local_ip}")
 ```
 
-### IPv6 (Internet Protocol Version 6)
+### 2.4.4 IPv6 (Internet Protocol Version 6)
 
 - **Next-generation IP.**
 - **128-bit address format** (e.g., `2001:0db8:85a3:0000:0000:8a2e:0370:7334`).
@@ -154,7 +154,7 @@ Eight groups of four hexadecimal digits, separated by colons.
 ip -6 addr show
 ```
 
-### IPv4 vs. IPv6: At a Glance
+### 2.4.5 IPv4 vs. IPv6: At a Glance
 
 | Feature       | IPv4                     | IPv6                                      |
 |---------------|--------------------------|--------------------------------------------|
@@ -174,15 +174,15 @@ IPv4: [ 00000000.00000000.00000000.00000000 ] (32 bits)
 IPv6: [ 0000:0000:0000:0000:0000:0000:0000:0000 ] (128 bits)
 ```
 
-### Public vs. Private IP Addresses
+### 2.4.6 Public vs. Private IP Addresses
 
-#### Public IP Addresses
+#### 2.4.6.1 Public IP Addresses
 
 - **Assigned by ISPs.**
 - **Globally unique;** used to communicate over the Internet.
 - Example: `192.203.23.45`.
 
-#### Private IP Addresses
+#### 2.4.6.2 Private IP Addresses
 
 - **Used within local networks** (homes, offices, data centers).
 - **Not routable on the public Internet;** reusable in different networks.
@@ -191,7 +191,7 @@ IPv6: [ 0000:0000:0000:0000:0000:0000:0000:0000 ] (128 bits)
   - `172.16.0.0` – `172.31.255.255`
   - `192.168.0.0` – `192.168.255.255`
 
-#### A Quick Primer on CIDR Notation
+#### 2.4.6.3 A Quick Primer on CIDR Notation
 
 You'll see ranges written like `10.0.0.0/8` or `192.168.1.0/24`. This is **CIDR notation** (Classless Inter-Domain Routing). The number after the slash is the number of **fixed (network) bits**; the remaining bits are available for hosts.
 
@@ -223,7 +223,7 @@ You'll see ranges written like `10.0.0.0/8` or `192.168.1.0/24`. This is **CIDR 
 
 All devices inside the home share the same public IP for internet access, but each has a unique private IP within the local network.
 
-### Why Do We Need Private IPs and NAT?
+### 2.4.7 Why Do We Need Private IPs and NAT?
 
 - **Address Conservation:** Allows reuse of IP ranges, avoiding exhaustion of public IPv4 space.
 - **Enhanced Security:** Devices with private IPs are not directly accessible from the internet.
@@ -231,7 +231,7 @@ All devices inside the home share the same public IP for internet access, but ea
 - **Cost-Effective:** Reduces the number of public IPs needed.
 - **Enables NAT (Network Address Translation):** so multiple devices share one public IP.
 
-### Network Address Translation (NAT) in Action
+### 2.4.8 Network Address Translation (NAT) in Action
 
 NAT translates private IP addresses to a public IP for internet communication.
 
@@ -260,7 +260,7 @@ graph TD
 
 Multiple devices share one public IP via NAT.
 
-### Role of IPs in System Design
+### 2.4.9 Role of IPs in System Design
 
 - **Scalability:** Use private IPs to create large, distributed, multi-region architectures (e.g., microservices in the cloud).
 - **Security:** Isolate internal services with firewalls and VPNs using private IPs.
@@ -268,9 +268,9 @@ Multiple devices share one public IP via NAT.
 - **Cloud Networking:** Manage both public and private IPs for flexible and secure deployments (AWS, GCP, Azure).
 - **Microservices:** Internal services communicate using private IPs, exposed to the internet via public IPs and load balancers.
 
-### Practical Code: Checking Your IP Addresses
+### 2.4.10 Practical Code: Checking Your IP Addresses
 
-#### Get all local (private) IP addresses
+#### 2.4.10.1 Get all local (private) IP addresses
 
 ```python
 import socket
@@ -283,14 +283,14 @@ def get_local_ips():
 print("Local (private) IP addresses:", get_local_ips())
 ```
 
-#### Get your public IP
+#### 2.4.10.2 Get your public IP
 
 ```bash
 # Requires curl
 curl ifconfig.me
 ```
 
-#### Check whether an IP is private or public
+#### 2.4.10.3 Check whether an IP is private or public
 
 ```python
 import ipaddress
@@ -307,7 +307,7 @@ print(ip_type("8.8.8.8"))               # Public
 print(ip_type("2001:4860:4860::8888"))  # Public (IPv6)
 ```
 
-### IP Addresses — Tips for System Design Interviews
+### 2.4.11 IP Addresses — Tips for System Design Interviews
 
 - **Always clarify:** Are you being asked about public or private IPs? Their roles differ significantly.
 - **Remember ranges:** Know the standard private IP ranges (10.x.x.x, 172.16-31.x.x, 192.168.x.x).
@@ -317,13 +317,13 @@ print(ip_type("2001:4860:4860::8888"))  # Public (IPv6)
 - **Security first:** Keep internal services on private IPs; control access with firewalls and VPNs.
 - **Draw diagrams:** Visually represent network topology in interviews or documentation.
 
-### IP Addresses — Key Takeaways
+### 2.4.12 IP Addresses — Key Takeaways
 
 - **IPv4 vs. IPv6:** IPv4 is common but limited; IPv6 offers vast address space and new features.
 - **Public vs. Private:** Public IPs are unique and internet-facing; private IPs are internal and reusable.
 - **System Design:** Correct IP management is crucial for scalability, security, and performance in modern distributed systems.
 
-### IP Addresses — FAQ
+### 2.4.13 IP Addresses — FAQ
 
 **Q: Can two devices on the global internet have the same public IP?**
 A: No. Public IP addresses are unique globally. However, many devices can share the same public IP behind a NAT within a private network.
@@ -333,18 +333,18 @@ A: No. IPv6 and IPv4 are separate protocols. Devices and networks often run both
 
 ---
 
-## DNS — The Domain Name System
+## 2.5 DNS — The Domain Name System
 
 DNS is often called the **phone book of the Internet**. Its main job is to translate **human-readable domain names** (like `google.com`) into **machine-friendly IP addresses** (`142.250.190.78`), enabling seamless connectivity.
 
-### Why is DNS Critical?
+### 2.5.1 Why is DNS Critical?
 
 - **Usability:** Without DNS, users would need to remember numeric IP addresses for every website.
 - **Scalability:** DNS provides a hierarchical, distributed system that can handle billions of devices.
 - **Performance:** Through caching and geographic distribution, DNS speeds up website access.
 - **Foundation for Modern Networking:** Key for load balancing, CDNs, failover, and cloud architectures.
 
-### Types of DNS Servers
+### 2.5.2 Types of DNS Servers
 
 DNS resolution is a collaborative process involving several specialized servers:
 
@@ -355,7 +355,7 @@ DNS resolution is a collaborative process involving several specialized servers:
 | **Authoritative Name Servers** | Store actual DNS records (A, CNAME, MX, etc.) and resolve domains to IP addresses.             |
 | **Recursive Resolvers**        | Provided by ISPs or organizations; perform lookups on behalf of clients and cache results.     |
 
-### Common DNS Record Types
+### 2.5.3 Common DNS Record Types
 
 The records you'll actually deal with as a developer:
 
@@ -372,7 +372,7 @@ The records you'll actually deal with as a developer:
 
 > **Most common confusion:** A record vs CNAME. **A** gives an IP; **CNAME** gives another name to look up. You can't have a CNAME at the apex (e.g., `example.com` itself) — you need an A record there. Use CNAME for `www` and other subdomains.
 
-### DNS Resolution: Step-by-Step
+### 2.5.4 DNS Resolution: Step-by-Step
 
 Here's what happens when you type `google.com` in your browser:
 
@@ -387,7 +387,7 @@ Here's what happens when you type `google.com` in your browser:
 9. **Caches Populated:** Every layer caches the response for future requests.
 10. **Browser Connects to IP:** The browser uses the IP to fetch the website.
 
-### DNS Resolution Flow (Simplified)
+### 2.5.5 DNS Resolution Flow (Simplified)
 
 ```mermaid
 sequenceDiagram
@@ -407,7 +407,7 @@ sequenceDiagram
     Rec->>U: Return IP address
 ```
 
-### DNS Resolution Flow (Detailed, with browser & OS layers)
+### 2.5.6 DNS Resolution Flow (Detailed, with browser & OS layers)
 
 ```mermaid
 sequenceDiagram
@@ -433,7 +433,7 @@ sequenceDiagram
     Browser->>User: Load site
 ```
 
-### DNS Server Hierarchy
+### 2.5.7 DNS Server Hierarchy
 
 ```mermaid
 graph TD
@@ -450,7 +450,7 @@ graph TD
     Resolver --> User
 ```
 
-### Resolution Flow (ASCII for plain-text viewers)
+### 2.5.8 Resolution Flow (ASCII for plain-text viewers)
 
 ```
 User (Browser)
@@ -462,29 +462,29 @@ Browser Cache --> OS Cache --> Recursive Resolver (ISP) --> Root Server --> TLD 
                                                                                IP Address Response
 ```
 
-### DNS Caching and Performance
+### 2.5.9 DNS Caching and Performance
 
-#### Why is Caching Important?
+#### 2.5.9.1 Why is Caching Important?
 
 - **Reduces Latency:** Cached records allow instant DNS resolution.
 - **Lowers Server Load:** Fewer queries hit the authoritative servers.
 - **Improves User Experience:** Faster page loads, especially for repeat visits.
 
-#### Where Does DNS Caching Happen?
+#### 2.5.9.2 Where Does DNS Caching Happen?
 
 1. **Browser cache**
 2. **Operating system cache** (e.g., `/etc/hosts`)
 3. **Recursive resolver cache** (ISP level)
 4. **Authoritative server cache** (optional, for negative responses)
 
-#### The Role of TTL (Time-to-Live)
+#### 2.5.9.3 The Role of TTL (Time-to-Live)
 
 **TTL** determines how long a DNS record stays in cache.
 
 - **Short TTL:** Faster updates, higher traffic to DNS servers.
 - **Long TTL:** Lower DNS traffic, but slower propagation of record changes.
 
-### DNS in Large-Scale Systems
+### 2.5.10 DNS in Large-Scale Systems
 
 DNS is a keystone in scalable, resilient architectures:
 
@@ -494,7 +494,7 @@ DNS is a keystone in scalable, resilient architectures:
 - **CDN Integration:** DNS routes users to the nearest edge node — this is exactly the mechanism that powers CDNs in Section 8.
 - **Security:** Needs protection against DNS poisoning and DDoS.
 
-### Anycast — One IP, Many Servers
+### 2.5.11 Anycast — One IP, Many Servers
 
 **Anycast** is the foundational trick behind global DNS, modern CDNs, and DDoS mitigation. The same IP address is advertised from many physical locations using BGP (the internet's routing protocol). When you query that IP, the network automatically routes you to the **closest** instance.
 
@@ -514,13 +514,13 @@ This is why Cloudflare's `1.1.1.1` resolver answers in <10ms from almost anywher
 - **DNS LB** returns a *different IP* depending on who's asking → routing decision is at DNS lookup time.
 - **Anycast** uses the *same IP* everywhere → routing decision is made by BGP at every hop.
 
-### Geo-DNS / GSLB
+### 2.5.12 Geo-DNS / GSLB
 
 **Geo-DNS** (also called Global Server Load Balancing, or GSLB) returns different DNS answers based on the *querying client's location*. The user in Tokyo gets the Tokyo region's IP; the user in São Paulo gets the São Paulo region's IP. Implemented by Route 53 (AWS), Cloud DNS (GCP), Azure Traffic Manager, Cloudflare, Akamai, etc.
 
 > **Performance note:** A DNS lookup typically takes 20-120ms the first time (often cached afterward). That's why DNS caching matters: from Chapter 1's table, a network round-trip within a datacenter is ~0.5ms; DNS adds the equivalent of ~100 round trips on a miss.
 
-### DNS Security Considerations
+### 2.5.13 DNS Security Considerations
 
 DNS is a frequent target for cyber attacks:
 
@@ -528,7 +528,7 @@ DNS is a frequent target for cyber attacks:
 - **DDoS Attacks:** Overwhelm DNS servers with requests, making websites unreachable.
 - **Mitigation:** Use DNSSEC (DNS Security Extensions), monitoring, and secure configurations to protect infrastructure.
 
-### Code Snippet: Querying DNS in Python
+### 2.5.14 Code Snippet: Querying DNS in Python
 
 Using [dnspython](https://www.dnspython.org/):
 
@@ -552,7 +552,7 @@ resolve_domain('google.com')
 google.com has IP address: 142.250.190.78
 ```
 
-### DNS — Tips and Best Practices
+### 2.5.15 DNS — Tips and Best Practices
 
 - **Set Appropriate TTLs:** Balance between freshness and efficiency. Short TTLs for frequently updated records, longer for static domains.
 - **Use Multiple DNS Providers:** Improve redundancy with primary and secondary DNS providers.
@@ -562,7 +562,7 @@ google.com has IP address: 142.250.190.78
 - **Optimize Caching Layers:** Understand cache hierarchies — browser, OS, resolver.
 - **Document DNS Changes:** Keep detailed records for auditing and rollback.
 
-### DNS — Common Interview Questions
+### 2.5.16 DNS — Common Interview Questions
 
 - Explain the DNS resolution process step by step.
 - What is the difference between authoritative and recursive DNS servers?
@@ -571,7 +571,7 @@ google.com has IP address: 142.250.190.78
 - How does DNS-based load balancing work in large-scale systems?
 - What are common DNS-related security threats, and how can they be mitigated?
 
-### DNS — Further Reading
+### 2.5.17 DNS — Further Reading
 
 - [RFC 1035: Domain Names Implementation and Specification](https://www.rfc-editor.org/rfc/rfc1035)
 - [Google Public DNS Documentation](https://developers.google.com/speed/public-dns/docs/using)
@@ -579,11 +579,11 @@ google.com has IP address: 142.250.190.78
 
 ---
 
-## The Client-Server Model
+## 2.6 The Client-Server Model
 
 In the world of modern computing, **networking and communication** form the backbone of scalable, high-performance systems. Whether you're browsing the web, using your favorite app, or streaming a movie, you interact with the **client-server model** every day. Understanding this model is fundamental for developers, architects, and anyone preparing for system design interviews.
 
-### What is the Client-Server Model?
+### 2.6.1 What is the Client-Server Model?
 
 The **client-server model** is a distributed application structure that separates tasks between service requesters (clients) and service providers (servers).
 
@@ -609,14 +609,14 @@ graph LR
 - **Server:** Processes the request and sends back a response (web server, database server, mail server).
 - **Network:** The medium (Internet, LAN, Wi-Fi, 5G, etc.) that connects clients and servers.
 
-### Why is the Client-Server Model Important?
+### 2.6.2 Why is the Client-Server Model Important?
 
 - **Resource Management:** Centralizes computation, storage, and management on powerful servers rather than individual devices.
 - **Scalability:** Easy to add or remove resources at the server side as demand changes.
 - **Seamless Communication:** Standardizes data exchange between diverse devices and platforms.
 - **Real-World Applications:** Powers everything from web browsing and email to cloud services, APIs, and IoT.
 
-### The Basic Request-Response Cycle
+### 2.6.3 The Basic Request-Response Cycle
 
 Every digital action — opening a website, sending an email, fetching an API — follows a basic pattern:
 
@@ -652,14 +652,14 @@ sequenceDiagram
     WebServer-->>Browser: HTML Response
 ```
 
-### Types of Communication
+### 2.6.4 Types of Communication
 
-#### Synchronous (Request-Response)
+#### 2.6.4.1 Synchronous (Request-Response)
 
 - **Pattern:** Client sends a request and waits for the server's response before proceeding.
 - **Examples:** HTTP requests, REST APIs, form submissions.
 
-#### Asynchronous (Persistent Connection)
+#### 2.6.4.2 Asynchronous (Persistent Connection)
 
 - **Pattern:** Client and server maintain an open connection for real-time, two-way communication.
 - **Examples:** WebSockets (live chat, notifications), FTP sessions, multiplayer games.
@@ -674,7 +674,7 @@ sequenceDiagram
 - *Synchronous*: Calling a friend and waiting for them to answer before hanging up.
 - *Asynchronous*: Sending a text message and doing other things while waiting for a reply.
 
-### Stateless vs. Stateful Servers
+### 2.6.5 Stateless vs. Stateful Servers
 
 | Feature             | Stateless                          | Stateful                          |
 |---------------------|------------------------------------|-----------------------------------|
@@ -687,7 +687,7 @@ sequenceDiagram
 - **Stateless:** Every API call to a REST service must include all needed information (e.g., authentication token), because the server does not remember previous requests.
 - **Stateful:** A WebSocket server remembers each user's connection, allowing for real-time chat or game state to persist.
 
-### Example: HTTP Request-Response Cycle
+### 2.6.6 Example: HTTP Request-Response Cycle
 
 Let's walk through what happens when you load a website (`https://example.com`) in your browser.
 
@@ -716,14 +716,14 @@ response = requests.get('https://jsonplaceholder.typicode.com/posts/1')
 print(response.json())
 ```
 
-### Real-World Examples
+### 2.6.7 Real-World Examples
 
 - **Web Browsing:** Browser (client) requests pages from a web server.
 - **API Calls:** Mobile app (client) fetches data from backend APIs (server).
 - **Database Queries:** Application server (client) queries a database server.
 - **Messaging:** WhatsApp or Slack uses WebSockets to maintain a persistent connection for real-time communication.
 
-### Code Snippet: A Simple HTTP Server
+### 2.6.8 Code Snippet: A Simple HTTP Server
 
 A minimal HTTP server in Python:
 
@@ -745,7 +745,7 @@ if __name__ == '__main__':
 
 **Test it:** Open your browser to `http://localhost:8000` and see the response.
 
-### Client-Server Model — Tips for System Design Interviews
+### 2.6.9 Client-Server Model — Tips for System Design Interviews
 
 1. **Clarify Requirements.** Ask whether the system needs to be stateless or stateful. Stateless systems scale more easily; stateful ones are required for sessions and personalization.
 2. **Consider Scalability.** Use stateless servers and load balancers for large-scale systems. For real-time features (chat), stateful or persistent connections are needed.
@@ -755,7 +755,7 @@ if __name__ == '__main__':
 6. **Logging and Monitoring.** Implement request/response logging, error tracking, and metrics.
 7. **Handle Failures Gracefully.** Design with retries, fallbacks, and error handling.
 
-### Client-Server Model — Sample Interview Questions
+### 2.6.10 Client-Server Model — Sample Interview Questions
 
 - What is the client-server model, and how does it work?
 - How does a browser load a webpage? Walk through the request-response cycle.
@@ -765,7 +765,7 @@ if __name__ == '__main__':
 - How does WebSocket communication differ from REST APIs?
 - How would you implement load balancing in a client-server system?
 
-### Client-Server Model — Resources
+### 2.6.11 Client-Server Model — Resources
 
 - [Python http.server Documentation](https://docs.python.org/3/library/http.server.html)
 - [MDN Web Docs: HTTP Overview](https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview)
@@ -773,11 +773,11 @@ if __name__ == '__main__':
 
 ---
 
-## Proxies — Forward and Reverse
+## 2.7 Proxies — Forward and Reverse
 
 In modern distributed architectures, **proxies** play a crucial role in securing, optimizing, and managing network traffic. However, not all proxies are created equal. Two fundamental types — **forward proxies** and **reverse proxies** — serve very different purposes.
 
-### What is a Proxy?
+### 2.7.1 What is a Proxy?
 
 A **proxy server** acts as an intermediary between a client (browser, app, etc.) and a server (web server, API, etc.). Instead of clients communicating directly with servers, requests pass through a proxy, which can inspect, modify, or redirect them.
 
@@ -788,7 +788,7 @@ A **proxy server** acts as an intermediary between a client (browser, app, etc.)
 - **Traffic Control:** Efficiently distribute requests, preventing overload.
 - **Anonymity:** Mask client IPs to maintain privacy.
 
-### Forward Proxy
+### 2.7.2 Forward Proxy
 
 A **forward proxy** sits between the client and the internet. It acts on behalf of the client, forwarding client requests to servers.
 
@@ -833,7 +833,7 @@ print(response.text)
 curl -x http://proxy.example.com:8080 http://example.com
 ```
 
-### Reverse Proxy
+### 2.7.3 Reverse Proxy
 
 A **reverse proxy** sits in front of backend servers. Clients interact with the reverse proxy, which in turn communicates with the servers.
 
@@ -887,7 +887,7 @@ location /api/ {
 }
 ```
 
-### Combined View of Forward + Reverse
+### 2.7.4 Combined View of Forward + Reverse
 
 ```mermaid
 flowchart LR
@@ -897,7 +897,7 @@ flowchart LR
     BackendServer-->|Response|ReverseProxy-->|Response|User
 ```
 
-### Forward Proxy vs. Reverse Proxy: Key Differences
+### 2.7.5 Forward Proxy vs. Reverse Proxy: Key Differences
 
 | Aspect           | Forward Proxy                      | Reverse Proxy                              |
 |------------------|------------------------------------|--------------------------------------------|
@@ -908,7 +908,7 @@ flowchart LR
 | Examples         | Squid, VPN, Tor                    | NGINX, HAProxy, Cloudflare, AWS ELB        |
 | Visibility       | Hides client from server           | Hides server from client                   |
 
-### Proxy Placement in the Network
+### 2.7.6 Proxy Placement in the Network
 
 ```
           [Client]
@@ -924,7 +924,7 @@ flowchart LR
 [Backend Servers]
 ```
 
-### Proxies — Tips for System Design Interviews
+### 2.7.7 Proxies — Tips for System Design Interviews
 
 - **When to use a Forward Proxy?** Use when clients need anonymity, content filtering, or must bypass restrictions. Example: A corporate environment restricting social media access.
 - **When to use a Reverse Proxy?** Use when you need to scale backend services, balance load, add security layers, or centralize SSL. Example: Deploying an e-commerce platform serving millions of users.
@@ -939,7 +939,7 @@ flowchart LR
   - Forward Proxy: Corporate web proxy, VPN, Tor exit node.
   - Reverse Proxy: NGINX as load balancer, Cloudflare for DDoS protection, API Gateway.
 
-### Proxies — Further Reading
+### 2.7.8 Proxies — Further Reading
 
 - [NGINX Reverse Proxy Documentation](https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/)
 - [Squid Forward Proxy](http://www.squid-cache.org/)
@@ -947,11 +947,11 @@ flowchart LR
 
 ---
 
-## Load Balancing
+## 2.8 Load Balancing
 
 Load balancing is a foundational building block in scalable, reliable, and high-performing system architectures. Whether you're designing for millions of users or just want smooth user experiences, understanding load balancing — its types, strategies, and real-world applications — is non-negotiable.
 
-### Why Load Balancing Matters
+### 2.8.1 Why Load Balancing Matters
 
 Modern applications must handle fluctuating traffic, minimize downtime, and ensure fast response times. **Load balancers** sit between clients and backend servers, distributing requests efficiently to prevent any one server from being overwhelmed.
 
@@ -965,11 +965,11 @@ Modern applications must handle fluctuating traffic, minimize downtime, and ensu
 
 > **Real-World Example:** Consider a high-traffic e-commerce platform during a sale. Without load balancing, a single server could easily be swamped, causing slow performance or downtime. With load balancing, requests are smoothly distributed, ensuring a seamless experience for all users.
 
-### Types of Load Balancers
+### 2.8.2 Types of Load Balancers
 
 Load balancers can be categorized by **network layer** and **deployment model**.
 
-#### By Network Layer
+#### 2.8.2.1 By Network Layer
 
 **Layer 4 Load Balancers (Transport Layer):**
 
@@ -1003,17 +1003,17 @@ Load balancers can be categorized by **network layer** and **deployment model**.
 +-----+       +-----+ +-----+
 ```
 
-#### By Deployment Model
+#### 2.8.2.2 By Deployment Model
 
 - **Hardware Load Balancers:** Dedicated devices for enterprises and data centers (e.g., F5 BIG-IP).
 - **Software Load Balancers:** Run on general servers or VMs. Flexible and cost-effective (e.g., NGINX, HAProxy, Envoy).
 - **Cloud-Based Load Balancers:** Managed by cloud providers, offer auto-scaling and easy integration (e.g., AWS ELB, GCP Load Balancer, Azure Load Balancer).
 
-### Load Balancing Strategies
+### 2.8.3 Load Balancing Strategies
 
 The strategy you choose impacts performance, reliability, and cost. Strategies are broadly classified as **static** or **dynamic**.
 
-#### Static Load Balancing
+#### 2.8.3.1 Static Load Balancing
 
 **1. Round Robin** — distributes requests sequentially across servers.
 
@@ -1040,7 +1040,7 @@ def get_server_by_ip(client_ip, servers):
     return servers[index]
 ```
 
-#### Dynamic Load Balancing
+#### 2.8.3.2 Dynamic Load Balancing
 
 **1. Least Response Time** — routes to the server with the fastest current response.
 
@@ -1074,7 +1074,7 @@ http {
 }
 ```
 
-### Load Balancers in Action
+### 2.8.4 Load Balancers in Action
 
 ```text
                        +--------------+
@@ -1114,7 +1114,7 @@ graph LR
 - Load Balancer chooses a backend server based on the configured strategy.
 - If a server fails, the Load Balancer reroutes traffic to healthy servers.
 
-### Choosing the Right Load Balancer
+### 2.8.5 Choosing the Right Load Balancer
 
 - **Layer:** L4 for speed, L7 for content-aware routing.
 - **Scalability:** Will you need auto-scaling? Use cloud-based solutions.
@@ -1122,7 +1122,7 @@ graph LR
 - **Cost & Flexibility:** Software load balancers are more flexible, hardware for enterprise performance.
 - **Use Case:** API gateways, microservices, high-traffic web apps, etc.
 
-### Health Checks — What They Are
+### 2.8.6 Health Checks — What They Are
 
 The LB needs to know which backends are alive. It does this via **health checks**:
 
@@ -1135,7 +1135,7 @@ A good `/health` endpoint should:
 - Reflect *only the local* health (don't fail if a downstream is slow; that's a separate concern).
 - Optionally have a separate `/ready` endpoint for "I've finished startup and am ready to serve."
 
-### Sticky Sessions — What They Are and When to Avoid
+### 2.8.7 Sticky Sessions — What They Are and When to Avoid
 
 **Sticky sessions** (a.k.a. *session affinity*) mean the LB always routes a given user to the *same* backend. Typically implemented via:
 
@@ -1152,7 +1152,7 @@ A good `/health` endpoint should:
 
 **The modern alternative:** make backends *stateless* and externalize session state to Redis/Memcached. Any backend can serve any user.
 
-### Load Balancing — Tips & Best Practices
+### 2.8.8 Load Balancing — Tips & Best Practices
 
 - **Monitor Health:** Always enable health checks for backend servers.
 - **Sticky Sessions:** Use session persistence (IP hash, cookies) if user state is needed.
@@ -1163,7 +1163,7 @@ A good `/health` endpoint should:
 - **Logging & Monitoring:** Track traffic, errors, and latency at the load balancer for troubleshooting and analytics.
 - **Security:** Use WAFs (Web Application Firewalls) and DDoS protection features available on most advanced load balancers.
 
-### Load Balancing — Interview Quick Reference
+### 2.8.9 Load Balancing — Interview Quick Reference
 
 - **What is load balancing and why is it important?** Distributes traffic to ensure high availability, performance, and reliability.
 - **Layer 4 vs. Layer 7 Load Balancers?**
@@ -1174,7 +1174,7 @@ A good `/health` endpoint should:
   - Dynamic: Adapt to real-time load/health.
 - **How does a load balancer improve security?** Can perform SSL/TLS termination, DDoS filtering, hide backend servers.
 
-### Load Balancing — Further Reading
+### 2.8.10 Load Balancing — Further Reading
 
 - [NGINX as a Load Balancer](https://docs.nginx.com/nginx/admin-guide/load-balancer/http-load-balancer/)
 - [AWS Elastic Load Balancing](https://aws.amazon.com/elasticloadbalancing/)
@@ -1183,11 +1183,11 @@ A good `/health` endpoint should:
 
 ---
 
-## API Gateways
+## 2.9 API Gateways
 
 An **API Gateway** is a server that acts as a centralized entry point for all client requests to your backend services. It is responsible for request routing, composition, protocol translation, authentication, rate limiting, caching, logging, and more.
 
-### Key Functions
+### 2.9.1 Key Functions
 
 - **Authentication & Authorization** (OAuth, JWT, API keys)
 - **Security** — DDoS protection, SSL termination, bot protection
@@ -1198,7 +1198,7 @@ An **API Gateway** is a server that acts as a centralized entry point for all cl
 - **Logging & Monitoring** — centralized observability
 - **API Composition** — aggregates calls to multiple backend services
 
-### API Gateway Diagram
+### 2.9.2 API Gateway Diagram
 
 ```mermaid
 flowchart LR
@@ -1226,7 +1226,7 @@ flowchart LR
   GW -->|Aggregated/Transformed Response| A
 ```
 
-### Sample API Gateway Implementation (Node.js + Express + http-proxy-middleware)
+### 2.9.3 Sample API Gateway Implementation (Node.js + Express + http-proxy-middleware)
 
 ```js
 const express = require('express');
@@ -1256,7 +1256,7 @@ app.use('/service2', createProxyMiddleware({ target: 'http://localhost:5002', ch
 app.listen(3000, () => console.log('API Gateway running on port 3000'));
 ```
 
-### API Gateway vs. Reverse Proxy — When to Use Which
+### 2.9.4 API Gateway vs. Reverse Proxy — When to Use Which
 
 This is *the* most common confusion. Both sit in front of your services. Both can route, terminate TLS, and load-balance. So what's different?
 
@@ -1278,7 +1278,7 @@ This is *the* most common confusion. Both sit in front of your services. Both ca
 - **API Gateway** = API product surface. Use it when you're exposing APIs to external developers, multiple internal teams, or partners — anywhere you need quotas, plans, and a polished contract.
 - **In practice you often use both:** a reverse proxy (e.g., NGINX) close to your services for routing/TLS, plus a managed API gateway at the edge for auth, quotas, and developer experience.
 
-### API Gateways — Tips
+### 2.9.5 API Gateways — Tips
 
 - **Use JWT/OAuth2** for robust authentication and authorization.
 - **Implement rate limiting** at the gateway to prevent abuse.
@@ -1286,7 +1286,7 @@ This is *the* most common confusion. Both sit in front of your services. Both ca
 - **Monitor logs** for suspicious activity and performance bottlenecks.
 - **Cache GET responses** for expensive, non-sensitive data.
 
-### API Gateways — Interview Questions
+### 2.9.6 API Gateways — Interview Questions
 
 - What is an API gateway and why is it important?
 - How does an API gateway differ from a load balancer?
@@ -1295,11 +1295,11 @@ This is *the* most common confusion. Both sit in front of your services. Both ca
 
 ---
 
-## Content Delivery Networks (CDNs)
+## 2.10 Content Delivery Networks (CDNs)
 
 A **Content Delivery Network (CDN)** is a globally distributed network of servers (also called Points of Presence, or PoPs) designed to deliver content (web pages, images, videos, APIs, etc.) to users efficiently, reliably, and securely. By caching content closer to users, CDNs reduce latency, enhance availability, and offload traffic from origin servers.
 
-### Why Do We Need CDNs?
+### 2.10.1 Why Do We Need CDNs?
 
 Without a CDN, every client request must travel the entire distance to the origin server (which could be on another continent), resulting in:
 
@@ -1315,7 +1315,7 @@ CDNs solve these problems by:
 - Handling massive traffic and DDoS attacks.
 - Optimizing bandwidth and cost.
 
-### CDN Architecture & Components
+### 2.10.2 CDN Architecture & Components
 
 | Component             | Description                                                                       |
 |-----------------------|-----------------------------------------------------------------------------------|
@@ -1350,7 +1350,7 @@ graph LR
 (Requests routed to nearest edge server)
 ```
 
-### How a CDN Handles Requests
+### 2.10.3 How a CDN Handles Requests
 
 1. **User Requests Content:** A user tries to load a resource (e.g., image, video, API data).
 2. **CDN Resolves to Nearest Edge Server:** DNS and routing logic direct the request to the best PoP (based on geography, latency, load).
@@ -1369,7 +1369,7 @@ flowchart LR
     EdgeServer-->|Content|User
 ```
 
-### CDN Request Flow (Sequence Diagram)
+### 2.10.4 CDN Request Flow (Sequence Diagram)
 
 ```mermaid
 sequenceDiagram
@@ -1390,7 +1390,7 @@ sequenceDiagram
     end
 ```
 
-### Key CDN Features & Benefits
+### 2.10.5 Key CDN Features & Benefits
 
 | Feature                       | Benefit                                                |
 |-------------------------------|--------------------------------------------------------|
@@ -1399,7 +1399,7 @@ sequenceDiagram
 | **Compression & Optimization**| Reduces bandwidth, speeds up delivery.                 |
 | **Security**                  | DDoS mitigation, SSL/TLS, bot filtering.               |
 
-### Caching Strategies in CDNs
+### 2.10.6 Caching Strategies in CDNs
 
 CDNs cache frequently accessed content at edge servers. Key concepts:
 
@@ -1424,7 +1424,7 @@ app.get('/static/*', (req, res) => {
 });
 ```
 
-### Request Routing, Load Balancing, and Failover
+### 2.10.7 Request Routing, Load Balancing, and Failover
 
 CDNs use intelligent algorithms for:
 
@@ -1434,7 +1434,7 @@ CDNs use intelligent algorithms for:
 
 **Failover Handling:** If a PoP fails, traffic is rerouted to the next closest or most responsive PoP, ensuring high availability.
 
-### Compression, Minification, and Optimization
+### 2.10.8 Compression, Minification, and Optimization
 
 CDNs further optimize content delivery by:
 
@@ -1456,21 +1456,21 @@ const app = express();
 app.use(compression());
 ```
 
-### Security Features
+### 2.10.9 Security Features
 
 - **DDoS Protection:** Rate limiting, traffic filtering, anomaly detection.
 - **SSL/TLS Offloading:** Edge servers handle encryption, reducing load on origin.
 - **Bot Mitigation:** Block malicious bots before reaching origin.
 - **Web Application Firewall (WAF):** Protects against common web threats.
 
-### CDN Use Cases
+### 2.10.10 CDN Use Cases
 
 - **Static Content Delivery:** Images, CSS, JS, videos, HTML.
 - **Dynamic Content Optimization:** API responses, personalized pages (with careful caching).
 - **API Acceleration:** Edge caching of API responses for speed.
 - **Edge Computing:** Run lightweight computation at the edge (e.g., video transcoding, A/B testing).
 
-### CDN Nuances Worth Knowing
+### 2.10.11 CDN Nuances Worth Knowing
 
 - **Pull CDN (most common):** Edge fetches from origin on first cache miss, then serves cached copy. Cloudflare, CloudFront, Fastly default to this. **Easy to set up** (just point DNS at the CDN).
 - **Push CDN:** You manually upload assets to the CDN. Used for very large, rarely-changing files (game patches, software downloads).
@@ -1479,7 +1479,7 @@ app.use(compression());
 - **Signed URLs:** For private content (paid videos, private documents), the CDN won't serve unless the URL includes a short-lived signature your origin generated. Lets you put auth at the origin while still using the CDN for delivery.
 - **Cache invalidation:** Two strategies — **purge** (CDN evicts on demand, often costly/slow) or **versioning** (rename the file: `style.css?v=42`, and old versions just expire). Versioning is almost always better.
 
-### Sample Code: CDN Integration
+### 2.10.12 Sample Code: CDN Integration
 
 **1. Using a CDN with HTML Assets**
 
@@ -1516,7 +1516,7 @@ cdn:
     ssl: enabled
 ```
 
-### CDN — Tips & Best Practices
+### 2.10.13 CDN — Tips & Best Practices
 
 - **Set Appropriate TTLs:** Static assets get longer TTLs (days/weeks); dynamic content gets shorter TTLs or no caching.
 - **Use Versioning:** Change asset filenames when deploying updates to avoid stale caches.
@@ -1532,7 +1532,7 @@ cdn:
 - **Enable SSL/TLS termination** at the CDN for better security and performance.
 - **Monitor CDN analytics** for usage patterns and anomalies.
 
-### CDN — Interview Questions
+### 2.10.14 CDN — Interview Questions
 
 **Basics:**
 
@@ -1573,7 +1573,7 @@ cdn:
 - How would you design a CDN for a large-scale video streaming platform?
 - How do CDNs help in real-time applications like online gaming or stock trading?
 
-### CDN — Further Reading
+### 2.10.15 CDN — Further Reading
 
 - [Cloudflare CDN Docs](https://developers.cloudflare.com/cdn/)
 - [AWS CloudFront](https://aws.amazon.com/cloudfront/)
@@ -1582,7 +1582,7 @@ cdn:
 
 ---
 
-## API Gateway vs. CDN
+## 2.11 API Gateway vs. CDN
 
 In large systems you typically use both. They overlap in some functionality but serve different primary purposes.
 
@@ -1600,7 +1600,7 @@ In large systems you typically use both. They overlap in some functionality but 
 
 ---
 
-## Combining an API Gateway with a CDN
+## 2.12 Combining an API Gateway with a CDN
 
 A common design is to put the CDN in front of the API Gateway for caching API responses and absorbing DDoS attacks, then let the API Gateway handle authentication, routing, and business logic.
 
@@ -1616,7 +1616,7 @@ This layered approach gives you the best of both worlds: low-latency static deli
 
 ---
 
-## The Canonical Trace: What Happens When You Type `google.com`
+## 2.13 The Canonical Trace: What Happens When You Type `google.com`
 
 This is the most asked networking interview question — and the best way to confirm you've absorbed everything in this chapter. Here's the journey, with approximate latencies from Chapter 1's reference table.
 
@@ -1680,11 +1680,11 @@ This is the most asked networking interview question — and the best way to con
 
 ---
 
-## Combined Tips & Tricks for System Design Interviews
+## 2.14 Combined Tips & Tricks for System Design Interviews
 
 A consolidated master list, drawn from across all sections.
 
-### General Networking Tips
+### 2.14.1 General Networking Tips
 
 - **Always clarify requirements.** Ask about traffic volume, latency tolerance, security needs, etc.
 - **Draw diagrams.** Visuals help communicate architecture clearly.
@@ -1697,33 +1697,33 @@ A consolidated master list, drawn from across all sections.
 - **Understand protocol choices:** HTTP for RESTful APIs, WebSockets for real-time, gRPC for high-performance RPC, etc. (See Ch. 3.)
 - **Monitor and log all networking layers** — from DNS queries to API gateway access — for proactive troubleshooting.
 
-### IP-Specific Tips
+### 2.14.2 IP-Specific Tips
 
 - Know the standard private IP ranges (10.x.x.x, 172.16-31.x.x, 192.168.x.x).
 - Use private IPs internally; expose only what's necessary via public IPs.
 - Mention NAT for IPv4; mention IPv6 as the future direction.
 
-### DNS-Specific Tips
+### 2.14.3 DNS-Specific Tips
 
 - Set appropriate TTLs (short for changing, long for stable).
 - Use multiple DNS providers for redundancy.
 - Leverage Anycast for global scale.
 - Implement DNSSEC.
 
-### Client-Server Tips
+### 2.14.4 Client-Server Tips
 
 - Prefer stateless servers for scalability.
 - Use HTTPS everywhere.
 - Choose the right protocol for the use case.
 - Plan for graceful degradation.
 
-### Proxy Tips
+### 2.14.5 Proxy Tips
 
 - Use reverse proxies for SSL termination, load balancing, and security.
 - Don't expose backend servers directly.
 - Remember: forward proxy = client-side; reverse proxy = server-side.
 
-### Load Balancer Tips
+### 2.14.6 Load Balancer Tips
 
 - Always enable health checks.
 - Use sticky sessions only if session state requires it.
@@ -1731,14 +1731,14 @@ A consolidated master list, drawn from across all sections.
 - Integrate auto-scaling.
 - Add rate limiting at the LB or API Gateway.
 
-### API Gateway Tips
+### 2.14.7 API Gateway Tips
 
 - Use JWT/OAuth2 for auth.
 - Implement rate limiting.
 - Aggregate requests (API composition) to reduce roundtrips.
 - Monitor logs for anomalies.
 
-### CDN Tips
+### 2.14.8 CDN Tips
 
 - Set appropriate cache headers.
 - Use versioned asset filenames to avoid stale caches.
@@ -1748,17 +1748,17 @@ A consolidated master list, drawn from across all sections.
 
 ---
 
-## Sample Interview Questions
+## 2.15 Sample Interview Questions
 
 A consolidated list from all sections.
 
-### Foundations
+### 2.15.1 Foundations
 
 - Walk through what happens when you type `google.com` in your browser. (Tests: DNS, client-server, proxies, load balancer.)
 - What's the difference between public and private IPs? Why do we need both?
 - How does NAT work and what problem does it solve?
 
-### DNS
+### 2.15.2 DNS
 
 - Explain the DNS resolution process step by step.
 - Authoritative vs. recursive DNS servers — what's the difference?
@@ -1767,33 +1767,33 @@ A consolidated list from all sections.
 - How does DNS-based load balancing work?
 - What is DNS cache poisoning, and how is it mitigated?
 
-### Client-Server
+### 2.15.3 Client-Server
 
 - What is the client-server model?
 - Stateless vs. stateful servers — when to use each?
 - How does a browser load a webpage end-to-end?
 - How does WebSocket communication differ from REST?
 
-### Proxies
+### 2.15.4 Proxies
 
 - Forward vs. reverse proxy — what's the difference?
 - When would you choose a reverse proxy?
 - How does SSL termination work at a reverse proxy?
 
-### Load Balancing
+### 2.15.5 Load Balancing
 
 - What is load balancing and why does it matter?
 - L4 vs. L7 — which would you choose for content-aware routing?
 - Compare round-robin, least-connections, and IP hashing.
 - How would you handle session persistence behind a load balancer?
 
-### API Gateway
+### 2.15.6 API Gateway
 
 - What is an API gateway and how does it differ from a plain load balancer?
 - How would you implement rate limiting and authentication in an API gateway?
 - When does API aggregation help?
 
-### CDN
+### 2.15.7 CDN
 
 - What is a CDN and how does it improve performance?
 - Cache hit vs. cache miss — explain in the context of a CDN.
@@ -1802,7 +1802,7 @@ A consolidated list from all sections.
 
 ---
 
-## Summary
+## 2.16 Summary
 
 - Networking is foundational to system design — it enables communication, scalability, and security.
 - **IP addresses** identify devices; IPv4 is widely deployed but limited, IPv6 is the future.
@@ -1817,7 +1817,7 @@ These concepts not only help build robust real-world systems — they are also s
 
 ---
 
-## Further Reading
+## 2.17 Further Reading
 
 **IP Addresses:**
 

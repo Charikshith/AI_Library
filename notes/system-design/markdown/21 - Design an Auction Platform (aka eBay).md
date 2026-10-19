@@ -6,7 +6,7 @@ In this case study, we'll walk through the architectural blueprint for an auctio
 
 ---
 
-## Learning Outcomes
+## 21.1 Learning Outcomes
 
 After working through this case study, you'll be able to:
 
@@ -20,28 +20,28 @@ After working through this case study, you'll be able to:
 
 ## Table of Contents
 
-1. [What is an Auction Platform?](#what-is-an-auction-platform)
-2. [Functional & Non-Functional Requirements](#functional--non-functional-requirements)
-3. [Core Actors & Use Cases](#core-actors--use-cases)
-4. [Scale Estimation & Traffic Patterns](#scale-estimation--traffic-patterns)
-5. [Identifying Bottlenecks](#identifying-bottlenecks)
-6. [High-Level Architecture](#high-level-architecture)
-7. [API Design](#api-design)
-8. [Service Communication Patterns](#service-communication-patterns)
-9. [Real-Time Bid Delivery (WebSockets)](#real-time-bid-delivery-websockets)
-10. [Data Model](#data-model)
-11. [Handling Auction Timers & Closures](#handling-auction-timers--closures)
-12. [Concurrency-Safe Bid Placement](#concurrency-safe-bid-placement)
-13. [Technology & Infrastructure Choices](#technology--infrastructure-choices)
-14. [Scaling & Performance](#scaling--performance)
-15. [Security & Cost](#security--cost)
-16. [Tips & Tricks](#tips--tricks)
-17. [Example Sequence Diagram](#example-sequence-diagram)
-18. [Conclusion](#conclusion)
+- [21.2 What is an Auction Platform?](#212-what-is-an-auction-platform)
+- [21.3 Functional & Non-Functional Requirements](#213-functional--non-functional-requirements)
+- [21.4 Core Actors & Use Cases](#214-core-actors--use-cases)
+- [21.5 Scale Estimation & Traffic Patterns](#215-scale-estimation--traffic-patterns)
+- [21.6 Identifying Bottlenecks](#216-identifying-bottlenecks)
+- [21.7 High-Level Architecture](#217-high-level-architecture)
+- [21.8 API Design](#218-api-design)
+- [21.9 Service Communication Patterns](#219-service-communication-patterns)
+- [21.10 Real-Time Bid Delivery (WebSockets)](#2110-real-time-bid-delivery-websockets)
+- [21.11 Data Model](#2111-data-model)
+- [21.12 Handling Auction Timers & Closures](#2112-handling-auction-timers--closures)
+- [21.13 Concurrency-Safe Bid Placement](#2113-concurrency-safe-bid-placement)
+- [21.14 Technology & Infrastructure Choices](#2114-technology--infrastructure-choices)
+- [21.15 Scaling & Performance](#2115-scaling--performance)
+- [21.16 Security & Cost](#2116-security--cost)
+- [21.18 Tips & Tricks](#2118-tips--tricks)
+- [21.19 Example Sequence Diagram](#2119-example-sequence-diagram)
+- [21.20 Conclusion](#2120-conclusion)
 
 ---
 
-## What is an Auction Platform?
+## 21.2 What is an Auction Platform?
 
 At its core, an auction platform is a digital marketplace where **sellers list items** and **buyers place bids** within a defined auction window. The system manages:
 
@@ -56,9 +56,9 @@ The highest bid at closing wins. The platform must efficiently handle item listi
 
 ---
 
-## Functional & Non-Functional Requirements
+## 21.3 Functional & Non-Functional Requirements
 
-### Functional Requirements
+### 21.3.1 Functional Requirements
 
 - **User registration & authentication:** Secure sign-up/login for buyers and sellers.
 - **Item listing:** Sellers can create listings with auction parameters (start/end time, reserve price, buy-it-now).
@@ -67,7 +67,7 @@ The highest bid at closing wins. The platform must efficiently handle item listi
 - **Payment processing:** Integration with payment providers (Stripe, PayPal).
 - **Notifications:** Outbid alerts, auction won, payment pending/complete.
 
-### Non-Functional Requirements
+### 21.3.2 Non-Functional Requirements
 
 - **Performance:** Sub-second latency for bid placement & updates.
 - **Scalability:** Support 1M+ concurrent auctions, 10K+ users in a single auction.
@@ -77,7 +77,7 @@ The highest bid at closing wins. The platform must efficiently handle item listi
 
 ---
 
-## Core Actors & Use Cases
+## 21.4 Core Actors & Use Cases
 
 | Actor   | Role / Actions                                                              |
 |---------|-----------------------------------------------------------------------------|
@@ -90,7 +90,7 @@ The highest bid at closing wins. The platform must efficiently handle item listi
 
 ---
 
-## Scale Estimation & Traffic Patterns
+## 21.5 Scale Estimation & Traffic Patterns
 
 Quantify what the system must handle:
 
@@ -115,7 +115,7 @@ Quantify what the system must handle:
 
 ---
 
-## Identifying Bottlenecks
+## 21.6 Identifying Bottlenecks
 
 Key bottlenecks and mitigation strategies:
 
@@ -132,7 +132,7 @@ Key bottlenecks and mitigation strategies:
 
 ---
 
-## High-Level Architecture
+## 21.7 High-Level Architecture
 
 ```mermaid
 flowchart LR
@@ -218,7 +218,7 @@ ASCII view:
                         +----------------+   +--------------+
 ```
 
-### Key Components
+### 21.7.1 Key Components
 
 - **API Gateway:** Entry point, routing, rate limiting, authentication.
 - **User Service:** Auth, profiles, roles (buyer/seller).
@@ -231,7 +231,7 @@ ASCII view:
 
 ---
 
-## API Design
+## 21.8 API Design
 
 ```http
 # User APIs
@@ -251,7 +251,7 @@ POST   /payments/initiate
 GET    /payments/{id}/status
 ```
 
-### Sample: Place a Bid
+### 21.8.1 Sample: Place a Bid
 
 ```http
 POST /auctions/12345/bids
@@ -273,21 +273,21 @@ Content-Type: application/json
 }
 ```
 
-### Notification Triggers (Internal)
+### 21.8.2 Notification Triggers (Internal)
 
 - On auction ending → notify winner.
 - On new highest bid → notify previous top bidder.
 
 ---
 
-## Service Communication Patterns
+## 21.9 Service Communication Patterns
 
 | Pattern         | Use Case                                                                       |
 |-----------------|--------------------------------------------------------------------------------|
 | Sync (REST/gRPC)| User authentication, listing fetch, Auction → Bid → Payment trigger.            |
 | Async (Pub/Sub) | New bid placed → broadcast to watchers; auction ended → notify, trigger payment; payment failed → retry, alert. |
 
-### Event Topics
+### 21.9.1 Event Topics
 
 | Topic             | Payload                                  |
 |-------------------|------------------------------------------|
@@ -300,11 +300,11 @@ Content-Type: application/json
 
 ---
 
-## Real-Time Bid Delivery (WebSockets)
+## 21.10 Real-Time Bid Delivery (WebSockets)
 
 **Why WebSockets?** Traditional HTTP polling can't meet the low-latency demands of real-time bidding. WebSockets establish a persistent, full-duplex connection ideal for pushing bid updates and auction status changes instantly.
 
-### How It Works
+### 21.10.1 How It Works
 
 1. User connects to `wss://auction-platform.com/ws`.
 2. Subscribes to channel, e.g., `auction:123456`.
@@ -313,7 +313,7 @@ Content-Type: application/json
 
 **Scaling challenge:** Must support horizontal scaling for high concurrency (10K+ watchers on a hot auction).
 
-### Sample WebSocket Event
+### 21.10.2 Sample WebSocket Event
 
 ```json
 {
@@ -324,7 +324,7 @@ Content-Type: application/json
 }
 ```
 
-### Code: Node.js WebSocket Handler
+### 21.10.3 Code: Node.js WebSocket Handler
 
 ```javascript
 const WebSocket = require('ws');
@@ -349,7 +349,7 @@ wss.on('connection', (ws) => {
 });
 ```
 
-### Code: Socket.IO Variant
+### 21.10.4 Code: Socket.IO Variant
 
 ```javascript
 io.on('connection', (socket) => {
@@ -363,7 +363,7 @@ io.on('connection', (socket) => {
 });
 ```
 
-### Fan-out via Redis Pub/Sub
+### 21.10.5 Fan-out via Redis Pub/Sub
 
 ```javascript
 // On valid bid, publish to Redis Pub/Sub
@@ -382,7 +382,7 @@ Client --WebSocket--> Bid Service --Pub/Sub--> WebSocket Server --Fan Out--> Wat
 
 ---
 
-## Data Model
+## 21.11 Data Model
 
 ```mermaid
 erDiagram
@@ -393,7 +393,7 @@ erDiagram
   AUCTION ||--o{ PAYMENT : triggers
 ```
 
-### Tables
+### 21.11.1 Tables
 
 ```sql
 -- User Table
@@ -452,23 +452,23 @@ CREATE TABLE payments (
 
 ---
 
-## Handling Auction Timers & Closures
+## 21.12 Handling Auction Timers & Closures
 
 **Scheduler Service** ensures auctions start/end precisely.
 
-### Design Options
+### 21.12.1 Design Options
 
 - **Dedicated Scheduler Service:** Maintains all timers, triggers start/end (cron or job queues).
 - **Delayed jobs in message queues:** Push closure jobs to queue with delay (SQS Delay, BullMQ, Kafka).
 - **Redis with TTL/polling/Keyspace notifications:** Store auction end as TTL key, trigger on expiry.
 
-### Reliability Measures
+### 21.12.2 Reliability Measures
 
 - **Idempotency:** Ensure end-of-auction logic can be safely retried (no double winners).
 - **Retries:** On failure, closure jobs are retried.
 - **Logging/alerts:** All timer events logged; alert on missed or failed closures.
 
-### Sample: Auction Closure (Python)
+### 21.12.3 Sample: Auction Closure (Python)
 
 ```python
 def close_auction(auction_id):
@@ -482,7 +482,7 @@ def close_auction(auction_id):
         trigger_payment(highest_bid.bidder_id, auction_id)
 ```
 
-### Sample: Auction Closure (Node.js)
+### 21.12.4 Sample: Auction Closure (Node.js)
 
 ```js
 async function closeAuction(auctionId) {
@@ -495,9 +495,9 @@ async function closeAuction(auctionId) {
 
 ---
 
-## Concurrency-Safe Bid Placement
+## 21.13 Concurrency-Safe Bid Placement
 
-### End-to-End Bid Placement (Python/Flask)
+### 21.13.1 End-to-End Bid Placement (Python/Flask)
 
 ```python
 @app.route('/auctions/<auction_id>/bids', methods=['POST'])
@@ -518,7 +518,7 @@ def place_bid(auction_id):
     return success('Bid placed')
 ```
 
-### Place Bid Endpoint (Node.js / Express)
+### 21.13.2 Place Bid Endpoint (Node.js / Express)
 
 ```js
 app.post('/auctions/:id/bids', authenticateUser, async (req, res) => {
@@ -540,7 +540,7 @@ app.post('/auctions/:id/bids', authenticateUser, async (req, res) => {
 });
 ```
 
-### Atomic Bid Placement with Redis Lua Script
+### 21.13.3 Atomic Bid Placement with Redis Lua Script
 
 ```lua
 -- Lua script for atomic bid placement (simplified)
@@ -559,7 +559,7 @@ end
 
 ---
 
-## Technology & Infrastructure Choices
+## 21.14 Technology & Infrastructure Choices
 
 | Layer         | Technology Choices                       | Reasoning                                                  |
 |---------------|------------------------------------------|------------------------------------------------------------|
@@ -577,7 +577,7 @@ end
 
 ---
 
-## Scaling & Performance
+## 21.15 Scaling & Performance
 
 - **Horizontal partitioning:** Shard bids and auctions by auction ID.
 - **Redis caching:** Store hot auction data for fast access.
@@ -590,16 +590,16 @@ end
 
 ---
 
-## Security & Cost
+## 21.16 Security & Cost
 
-### Security
+### 21.16.1 Security
 
 - **OAuth 2.0:** All endpoints protected via secure tokens.
 - **SSL/TLS:** All data in transit encrypted.
 - **Rate limiting:** Prevent brute-force and abuse.
 - **Anti-bot:** CAPTCHAs, suspicious activity monitoring.
 
-### Cost Optimization
+### 21.16.2 Cost Optimization
 
 - **Cloud pay-as-you-go** models (AWS, GCP, Azure).
 - **Autoscaling:** Dynamically match resources to demand.
@@ -607,15 +607,15 @@ end
 
 ---
 
-## Beyond MVP — What a Senior Designer Adds
+## 21.17 Beyond MVP — What a Senior Designer Adds
 
-### The Anti-Sniping Extension
+### 21.17.1 The Anti-Sniping Extension
 
 The "snipe" — bidding in the final 5 seconds when no one can respond — is a real eBay problem. **Solution: if a bid comes in within the last N seconds, extend the auction by N seconds.** This converts "first-mover-wins-the-snipe" back into "highest-willing-bid-wins."
 
 Implementation: on each bid, check `now() > end_time - 60s`. If true, atomically set `end_time = now() + 60s`. Broadcast the new end time to all watchers.
 
-### Search and Discovery
+### 21.17.2 Search and Discovery
 
 Largely missing from this case study but critical to a real marketplace. **Add:**
 
@@ -624,21 +624,21 @@ Largely missing from this case study but critical to a real marketplace. **Add:*
 - Auto-complete on the search bar — pre-computed top queries in Redis.
 - "Auctions ending soon" feed — materialized view, refreshed every few seconds.
 
-### Recommendation Engine
+### 21.17.3 Recommendation Engine
 
 "Buyers who bid on this also bid on..." — collaborative filtering against historical bid data. Compute embeddings offline; serve via vector DB.
 
-### Multi-Warehouse Inventory (For Buy-Now Items)
+### 21.17.4 Multi-Warehouse Inventory (For Buy-Now Items)
 
 eBay isn't just auctions — many items are buy-it-now with multiple sellers shipping from different locations. Inventory is **per-(item, location, seller)**. Choosing which seller to fulfill from is a small optimization problem (cost + speed).
 
-### Reviews and Ratings
+### 21.17.5 Reviews and Ratings
 
 After purchase: buyer rates seller, seller rates buyer. Ratings drive search ranking, dispute decisions, and fraud detection.
 
 **Pitfall:** ratings are write-heavy *and* heavily skewed (most are 5-star). Use percentile-based ranking, not just average, to differentiate sellers.
 
-### Dispute Resolution Workflow
+### 21.17.6 Dispute Resolution Workflow
 
 What happens when item doesn't arrive, or arrives damaged?
 
@@ -649,39 +649,39 @@ What happens when item doesn't arrive, or arrives damaged?
 
 This is a workflow service (Saga pattern from Chapter 4). Most marketplaces underinvest here until it bites them.
 
-### Surge Pricing for Featured Slots (Auctions for Visibility)
+### 21.17.7 Surge Pricing for Featured Slots (Auctions for Visibility)
 
 In addition to item auctions, sellers can pay to feature their listings — which is itself an auction (for ad slots). Real-time bidding system within a bidding system.
 
 ---
 
-## Tips & Tricks
+## 21.18 Tips & Tricks
 
-### Concurrency & Consistency
+### 21.18.1 Concurrency & Consistency
 
 - **Prevent race conditions:** Use atomic DB operations or distributed locks on bid placement.
 - **Strong consistency for bids:** Use optimistic concurrency control or atomic DB operations.
 - **Idempotency:** All payment, closure, and notification triggers should be idempotent.
 
-### Hotspots & Scaling
+### 21.18.2 Hotspots & Scaling
 
 - **Mitigate "hot auction" skew:** Special-case handling for auctions with thousands of watchers/bidders (dedicated nodes, in-memory pub/sub).
 - **WebSockets at scale:** Use sticky sessions, distributed pub/sub (Redis Streams, Kafka).
 - **Partition bids:** Hot auctions create write hotspots. Shard bids by auction ID.
 
-### Security
+### 21.18.3 Security
 
 - **Bot & sniping protection:** CAPTCHA for bid burst, randomize auction end time slightly, anti-sniping extensions.
 - **Strong auth:** OAuth2, encrypt all traffic (TLS), DDoS/bot protection.
 
-### Reliability
+### 21.18.4 Reliability
 
 - **Graceful degradation:** If real-time fails, fallback to polling for updates.
 - **Retry & fallback:** For all external calls (payments, notifications), use robust retry with exponential backoff.
 - **Payment handling:** Treat payment as an eventual process — support retries, status polling, manual dispute workflows.
 - **Failover:** Replicate databases, use cloud managed services for auto-healing, design for geo-redundancy.
 
-### Operational Excellence
+### 21.18.5 Operational Excellence
 
 - **Logging & alerts:** Proactive monitoring for stuck auctions, payment failures, high-latency bids.
 - **Observability:** Log all auction state changes, bid events, payment outcomes. Monitor for scheduler lags and missed events.
@@ -690,7 +690,7 @@ In addition to item auctions, sellers can pay to feature their listings — whic
 
 ---
 
-## Example Sequence Diagram
+## 21.19 Example Sequence Diagram
 
 ```
 Bidder                API Gateway           Auction Service           Bid Service         Notification
@@ -706,7 +706,7 @@ Bidder                API Gateway           Auction Service           Bid Servic
 
 ---
 
-## Conclusion
+## 21.20 Conclusion
 
 Designing a real-time auction platform is a multi-disciplinary effort that demands not just feature-rich development, but also careful handling of timing, concurrency, and fairness. The best platforms combine robust backend services, real-time communication channels, and a developer mindset that's always preparing for race conditions, sudden load spikes, and the creative mischief of determined users.
 
@@ -720,7 +720,7 @@ Designing a real-time auction platform is a multi-disciplinary effort that deman
 
 ---
 
-## Further Reading
+## 21.21 Further Reading
 
 - [eBay Architecture Principles](https://www.ebayinc.com/tech/)
 - [WebSockets at Scale](https://ably.com/concepts/websockets)

@@ -6,7 +6,7 @@ In this case study, we'll walk through designing a search engine from first prin
 
 ---
 
-## Learning Outcomes
+## 25.1 Learning Outcomes
 
 After working through this case study, you'll be able to:
 
@@ -20,26 +20,26 @@ After working through this case study, you'll be able to:
 
 ## Table of Contents
 
-1. [What Are We Building?](#what-are-we-building)
-2. [Functional Requirements](#functional-requirements)
-3. [Non-Functional Requirements](#non-functional-requirements)
-4. [Architecture Overview](#architecture-overview)
-5. [Core Components](#core-components)
-6. [Scale Estimation](#scale-estimation)
-7. [Bottlenecks & Solutions](#bottlenecks--solutions)
-8. [Data & Indexing Architecture](#data--indexing-architecture)
-9. [End-to-End Workflow](#end-to-end-workflow)
-10. [Data Models](#data-models)
-11. [Component Deep Dives & Code](#component-deep-dives--code)
-12. [Ranking Algorithms](#ranking-algorithms)
-13. [Tech & Infrastructure Decisions](#tech--infrastructure-decisions)
-14. [Scaling & Fault Tolerance](#scaling--fault-tolerance)
-15. [Tips & Tricks](#tips--tricks)
-16. [Conclusion](#conclusion)
+- [25.2 What Are We Building?](#252-what-are-we-building)
+- [25.3 Functional Requirements](#253-functional-requirements)
+- [25.4 Non-Functional Requirements](#254-non-functional-requirements)
+- [25.5 Architecture Overview](#255-architecture-overview)
+- [25.6 Core Components](#256-core-components)
+- [25.7 Scale Estimation](#257-scale-estimation)
+- [25.8 Bottlenecks & Solutions](#258-bottlenecks--solutions)
+- [25.9 Data & Indexing Architecture](#259-data--indexing-architecture)
+- [25.10 End-to-End Workflow](#2510-end-to-end-workflow)
+- [25.11 Data Models](#2511-data-models)
+- [25.12 Component Deep Dives & Code](#2512-component-deep-dives--code)
+- [25.13 Ranking Algorithms](#2513-ranking-algorithms)
+- [25.14 Tech & Infrastructure Decisions](#2514-tech--infrastructure-decisions)
+- [25.15 Scaling & Fault Tolerance](#2515-scaling--fault-tolerance)
+- [25.17 Tips & Tricks](#2517-tips--tricks)
+- [25.18 Conclusion](#2518-conclusion)
 
 ---
 
-## What Are We Building?
+## 25.2 What Are We Building?
 
 **Goal:** A search engine that can crawl and index billions of web pages, serve keyword-based queries in real-time, and keep results fresh and relevant.
 
@@ -50,7 +50,7 @@ After working through this case study, you'll be able to:
 
 ---
 
-## Functional Requirements
+## 25.3 Functional Requirements
 
 | #   | Component       | Description                                                          |
 |-----|-----------------|----------------------------------------------------------------------|
@@ -62,7 +62,7 @@ After working through this case study, you'll be able to:
 
 ---
 
-## Non-Functional Requirements
+## 25.4 Non-Functional Requirements
 
 - **Performance:** < 200ms query response time.
 - **Scalability:** Billions of pages, 50,000 QPS.
@@ -72,9 +72,9 @@ After working through this case study, you'll be able to:
 
 ---
 
-## Architecture Overview
+## 25.5 Architecture Overview
 
-### High-Level Component Diagram
+### 25.5.1 High-Level Component Diagram
 
 ```
 +-------------------+        +----------------+        +--------------------+
@@ -94,7 +94,7 @@ After working through this case study, you'll be able to:
 +-------------------+        +----------------+        +--------------------+
 ```
 
-### Mermaid Architecture
+### 25.5.2 Mermaid Architecture
 
 ```mermaid
 flowchart TD
@@ -124,7 +124,7 @@ flowchart TD
     end
 ```
 
-### End-to-End Data Flow
+### 25.5.3 End-to-End Data Flow
 
 ```
    +----------+      +----------+      +----------+      +----------+
@@ -154,7 +154,7 @@ flowchart TD
 
 ---
 
-## Core Components
+## 25.6 Core Components
 
 | Component                  | Responsibility                                                                        |
 |----------------------------|----------------------------------------------------------------------------------------|
@@ -172,9 +172,9 @@ flowchart TD
 
 ---
 
-## Scale Estimation
+## 25.7 Scale Estimation
 
-### Web Size
+### 25.7.1 Web Size
 
 - **Indexed Pages:** 100+ billion (MVP: 100M).
 - **Average Page Size:** 100 KB → 10 TB for 100M pages (raw); 3–5 TB tokenized.
@@ -182,7 +182,7 @@ flowchart TD
 - **Forward Index:** ~5 TB.
 - **Metadata:** 100–200 GB.
 
-### Traffic Load
+### 25.7.2 Traffic Load
 
 - **Active users:** 10M.
 - **Queries/user/day:** 5.
@@ -190,14 +190,14 @@ flowchart TD
 - **Peak QPS:** 1,000–2,000 (with burst handling).
 - **Read:Write Ratio:** 95:5.
 
-### Crawling Throughput
+### 25.7.3 Crawling Throughput
 
 - **Goal:** 100M pages in 7 days → ~170 pages/sec.
 - **With 500 workers:** ~0.34 pages/sec/worker.
 
 ---
 
-## Bottlenecks & Solutions
+## 25.8 Bottlenecks & Solutions
 
 | Layer         | Bottleneck                          | Solution                                                  |
 |---------------|-------------------------------------|-----------------------------------------------------------|
@@ -209,14 +209,14 @@ flowchart TD
 
 ---
 
-## Data & Indexing Architecture
+## 25.9 Data & Indexing Architecture
 
-### Index Types
+### 25.9.1 Index Types
 
 - **Inverted index** (term → list of docIDs): For fast keyword search.
 - **Forward index** (docID → content/metadata): For efficient ranking and result formatting.
 
-### Index Size Estimates (for 100M pages)
+### 25.9.2 Index Size Estimates (for 100M pages)
 
 | Component       | Size         |
 |-----------------|--------------|
@@ -228,9 +228,9 @@ flowchart TD
 
 ---
 
-## End-to-End Workflow
+## 25.10 End-to-End Workflow
 
-### Crawling & Indexing Sequence
+### 25.10.1 Crawling & Indexing Sequence
 
 ```mermaid
 sequenceDiagram
@@ -248,7 +248,7 @@ sequenceDiagram
   Parser->>Frontier: Push new URLs
 ```
 
-### Query Processing Sequence
+### 25.10.2 Query Processing Sequence
 
 ```mermaid
 sequenceDiagram
@@ -272,7 +272,7 @@ sequenceDiagram
   API->>Cache: Store results
 ```
 
-### Query Processing Flow (Pseudocode)
+### 25.10.3 Query Processing Flow (Pseudocode)
 
 ```
 function process_query(query):
@@ -284,7 +284,7 @@ function process_query(query):
     return format_results(top_k(scored_docs))
 ```
 
-### Search Flow With Caching
+### 25.10.4 Search Flow With Caching
 
 ```python
 def search(query):
@@ -313,9 +313,9 @@ def search(query):
 
 ---
 
-## Data Models
+## 25.11 Data Models
 
-### Crawler URL Queue (Relational/NoSQL)
+### 25.11.1 Crawler URL Queue (Relational/NoSQL)
 
 ```sql
 CREATE TABLE UrlQueue (
@@ -327,7 +327,7 @@ CREATE TABLE UrlQueue (
 );
 ```
 
-### Forward Index (NoSQL)
+### 25.11.2 Forward Index (NoSQL)
 
 ```json
 {
@@ -342,7 +342,7 @@ CREATE TABLE UrlQueue (
 }
 ```
 
-### Inverted Index (NoSQL)
+### 25.11.3 Inverted Index (NoSQL)
 
 ```json
 {
@@ -354,7 +354,7 @@ CREATE TABLE UrlQueue (
 }
 ```
 
-### MongoDB Document
+### 25.11.4 MongoDB Document
 
 ```json
 {
@@ -367,7 +367,7 @@ CREATE TABLE UrlQueue (
 }
 ```
 
-### Schema Summary
+### 25.11.5 Schema Summary
 
 | Table         | Key Fields                       | Description                                 |
 |---------------|----------------------------------|---------------------------------------------|
@@ -377,9 +377,9 @@ CREATE TABLE UrlQueue (
 
 ---
 
-## Component Deep Dives & Code
+## 25.12 Component Deep Dives & Code
 
-### 1. Web Crawler Service
+### 25.12.1 Web Crawler Service
 
 - **Role:** Continuously fetches web pages, respects robots.txt and rate limits.
 - **Coordination:** Distributed workers pull from a sharded URL frontier.
@@ -411,7 +411,7 @@ def crawl_url(url):
         log_error(url, e)
 ```
 
-### 2. URL Frontier & Scheduler
+### 25.12.2 URL Frontier & Scheduler
 
 ```python
 from queue import PriorityQueue
@@ -429,7 +429,7 @@ def get_next_url():
         return get_next_url()
 ```
 
-### 3. Content Extractor & Parser
+### 25.12.3 Content Extractor & Parser
 
 ```python
 from bs4 import BeautifulSoup
@@ -441,7 +441,7 @@ def extract_content(html):
     return text, links
 ```
 
-### 4. Deduplication with SimHash
+### 25.12.4 Deduplication with SimHash
 
 ```python
 import simhash
@@ -467,7 +467,7 @@ def is_duplicate(content, hash_set):
     return False
 ```
 
-### 5. Indexer
+### 25.12.5 Indexer
 
 ```python
 import nltk
@@ -513,7 +513,7 @@ def build_inverted_index(docs):
     return index
 ```
 
-### 6. Indexing to Elasticsearch
+### 25.12.6 Indexing to Elasticsearch
 
 ```python
 from elasticsearch import Elasticsearch
@@ -524,7 +524,7 @@ def index_document(doc_id, content):
     es.index(index="web_docs", id=doc_id, body={"content": content})
 ```
 
-### 7. Search API (FastAPI)
+### 25.12.7 Search API (FastAPI)
 
 ```python
 from fastapi import FastAPI, Query
@@ -540,7 +540,7 @@ def search(q: str):
     pass
 ```
 
-### 8. Search API With Cache
+### 25.12.8 Search API With Cache
 
 ```python
 from fastapi import FastAPI, Query
@@ -561,7 +561,7 @@ def search(q: str):
     return {"results": results, "source": "live"}
 ```
 
-### 9. Distributed Crawl Worker (Celery + Kafka)
+### 25.12.9 Distributed Crawl Worker (Celery + Kafka)
 
 ```python
 from celery import Celery
@@ -580,7 +580,7 @@ def fetch_url(url):
         app.send_task('crawler.fetch_url', args=[link])
 ```
 
-### 10. Caching Query Results (Redis)
+### 25.12.10 Caching Query Results (Redis)
 
 ```python
 import redis
@@ -598,9 +598,9 @@ def search_query(query):
 
 ---
 
-## Ranking Algorithms
+## 25.13 Ranking Algorithms
 
-### TF-IDF
+### 25.13.1 TF-IDF
 
 ```python
 import math
@@ -622,7 +622,7 @@ def tf_idf(term, doc, corpus):
     return tf * idf
 ```
 
-### PageRank
+### 25.13.2 PageRank
 
 ```python
 def pagerank(graph, d=0.85, num_iter=10):
@@ -638,7 +638,7 @@ def pagerank(graph, d=0.85, num_iter=10):
     return ranks
 ```
 
-### Combined Ranking
+### 25.13.3 Combined Ranking
 
 The Ranking Engine combines:
 
@@ -648,7 +648,7 @@ The Ranking Engine combines:
 
 ---
 
-## Tech & Infrastructure Decisions
+## 25.14 Tech & Infrastructure Decisions
 
 | Layer         | Tech Examples                       | Why                                                    |
 |---------------|-------------------------------------|--------------------------------------------------------|
@@ -658,7 +658,7 @@ The Ranking Engine combines:
 | Caching       | Redis, Memcached                    | Millisecond response for hot queries                   |
 | Query API     | NGINX, AWS ALB                      | Load balancing, rate limiting                          |
 
-### Key Design Decisions
+### 25.14.1 Key Design Decisions
 
 1. **Sharded architecture:** Partition index by term hash for scalability.
 2. **Replication:** Replicate index/data for fault tolerance.
@@ -669,7 +669,7 @@ The Ranking Engine combines:
 
 ---
 
-## Scaling & Fault Tolerance
+## 25.15 Scaling & Fault Tolerance
 
 - **Horizontal partitioning:** Shard index and URL frontier by hash of domain or token.
 - **Replication:** Store multiple copies for high availability.
@@ -679,9 +679,9 @@ The Ranking Engine combines:
 
 ---
 
-## Beyond MVP — What a Senior Designer Adds
+## 25.16 Beyond MVP — What a Senior Designer Adds
 
-### Query Understanding (Beyond Keyword Match)
+### 25.16.1 Query Understanding (Beyond Keyword Match)
 
 Real search doesn't just match keywords. It tries to *understand* the query:
 
@@ -693,7 +693,7 @@ Real search doesn't just match keywords. It tries to *understand* the query:
 
 These all happen as a **query pre-processing pipeline** before hitting the index.
 
-### Autocomplete (Sub-100ms is Hard)
+### 25.16.2 Autocomplete (Sub-100ms is Hard)
 
 The dropdown that appears as you type. Tricks to make it fast:
 
@@ -704,7 +704,7 @@ The dropdown that appears as you type. Tricks to make it fast:
 
 Backed by Redis or in-memory tries. Total latency budget: typically <50ms.
 
-### Lexical Search vs Semantic Search
+### 25.16.3 Lexical Search vs Semantic Search
 
 Traditional search uses **lexical** matching — TF-IDF, BM25, exact tokens.
 
@@ -719,7 +719,7 @@ Modern search complements with **semantic** matching — embed query and documen
 
 **Modern search engines blend both:** lexical for high-precision exact matches, semantic for the long tail.
 
-### Ranking Signals Beyond TF-IDF + PageRank
+### 25.16.4 Ranking Signals Beyond TF-IDF + PageRank
 
 Real Google has hundreds of ranking signals. Common ones:
 
@@ -733,7 +733,7 @@ Real Google has hundreds of ranking signals. Common ones:
 
 These are blended in a **learning-to-rank** model — typically a gradient-boosted tree or neural net.
 
-### Featured Snippets / Answer Boxes
+### 25.16.5 Featured Snippets / Answer Boxes
 
 For queries like "what's the capital of France?", a search engine extracts an answer directly from the top result and displays it as a card. Implementation:
 
@@ -742,7 +742,7 @@ For queries like "what's the capital of France?", a search engine extracts an an
 3. Score and pick the best (length, source authority, freshness).
 4. Render as a card above the regular results.
 
-### Spam and Abuse Defense
+### 25.16.6 Spam and Abuse Defense
 
 The web is adversarial. Crawlers ingest content that wants to **manipulate** ranking:
 
@@ -755,39 +755,39 @@ Defenses are ML-based: classifiers flag low-quality content, signal-based demoti
 
 ---
 
-## Tips & Tricks
+## 25.17 Tips & Tricks
 
-### Crawling
+### 25.17.1 Crawling
 
 - **Respect politeness:** Always honor `robots.txt` and crawl-delay to avoid bans.
 - **Partition crawling by domain hash:** Avoid hammering single sites; simplify dedup.
 - **Backoff strategies:** Exponential backoff for failed fetches.
 
-### Deduplication & Storage
+### 25.17.2 Deduplication & Storage
 
 - **Deduplication:** Use SimHash or fingerprinting to prevent re-crawling same/similar content.
 - **Deduplicate early:** Hash content to avoid storing/crawling duplicates.
 - **Compression:** Store indexes using delta encoding, front-coding for space savings.
 - **Cold/hot storage:** Archive old/rarely accessed docs to cheap storage; keep hot data in fast SSD.
 
-### Indexing
+### 25.17.3 Indexing
 
 - **Sharding is your friend:** Both crawling and indexing benefit from hashing and partitioning.
 - **Segmented indexing:** Manage load and speed up merges.
 - **Batch writes, stream reads:** Real-time indexing isn't always necessary — batch new docs, but serve queries in real-time.
 
-### Queries
+### 25.17.4 Queries
 
 - **Cache aggressively:** Hot queries often account for a large chunk of load. Use Redis/Memcached.
 - **Query caching:** Cache frequent/popular queries for instant retrieval.
 - **Optimize for read-heavy workloads:** 95%+ of operations are reads.
 
-### Freshness
+### 25.17.5 Freshness
 
 - **Adaptive recrawling:** Prioritize high-change sites for freshness; use sitemaps/change-frequency signals.
 - **Prioritize freshness:** Use content diffing and change-rate heuristics.
 
-### Operations
+### 25.17.6 Operations
 
 - **Always design for peak, not average:** Base capacity planning on peak QPS.
 - **Monitor everything:** Track crawl rates, index update lag, query latency in real time.
@@ -797,7 +797,7 @@ Defenses are ML-based: classifiers flag low-quality content, signal-based demoti
 
 ---
 
-## Conclusion
+## 25.18 Conclusion
 
 Designing a web-scale search engine is a tour-de-force in distributed systems, data engineering, and algorithmic ranking. By breaking the problem into manageable blocks — crawling, indexing, querying, ranking — and rigorously addressing scale, performance, and reliability, you can architect a system that not only works, but works at **web scale.**
 
@@ -805,7 +805,7 @@ By combining **distributed crawling, NoSQL document stores, real-time indexing, 
 
 ---
 
-## Further Reading
+## 25.19 Further Reading
 
 - [Google File System](https://research.google/pubs/pub51/)
 - [MapReduce](https://research.google/pubs/pub62/)

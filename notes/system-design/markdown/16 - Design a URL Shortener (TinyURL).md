@@ -6,7 +6,7 @@ URL shorteners like TinyURL and [Bitly](https://bitly.com) are essential for con
 
 ---
 
-## Learning Outcomes
+## 16.1 Learning Outcomes
 
 After working through this case study, you'll be able to:
 
@@ -20,24 +20,24 @@ After working through this case study, you'll be able to:
 
 ## Table of Contents
 
-1. [Introduction & Why Build a URL Shortener?](#introduction--why-build-a-url-shortener)
-2. [Functional Requirements](#functional-requirements)
-3. [Non-Functional Requirements](#non-functional-requirements)
-4. [Unique Key Generation Strategies](#unique-key-generation-strategies)
-5. [Estimating Scale & Bottlenecks](#estimating-scale--bottlenecks)
-6. [API Design](#api-design)
-7. [High-Level System Architecture](#high-level-system-architecture)
-8. [Distributed Collision Handling with Zookeeper](#distributed-collision-handling-with-zookeeper)
-9. [Tech Stack & Infrastructure Decisions](#tech-stack--infrastructure-decisions)
-10. [Critical Flows](#critical-flows)
-11. [Sample Code Walkthrough](#sample-code-walkthrough)
-12. [Tips and Tricks](#tips-and-tricks)
-13. [Summary](#summary)
-14. [Further Reading](#further-reading)
+- [16.2 Introduction & Why Build a URL Shortener?](#162-introduction--why-build-a-url-shortener)
+- [16.3 Functional Requirements](#163-functional-requirements)
+- [16.4 Non-Functional Requirements](#164-non-functional-requirements)
+- [16.5 Unique Key Generation Strategies](#165-unique-key-generation-strategies)
+- [16.6 Estimating Scale & Bottlenecks](#166-estimating-scale--bottlenecks)
+- [16.7 API Design](#167-api-design)
+- [16.8 High-Level System Architecture](#168-high-level-system-architecture)
+- [16.9 Distributed Collision Handling with Zookeeper](#169-distributed-collision-handling-with-zookeeper)
+- [16.10 Tech Stack & Infrastructure Decisions](#1610-tech-stack--infrastructure-decisions)
+- [16.11 Critical Flows](#1611-critical-flows)
+- [16.12 Sample Code Walkthrough](#1612-sample-code-walkthrough)
+- [16.14 Tips and Tricks](#1614-tips-and-tricks)
+- [16.15 Summary](#1615-summary)
+- [16.16 Further Reading](#1616-further-reading)
 
 ---
 
-## Introduction & Why Build a URL Shortener?
+## 16.2 Introduction & Why Build a URL Shortener?
 
 A **URL shortener** transforms a long, complex URL into a short, unique, and manageable link:
 
@@ -46,7 +46,7 @@ https://www.example.com/very/long/path/to/resource
 → https://tinyurl.com/abc123
 ```
 
-### Why Build One?
+### 16.2.1 Why Build One?
 
 - **Compact links:** Ideal for Twitter, SMS, QR codes, or anywhere with length limits.
 - **Enhanced UX:** Clean, readable, easy to share.
@@ -54,7 +54,7 @@ https://www.example.com/very/long/path/to/resource
 - **Branding:** Custom domains for businesses.
 - **Cross-channel friendly:** Works across emails, chat, and even print.
 
-### How Does It Work?
+### 16.2.2 How Does It Work?
 
 1. **User submits a long URL.**
 2. **System generates a unique short key.**
@@ -63,7 +63,7 @@ https://www.example.com/very/long/path/to/resource
 
 ---
 
-## Functional Requirements
+## 16.3 Functional Requirements
 
 1. **Shorten a URL:** Accept a valid long URL and return a shortened URL.
    - *If the same URL is submitted, return the same short URL (unless a custom alias is used).*
@@ -73,7 +73,7 @@ https://www.example.com/very/long/path/to/resource
 
 ---
 
-## Non-Functional Requirements
+## 16.4 Non-Functional Requirements
 
 - **High availability:** 24/7 uptime, >99.9%.
 - **Performance & low latency:** Redirections in milliseconds; URL shortening near-instantaneous.
@@ -82,7 +82,7 @@ https://www.example.com/very/long/path/to/resource
 
 ---
 
-## Unique Key Generation Strategies
+## 16.5 Unique Key Generation Strategies
 
 Key generation is critical for uniqueness, compactness, and scalability.
 
@@ -93,7 +93,7 @@ Key generation is critical for uniqueness, compactness, and scalability.
 | **Hashing + Salt**        | Unique, secure, hard to reverse         | Not always short, collision possible  | ❌                      |
 | **Base62 Encoding (ID)**  | Short, compact, deterministic, scalable | Needs counter management              | ✅ **Recommended**     |
 
-### Detailed Strategy Notes
+### 16.5.1 Detailed Strategy Notes
 
 - **Random String Generation:** Creates a fixed-length string from random characters.
   - ✅ Unpredictable, no obvious pattern.
@@ -108,12 +108,12 @@ Key generation is critical for uniqueness, compactness, and scalability.
   - ✅ Short, compact, deterministic, easy to implement.
   - ⚠️ Needs counter management to avoid collisions.
 
-### Recommended: Base62 Encoding
+### 16.5.2 Recommended: Base62 Encoding
 
 - Use an incrementing ID, encode in Base62 (`0-9`, `a-z`, `A-Z`) for short, unique keys.
 - Requires a globally unique counter (see [Distributed Collision Handling with Zookeeper](#distributed-collision-handling-with-zookeeper)).
 
-#### Base62 Encoding Code
+#### 16.5.2.1 Base62 Encoding Code
 
 ```python
 import string
@@ -176,11 +176,11 @@ print(encode_base62(125))  # '21'
 
 ---
 
-## Estimating Scale & Bottlenecks
+## 16.6 Estimating Scale & Bottlenecks
 
 Before picking a database or thinking about code, we **quantify** what the system must handle.
 
-### User Traffic Estimates
+### 16.6.1 User Traffic Estimates
 
 | Metric                  | Estimate                              |
 |-------------------------|---------------------------------------|
@@ -191,7 +191,7 @@ Before picking a database or thinking about code, we **quantify** what the syste
 | Hot URL Cache Size      | 1 million mappings (~500 MB RAM)      |
 | Storage Growth          | ~50 MB/day; ~50 GB/year (with indexes)|
 
-### Memory for Hot URL Cache
+### 16.6.2 Memory for Hot URL Cache
 
 We want redirects to be lightning-fast for popular URLs.
 
@@ -199,7 +199,7 @@ We want redirects to be lightning-fast for popular URLs.
 - **Each Mapping:** ~500 bytes (short key, long URL, metadata).
 - **Total Cache Memory:** 1M × 500B = **~500 MB.**
 
-### Network Bandwidth (Redirects)
+### 16.6.3 Network Bandwidth (Redirects)
 
 - **Redirects/day:** 50 million.
 - **Payload/redirect** (headers + body): ~700 bytes.
@@ -207,12 +207,12 @@ We want redirects to be lightning-fast for popular URLs.
 - **Avg. throughput:** ≈ 0.4–0.5 MB/sec.
 - **Peak throughput:** ≈ 5 MB/sec.
 
-### Storage Requirements
+### 16.6.4 Storage Requirements
 
 - **New URLs/day:** 100,000 × 500 bytes = **~50 MB/day.**
 - **Year:** ~18 GB raw; plan for **~50 GB/year** (including indexes, logs, backup).
 
-### Data Flow & Hot Path
+### 16.6.5 Data Flow & Hot Path
 
 ```
 [User] --> [API Gateway] --> [URL Shortener Service] --> [Database]
@@ -227,29 +227,29 @@ We want redirects to be lightning-fast for popular URLs.
 - **Hot Path:** Redirect checks Cache first; DB on miss.
 - **Write Path:** New short URLs go to DB and may pre-warm Cache.
 
-### Where Are the Bottlenecks?
+### 16.6.6 Where Are the Bottlenecks?
 
-#### A. High Read Volume
+#### 16.6.6.1 A. High Read Volume
 
 - **Problem:** 50M+ redirects/day = tons of reads.
 - **Solution:** Cache most popular URLs (Redis/Memcached); optimize DB for fast lookups (indexes, sharding).
 
-#### B. Moderate Write Throughput
+#### 16.6.6.2 B. Moderate Write Throughput
 
 - **Problem:** 100K short URLs/day — must be consistent.
 - **Solution:** Strong consistency for writes; write-optimized DB.
 
-#### C. Latency Sensitivity
+#### 16.6.6.3 C. Latency Sensitivity
 
 - **Problem:** Redirects must feel instant (<50ms ideally).
 - **Solution:** Low-latency infra (cache, fast DB); CDN for edge delivery; optimize network paths.
 
-#### D. Burst Traffic & Scaling
+#### 16.6.6.4 D. Burst Traffic & Scaling
 
 - **Problem:** Viral links can spike traffic 10× or 100×.
 - **Solution:** Autoscaling backend instances; CDN for static redirect handling; load balancer in front of services.
 
-### Summary Table: Key Numbers
+### 16.6.7 Summary Table: Key Numbers
 
 | Resource        | Estimate         |
 |-----------------|------------------|
@@ -260,9 +260,9 @@ We want redirects to be lightning-fast for popular URLs.
 
 ---
 
-## API Design
+## 16.7 API Design
 
-### 1. Create Short URL
+### 16.7.1 Create Short URL
 
 ```http
 POST /api/shorten
@@ -288,7 +288,7 @@ Authorization: Bearer <token>
 - Should check for duplicates: if the same long URL is submitted, return the same short URL.
 - Should be fast (sub-100ms typical).
 
-### 2. Redirect to Original URL
+### 16.7.2 Redirect to Original URL
 
 ```http
 GET /xYz12
@@ -301,7 +301,7 @@ HTTP/1.1 302 Found
 Location: https://example.com/article?id=1234
 ```
 
-### 3. Delete a Short URL (Authenticated)
+### 16.7.3 Delete a Short URL (Authenticated)
 
 ```http
 DELETE /api/url/xYz12
@@ -317,7 +317,7 @@ curl -X DELETE https://tinyurl.com/api/url/abc123 \
   -H "Authorization: Bearer <access_token>"
 ```
 
-### 4. User Authentication APIs
+### 16.7.4 User Authentication APIs
 
 - **Register:** `POST /api/auth/register`
 - **Login:** `POST /api/auth/login`
@@ -325,7 +325,7 @@ curl -X DELETE https://tinyurl.com/api/url/abc123 \
 
 ---
 
-## High-Level System Architecture
+## 16.8 High-Level System Architecture
 
 ```mermaid
 graph LR
@@ -378,7 +378,7 @@ ASCII view:
 └───────────────────────────────────────────────────────┘
 ```
 
-### Component Responsibilities
+### 16.8.1 Component Responsibilities
 
 | Component             | Responsibility                                                                       |
 |-----------------------|---------------------------------------------------------------------------------------|
@@ -392,7 +392,7 @@ ASCII view:
 
 ---
 
-## Distributed Collision Handling with Zookeeper
+## 16.9 Distributed Collision Handling with Zookeeper
 
 **Problem:** In a distributed system, multiple URL shortener instances must generate unique IDs without collisions.
 
@@ -403,7 +403,7 @@ Zookeeper provides:
 - **Atomic counters:** Each service instance requests the next unique ID from Zookeeper.
 - **Distributed locks:** Serializes ID generation; ensures global uniqueness.
 
-### Flow
+### 16.9.1 Flow
 
 1. **Service requests next unique ID from Zookeeper.**
 2. **Zookeeper increments the global counter atomically.**
@@ -420,7 +420,7 @@ new_id = get_next_id()
 short_key = encode_base62(new_id)
 ```
 
-### ASCII Diagram
+### 16.9.2 ASCII Diagram
 
 ```
 +---------------------+
@@ -454,13 +454,13 @@ Or, in another visualization:
 +----------------------+
 ```
 
-### Advantages
+### 16.9.3 Advantages
 
 - Each instance gets a unique ID.
 - Supports horizontal scaling.
 - No risk of collision.
 
-### Sample Short Key Generation
+### 16.9.4 Sample Short Key Generation
 
 ```python
 def generate_short_key(long_url):
@@ -480,32 +480,32 @@ def generate_short_key(long_url):
 
 ---
 
-## Tech Stack & Infrastructure Decisions
+## 16.10 Tech Stack & Infrastructure Decisions
 
-### Database
+### 16.10.1 Database
 
 - **SQL** (PostgreSQL with auto-increment IDs) for strong consistency.
 - **NoSQL** (DynamoDB, Cassandra) for massive scalability.
 - **Hybrid:** SQL for data integrity, Redis for speed.
 
-### Cache
+### 16.10.2 Cache
 
 - **Redis** or **Memcached** for fast lookups.
 
-### Distributed Coordination
+### 16.10.3 Distributed Coordination
 
 - **Apache Zookeeper** for distributed atomic counter.
 
-### Edge & Routing
+### 16.10.4 Edge & Routing
 
 - **API Gateway:** Kong, NGINX, AWS API Gateway.
 - **Load Balancer:** NGINX/ELB to distribute traffic.
 
-### Authentication
+### 16.10.5 Authentication
 
 - **JWT tokens**, **OAuth** for user sessions.
 
-### Scalability & Availability
+### 16.10.6 Scalability & Availability
 
 1. **Horizontal scaling:** Deploy multiple instances of the URL Shortener and Redirect services.
 2. **Load balancers:** Distribute requests evenly.
@@ -514,9 +514,9 @@ def generate_short_key(long_url):
 
 ---
 
-## Critical Flows
+## 16.11 Critical Flows
 
-### 1. URL Generation Flow
+### 16.11.1 URL Generation Flow
 
 1. User submits a long URL.
 2. API Gateway authenticates and rate-limits.
@@ -543,7 +543,7 @@ sequenceDiagram
     APIGateway-->>User: Respond with short URL
 ```
 
-### 2. Redirection Flow (Fast Path & Cold Path)
+### 16.11.2 Redirection Flow (Fast Path & Cold Path)
 
 1. User clicks short URL (e.g., `tinyurl.com/abc123`).
 2. API Gateway routes request to Redirection Service.
@@ -576,9 +576,9 @@ sequenceDiagram
 
 ---
 
-## Sample Code Walkthrough
+## 16.12 Sample Code Walkthrough
 
-### Generate Short URL (Python/Flask)
+### 16.12.1 Generate Short URL (Python/Flask)
 
 ```python
 @app.route('/api/shorten', methods=['POST'])
@@ -600,7 +600,7 @@ def shorten_url():
     return jsonify({'short_url': f'https://tinyurl.com/{short_key}'})
 ```
 
-### Redirect Handler (Python/Flask)
+### 16.12.2 Redirect Handler (Python/Flask)
 
 ```python
 @app.route('/<short_key>')
@@ -622,9 +622,9 @@ def redirect_short_url(short_key):
 
 ---
 
-## Beyond MVP — What a Senior Designer Adds
+## 16.13 Beyond MVP — What a Senior Designer Adds
 
-### Click Analytics Without Slowing the Redirect
+### 16.13.1 Click Analytics Without Slowing the Redirect
 
 A naive design writes a row to a `clicks` table on every redirect. **That's the hot path** — you can't add 20ms of DB write to a millisecond-budget redirect.
 
@@ -636,7 +636,7 @@ A naive design writes a row to a `clicks` table on every redirect. **That's the 
 
 The redirect stays fast (<10ms); analytics get hourly/daily rollups instead of real-time, which is almost always fine.
 
-### Custom Aliases (with Collision Handling)
+### 16.13.2 Custom Aliases (with Collision Handling)
 
 Users want to pick `tinyurl.com/my-product`. Now you need:
 
@@ -646,7 +646,7 @@ Users want to pick `tinyurl.com/my-product`. Now you need:
 
 **Implementation:** add `alias` column with unique constraint. On collision: HTTP 409.
 
-### Abuse Prevention
+### 16.13.3 Abuse Prevention
 
 A URL shortener is **catnip for phishers.** Without controls, your domain reputation tanks (Google Safe Browsing flags it).
 
@@ -658,13 +658,13 @@ A URL shortener is **catnip for phishers.** Without controls, your domain reputa
 4. **User flagging** — anyone can report a short link; suspicious links get manual review.
 5. **Auto-disable on abuse score** — multiple reports + heuristics → temporarily disable.
 
-### Geo-Distribution
+### 16.13.4 Geo-Distribution
 
 For a global service, the redirect should hit a local edge — adding 150ms cross-continent on every click is unacceptable.
 
 **Pattern:** push read-path data (short_key → long_url) to all regions; writes go to a primary, async-replicated globally. Eventual consistency is fine — a brand new URL working in some regions but not others for 5 seconds is OK.
 
-### Privacy & PII
+### 16.13.5 Privacy & PII
 
 If your service is in the EU or serves EU users:
 
@@ -674,7 +674,7 @@ If your service is in the EU or serves EU users:
 
 ---
 
-## Tips and Tricks
+## 16.14 Tips and Tricks
 
 - **Cache hot URLs:** Store top N most accessed URLs in Redis/Memcached to drastically cut down read latency.
 - **Cache wisely:** Cache the top 1M URLs to reduce DB load by 90%+.
@@ -697,9 +697,9 @@ If your service is in the EU or serves EU users:
 
 ---
 
-## Summary
+## 16.15 Summary
 
-### Final Design Flow
+### 16.15.1 Final Design Flow
 
 **URL Generation:**
 
@@ -718,7 +718,7 @@ If your service is in the EU or serves EU users:
 4. If not found, queries DB and updates cache.
 5. Responds with HTTP 302 redirect.
 
-### Scale Estimates Recap
+### 16.15.2 Scale Estimates Recap
 
 - **Users:** 10M DAU, 300M MAU.
 - **New URLs/day:** 100K.
@@ -730,7 +730,7 @@ Designing a scalable, reliable, and high-performance URL shortener requires care
 
 ---
 
-## Further Reading
+## 16.16 Further Reading
 
 - [Apache Zookeeper](https://zookeeper.apache.org/)
 - [Apache Zookeeper Docs](https://zookeeper.apache.org/doc/)

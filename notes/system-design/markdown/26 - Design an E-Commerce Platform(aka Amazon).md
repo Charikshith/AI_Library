@@ -4,7 +4,7 @@ Designing a high-scale **multi-vendor e-commerce marketplace** — think Amazon 
 
 ---
 
-## Learning Outcomes
+## 26.1 Learning Outcomes
 
 After working through this case study, you'll be able to:
 
@@ -18,25 +18,25 @@ After working through this case study, you'll be able to:
 
 ## Table of Contents
 
-1. [What Are We Building?](#what-are-we-building)
-2. [Functional Requirements](#functional-requirements)
-3. [Non-Functional Requirements](#non-functional-requirements)
-4. [Core System Design Challenges](#core-system-design-challenges)
-5. [Assumptions & Constraints](#assumptions--constraints)
-6. [Scale Estimation & Bottlenecks](#scale-estimation--bottlenecks)
-7. [Service Decomposition & APIs](#service-decomposition--apis)
-8. [Service Communication Patterns](#service-communication-patterns)
-9. [Database & Storage Choices](#database--storage-choices)
-10. [Caching & Queueing Strategies](#caching--queueing-strategies)
-11. [Tech Stack & Infra Decisions](#tech-stack--infra-decisions)
-12. [Architecture Diagrams](#architecture-diagrams)
-13. [Sample Code & API Flows](#sample-code--api-flows)
-14. [Tips & Tricks](#tips--tricks)
-15. [Conclusion](#conclusion)
+- [26.2 What Are We Building?](#262-what-are-we-building)
+- [26.3 Functional Requirements](#263-functional-requirements)
+- [26.4 Non-Functional Requirements](#264-non-functional-requirements)
+- [26.5 Core System Design Challenges](#265-core-system-design-challenges)
+- [26.6 Assumptions & Constraints](#266-assumptions--constraints)
+- [26.7 Scale Estimation & Bottlenecks](#267-scale-estimation--bottlenecks)
+- [26.8 Service Decomposition & APIs](#268-service-decomposition--apis)
+- [26.9 Service Communication Patterns](#269-service-communication-patterns)
+- [26.10 Database & Storage Choices](#2610-database--storage-choices)
+- [26.11 Caching & Queueing Strategies](#2611-caching--queueing-strategies)
+- [26.12 Tech Stack & Infra Decisions](#2612-tech-stack--infra-decisions)
+- [26.13 Architecture Diagrams](#2613-architecture-diagrams)
+- [26.14 Sample Code & API Flows](#2614-sample-code--api-flows)
+- [26.16 Tips & Tricks](#2616-tips--tricks)
+- [26.17 Conclusion](#2617-conclusion)
 
 ---
 
-## What Are We Building?
+## 26.2 What Are We Building?
 
 A **multi-vendor e-commerce platform** for buyers and sellers. Core functionalities include:
 
@@ -49,7 +49,7 @@ A **multi-vendor e-commerce platform** for buyers and sellers. Core functionalit
 
 ---
 
-## Functional Requirements
+## 26.3 Functional Requirements
 
 - **User registration & authentication** (Buyers/Sellers, with MFA).
 - **Product catalog management** (CRUD for products).
@@ -68,7 +68,7 @@ A **multi-vendor e-commerce platform** for buyers and sellers. Core functionalit
 
 ---
 
-## Non-Functional Requirements
+## 26.4 Non-Functional Requirements
 
 - **Performance:** <300ms latency for common queries.
 - **Scalability:** Start with 10,000 concurrent users, elastic growth.
@@ -79,7 +79,7 @@ A **multi-vendor e-commerce platform** for buyers and sellers. Core functionalit
 
 ---
 
-## Core System Design Challenges
+## 26.5 Core System Design Challenges
 
 - **Inventory accuracy:** Prevent overselling (real-time updates, distributed locks).
 - **High availability:** Resilient to failures, auto-scaling, load balancing.
@@ -89,9 +89,9 @@ A **multi-vendor e-commerce platform** for buyers and sellers. Core functionalit
 
 ---
 
-## Assumptions & Constraints
+## 26.6 Assumptions & Constraints
 
-### Assumptions
+### 26.6.1 Assumptions
 
 - Users have stable internet (no offline mode).
 - Payments via third-party gateway (Stripe/Razorpay).
@@ -99,7 +99,7 @@ A **multi-vendor e-commerce platform** for buyers and sellers. Core functionalit
 - Initial catalog: ~500,000 products.
 - Basic, rule-based fraud detection.
 
-### Constraints
+### 26.6.2 Constraints
 
 - MVP launch in 3–4 months.
 - Cloud services preferred (budget).
@@ -109,9 +109,9 @@ A **multi-vendor e-commerce platform** for buyers and sellers. Core functionalit
 
 ---
 
-## Scale Estimation & Bottlenecks
+## 26.7 Scale Estimation & Bottlenecks
 
-### Scale Numbers
+### 26.7.1 Scale Numbers
 
 | Metric                  | Initial Estimate                |
 |-------------------------|---------------------------------|
@@ -124,7 +124,7 @@ A **multi-vendor e-commerce platform** for buyers and sellers. Core functionalit
 
 > While these numbers are for launch, design must anticipate growth — seamless scaling is non-negotiable.
 
-### Critical Bottlenecks
+### 26.7.2 Critical Bottlenecks
 
 | Bottleneck             | Why It's Painful                                  | Solution                                       |
 |------------------------|---------------------------------------------------|------------------------------------------------|
@@ -134,7 +134,7 @@ A **multi-vendor e-commerce platform** for buyers and sellers. Core functionalit
 | Database Hotspots      | Heavy reads/writes on popular products            | Sharding, caching, read replicas               |
 | Fraud Detection        | Suspicious transactions in real-time              | Rule-based engine, event-based scaling         |
 
-### Example: Fast Product Search
+### 26.7.3 Example: Fast Product Search
 
 ```python
 def search_products(query):
@@ -148,7 +148,7 @@ def search_products(query):
     return results
 ```
 
-### Example: Atomic Stock Reservation
+### 26.7.4 Example: Atomic Stock Reservation
 
 ```sql
 BEGIN;
@@ -157,7 +157,7 @@ UPDATE inventory SET stock = stock - 1 WHERE product_id=123 AND stock > 0;
 COMMIT;
 ```
 
-### Example: Rule-Based Fraud Detection
+### 26.7.5 Example: Rule-Based Fraud Detection
 
 ```python
 def is_fraudulent(order):
@@ -168,7 +168,7 @@ def is_fraudulent(order):
     return False
 ```
 
-### Checkout Flow Diagram
+### 26.7.6 Checkout Flow Diagram
 
 ```
 User ---> POST /checkout ---> Order Service
@@ -186,7 +186,7 @@ User ---> POST /checkout ---> Order Service
                         Notification Service
 ```
 
-### Bottleneck Diagram
+### 26.7.7 Bottleneck Diagram
 
 ```
 +--------------------+      +--------------------+      +-----------------+
@@ -202,9 +202,9 @@ User ---> POST /checkout ---> Order Service
 
 ---
 
-## Service Decomposition & APIs
+## 26.8 Service Decomposition & APIs
 
-### Core Services
+### 26.8.1 Core Services
 
 | Service                  | Responsibility                                                                |
 |--------------------------|--------------------------------------------------------------------------------|
@@ -216,7 +216,7 @@ User ---> POST /checkout ---> Order Service
 | **Notification Service** | Email/SMS notification on events.                                              |
 | **Admin Service**        | Seller/product moderation, platform health monitoring, admin controls.         |
 
-### Example API Endpoints
+### 26.8.2 Example API Endpoints
 
 **User Service:**
 
@@ -261,11 +261,11 @@ POST /api/v1/payments/verify
 
 ---
 
-## Service Communication Patterns
+## 26.9 Service Communication Patterns
 
 A hybrid model:
 
-### Synchronous (HTTP REST)
+### 26.9.1 Synchronous (HTTP REST)
 
 For real-time flows (e.g., validating inventory during checkout):
 
@@ -281,7 +281,7 @@ sequenceDiagram
   OrderService-->>User: Added to Cart
 ```
 
-### Asynchronous (Event-Driven)
+### 26.9.2 Asynchronous (Event-Driven)
 
 For non-blocking flows (e.g., notifications, background updates):
 
@@ -301,7 +301,7 @@ sequenceDiagram
 
 ---
 
-## Database & Storage Choices
+## 26.10 Database & Storage Choices
 
 | Data Type        | Primary Store                                    | Notes                                       |
 |------------------|--------------------------------------------------|---------------------------------------------|
@@ -314,7 +314,7 @@ sequenceDiagram
 
 **In-memory stores:** Redis for caching, session management, fast stock reads.
 
-### Example: Create Orders Table
+### 26.10.1 Example: Create Orders Table
 
 ```sql
 CREATE TABLE orders (
@@ -327,7 +327,7 @@ CREATE TABLE orders (
 );
 ```
 
-### Example: Elasticsearch Product Mapping
+### 26.10.2 Example: Elasticsearch Product Mapping
 
 ```json
 PUT /products
@@ -345,9 +345,9 @@ PUT /products
 
 ---
 
-## Caching & Queueing Strategies
+## 26.11 Caching & Queueing Strategies
 
-### Caching (Redis)
+### 26.11.1 Caching (Redis)
 
 - Hot product data (popular products, categories).
 - User session tokens.
@@ -380,7 +380,7 @@ product_data = {"name": "T-shirt", "stock": 52}
 r.set(f"product:{product_id}", str(product_data), ex=300)  # expires in 5 mins
 ```
 
-### Queues (Kafka/SQS/RabbitMQ)
+### 26.11.2 Queues (Kafka/SQS/RabbitMQ)
 
 - Order placement events → inventory update.
 - Payment success events → order confirmation, notification.
@@ -411,7 +411,7 @@ producer.close()
 
 ---
 
-## Tech Stack & Infra Decisions
+## 26.12 Tech Stack & Infra Decisions
 
 | Layer        | Tech Choice                                      | Rationale                                          |
 |--------------|--------------------------------------------------|----------------------------------------------------|
@@ -424,13 +424,13 @@ producer.close()
 | Payments     | Stripe/Razorpay                                  | PCI compliance, secure                             |
 | Comms        | REST APIs, event-driven for async                | Hybrid pattern                                     |
 
-### JWT Token Example
+### 26.12.1 JWT Token Example
 
 ```bash
 eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMjM0fQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
 ```
 
-### Stripe Payment Intent
+### 26.12.2 Stripe Payment Intent
 
 ```python
 import stripe
@@ -444,9 +444,9 @@ intent = stripe.PaymentIntent.create(
 
 ---
 
-## Architecture Diagrams
+## 26.13 Architecture Diagrams
 
-### High-Level Mermaid Architecture
+### 26.13.1 High-Level Mermaid Architecture
 
 ```mermaid
 graph TD
@@ -504,7 +504,7 @@ graph TD
   S6 --> D4
 ```
 
-### Detailed Architecture (with DBs per service)
+### 26.13.2 Detailed Architecture (with DBs per service)
 
 ```mermaid
 graph TD
@@ -554,7 +554,7 @@ graph TD
     NotificationService-->|Send|EmailSMS[Email/SMS Provider]
 ```
 
-### Service Communication Diagram
+### 26.13.3 Service Communication Diagram
 
 ```mermaid
 graph TD
@@ -577,9 +577,9 @@ graph TD
 
 ---
 
-## Sample Code & API Flows
+## 26.14 Sample Code & API Flows
 
-### Reserve Stock (Inventory Service)
+### 26.14.1 Reserve Stock (Inventory Service)
 
 ```python
 # Flask-like pseudocode
@@ -598,7 +598,7 @@ def reserve_stock():
     return {"status": "reserved"}
 ```
 
-### Order Placement (Order Service)
+### 26.14.2 Order Placement (Order Service)
 
 ```python
 @app.route('/api/v1/checkout', methods=['POST'])
@@ -618,7 +618,7 @@ def checkout():
     return {"status": "order placed"}
 ```
 
-### User Registration (Node.js)
+### 26.14.3 User Registration (Node.js)
 
 ```js
 app.post('/api/v1/users/register', async (req, res) => {
@@ -629,7 +629,7 @@ app.post('/api/v1/users/register', async (req, res) => {
 });
 ```
 
-### Product Search Handler (Node.js)
+### 26.14.4 Product Search Handler (Node.js)
 
 ```js
 app.get('/api/v1/products', async (req, res) => {
@@ -644,7 +644,7 @@ app.get('/api/v1/products', async (req, res) => {
 });
 ```
 
-### Kafka Event Publishing & Consumption (Node.js)
+### 26.14.5 Kafka Event Publishing & Consumption (Node.js)
 
 ```js
 // Publish event
@@ -656,7 +656,7 @@ kafka.consume('order-placed', async (msg) => {
 });
 ```
 
-### Checkout Flow Steps
+### 26.14.6 Checkout Flow Steps
 
 1. API Gateway routes request to Order Service.
 2. Order Service checks stock via Inventory Service.
@@ -668,9 +668,9 @@ kafka.consume('order-placed', async (msg) => {
 
 ---
 
-## Beyond MVP — What a Senior Designer Adds
+## 26.15 Beyond MVP — What a Senior Designer Adds
 
-### The Checkout Saga (Distributed Transaction Without 2PC)
+### 26.15.1 The Checkout Saga (Distributed Transaction Without 2PC)
 
 Checkout touches multiple services: cart, inventory, payment, shipping. You can't wrap them in a DB transaction. Use a **Saga** (see Chapter 4):
 
@@ -689,7 +689,7 @@ If step 2 fails:
 
 Implement with a **Saga orchestrator** service (or a workflow engine like Temporal / AWS Step Functions). Each step must be **idempotent** so retries don't double-charge.
 
-### Multi-Warehouse Inventory
+### 26.15.2 Multi-Warehouse Inventory
 
 Real Amazon ships from hundreds of warehouses. A product isn't "in stock" globally — it's in stock *in specific warehouses*. Checkout needs to:
 
@@ -701,13 +701,13 @@ If the chosen warehouse runs out between checkout and shipment, **route to anoth
 
 **Data model:** `inventory(item_id, warehouse_id, count)` instead of `inventory(item_id, count)`.
 
-### Search & Faceted Filtering
+### 26.15.3 Search & Faceted Filtering
 
 E-commerce search is largely about filtering. Users search "laptop" then filter by brand, price, RAM, screen size, rating, etc. Each filter must update results instantly.
 
 **Implementation:** Elasticsearch with **aggregations** — same query returns matching docs *and* facet counts (e.g., "MacBook: 142, Dell: 87, HP: 65"). Pre-compute popular facets in Redis to speed up first paint.
 
-### Recommendation Engine
+### 26.15.4 Recommendation Engine
 
 Two main types:
 
@@ -716,7 +716,7 @@ Two main types:
 
 For freshness-sensitive items (news, fashion trends), use real-time updates from a stream processor (Flink, Spark Streaming).
 
-### Reviews & Ratings
+### 26.15.5 Reviews & Ratings
 
 Heavily skewed: most ratings are 5-star. Show average + count, but also:
 
@@ -725,7 +725,7 @@ Heavily skewed: most ratings are 5-star. Show average + count, but also:
 - **Verified purchase** badge to reduce fake reviews.
 - **Anti-spam:** detect review velocity, IP clusters, language similarity to known fake review patterns.
 
-### Returns & Refunds Workflow
+### 26.15.6 Returns & Refunds Workflow
 
 Often more complex than the order itself:
 
@@ -738,50 +738,50 @@ Often more complex than the order itself:
 
 This is a multi-day Saga with manual steps. Underinvested by most early-stage e-commerce platforms.
 
-### Personalization & Homepage
+### 26.15.7 Personalization & Homepage
 
 The Amazon homepage is different for every user. Each card (deals, recently viewed, recommendations, restock) is rendered from a different service. **Use a BFF** (Chapter 4) that composes the page from microservice calls in parallel; each card has its own SLA so a slow service doesn't block the page.
 
-### Internationalization
+### 26.15.8 Internationalization
 
 Multi-currency, multi-language, multi-warehouse-region. Often modeled as **separate logical stores** sharing some infrastructure (catalog, sellers) but with region-specific pricing, tax, shipping rules.
 
-### Fraud Detection
+### 26.15.9 Fraud Detection
 
 Real-time evaluation at checkout: device fingerprint, velocity (5 orders to different addresses in 10 minutes?), card BIN reputation, address risk. ML model scores each order; high-risk orders go to manual review or step-up verification (3D Secure).
 
 ---
 
-## Tips & Tricks
+## 26.16 Tips & Tricks
 
-### Consistency
+### 26.16.1 Consistency
 
 - **Strong consistency for inventory:** Use DB transactions with row-level locking or atomic operations to prevent overselling. For high-scale, consider distributed locks (Redis Redlock) or event-sourcing.
 - **Use eventual consistency** for non-critical flows (notifications).
 - **Design idempotent endpoints** for order and payment flows to handle retries gracefully.
 
-### Search
+### 26.16.2 Search
 
 - **Search scaling:** Use Elasticsearch or Redisearch for fast, full-text product search. Periodically sync with primary DB to avoid stale indexes.
 - **Regularly re-index** product data.
 
-### Caching
+### 26.16.3 Caching
 
 - **Cache hot products, categories, and stock levels.** Use short TTLs for inventory to reduce staleness.
 - **Monitor cache hit rates** — if Redis hit rate drops, you may be caching the wrong data.
 
-### Async Processing
+### 26.16.4 Async Processing
 
 - **Async processing:** Offload non-critical user flows (emails, notifications, analytics) to message queues.
 - **Decouple with message queues:** Use queues for non-blocking, asynchronous operations.
 
-### API Design
+### 26.16.5 API Design
 
 - **Always version your APIs** (`/v1/...`) for backward compatibility.
 - **Separate read/write models** (CQRS) for heavy modules like catalog and orders if scaling further.
 - **Modular services:** Decompose by business capability (catalog, inventory, orders), not by technical layer.
 
-### Security
+### 26.16.6 Security
 
 - **Payment security:** Never store raw card data. Integrate with PCI-compliant providers; always encrypt sensitive fields at rest.
 - **Use HTTPS everywhere.**
@@ -789,21 +789,21 @@ Real-time evaluation at checkout: device fingerprint, velocity (5 orders to diff
 - **PCI-DSS & GDPR compliance:** Offload payment handling; encrypt user/payment data.
 - **Rate limiting and abuse detection** at the API gateway.
 
-### Operations
+### 26.16.7 Operations
 
 - **Monitoring & alerts:** Instrument services for latency, error rates, inventory anomalies, payment failures.
 - **Graceful degradation:** If a service (e.g., recommendations) is down, the system should still allow core flows.
 - **Automated tests:** Especially for inventory, checkout, payments — simulate race conditions and failures.
 - **Use managed services:** Cloud-managed DBs, queues, storage to cut operational overhead.
 
-### Disaster Recovery
+### 26.16.8 Disaster Recovery
 
 - **Plan for DR:** Regularly backup relational DBs and object storage.
 - **Horizontal scalability:** Design all stateless services to scale out.
 
 ---
 
-## Conclusion
+## 26.17 Conclusion
 
 By breaking the e-commerce platform into modular, independently scalable services with clear API contracts, robust caching, and resilient async flows, you set the foundation for a system that can grow with your user base and business demands. The architecture above ensures **performance**, **consistency**, and **security** — all while keeping the system maintainable and developer-friendly.
 
@@ -811,7 +811,7 @@ With this modular, event-driven architecture, you can build a **robust, scalable
 
 ---
 
-## Further Reading
+## 26.18 Further Reading
 
 - [System Design Primer](https://github.com/donnemartin/system-design-primer)
 - [AWS Architecture Center: Microservices](https://aws.amazon.com/architecture/microservices/)

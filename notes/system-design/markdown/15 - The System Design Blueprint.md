@@ -6,7 +6,7 @@ This is the framework we'll use for every case study (Chapters 16 onwards).
 
 ---
 
-## Learning Outcomes
+## 15.1 Learning Outcomes
 
 After reading this chapter, you'll be able to:
 
@@ -20,19 +20,19 @@ After reading this chapter, you'll be able to:
 
 ## Table of Contents
 
-1. [What Is System Design?](#what-is-system-design)
-2. [The 4-Step System Design Process](#the-4-step-system-design-process)
-3. [Step 1: Understanding the Problem & Defining Scope](#step-1-understanding-the-problem--defining-scope)
-4. [Step 2: Estimating Scale & Identifying Bottlenecks](#step-2-estimating-scale--identifying-bottlenecks)
-5. [Step 3: High-Level Design — Services, APIs & Communication](#step-3-high-level-design--services-apis--communication)
-6. [Step 4: Making Tech & Infrastructure Decisions Strategically](#step-4-making-tech--infrastructure-decisions-strategically)
-7. [Tips and Tricks for System Design Interviews](#tips-and-tricks-for-system-design-interviews)
-8. [Conclusion: Your Blueprint for Success](#conclusion-your-blueprint-for-success)
-9. [Further Reading](#further-reading)
+- [15.2 What Is System Design?](#152-what-is-system-design)
+- [15.3 The 4-Step System Design Process](#153-the-4-step-system-design-process)
+- [15.4 Step 1: Understanding the Problem & Defining Scope](#154-step-1-understanding-the-problem--defining-scope)
+- [15.5 Step 2: Estimating Scale & Identifying Bottlenecks](#155-step-2-estimating-scale--identifying-bottlenecks)
+- [15.6 Step 3: High-Level Design — Services, APIs & Communication](#156-step-3-high-level-design--services-apis--communication)
+- [15.7 Step 4: Making Tech & Infrastructure Decisions Strategically](#157-step-4-making-tech--infrastructure-decisions-strategically)
+- [15.13 Tips and Tricks for System Design Interviews](#1513-tips-and-tricks-for-system-design-interviews)
+- [15.14 Conclusion: Your Blueprint for Success](#1514-conclusion-your-blueprint-for-success)
+- [15.15 Further Reading](#1515-further-reading)
 
 ---
 
-## What Is System Design?
+## 15.2 What Is System Design?
 
 Before we dive into the framework, let's recap what system design means in practice:
 
@@ -42,7 +42,7 @@ Before we dive into the framework, let's recap what system design means in pract
 
 ---
 
-## The 4-Step System Design Process
+## 15.3 The 4-Step System Design Process
 
 Here's the high-level process we'll use for every case study:
 
@@ -57,7 +57,7 @@ Let's dig into each step.
 
 ---
 
-## Step 1: Understanding the Problem & Defining Scope
+## 15.4 Step 1: Understanding the Problem & Defining Scope
 
 1. **Functional Requirements**
    - What should the system do?
@@ -69,7 +69,7 @@ Let's dig into each step.
 3. **Constraints**
    - Time, budget, team, regulatory, and technical limitations.
 
-#### Example: URL Shortener
+#### 15.4.1 Example: URL Shortener
 
 - **Functional:** Shorten URLs, redirect, analytics.
 - **Non-Functional:** < 100ms latency, 99.99% uptime, GDPR compliance.
@@ -77,7 +77,7 @@ Let's dig into each step.
 
 ---
 
-## Step 2: Estimating Scale & Identifying Bottlenecks
+## 15.5 Step 2: Estimating Scale & Identifying Bottlenecks
 
 1. **Estimate Traffic**
    - What's the expected peak load? How fast will it grow?
@@ -87,7 +87,7 @@ Let's dig into each step.
 3. **Capacity Planning**
    - Estimate storage, bandwidth, and compute needs to avoid failure.
 
-#### Example: Rough Traffic Estimation
+#### 15.5.1 Example: Rough Traffic Estimation
 
 ```python
 DAILY_REQS = 10_000_000
@@ -98,7 +98,7 @@ print(f"Required bandwidth: {bandwidth_needed/1024:.2f} KB/s")
 
 ---
 
-## Step 3: High-Level Design — Services, APIs & Communication
+## 15.6 Step 3: High-Level Design — Services, APIs & Communication
 
 1. **Core Services**
    - Break into logical components (shortener service, analytics service, etc.).
@@ -119,7 +119,7 @@ graph LR
   Redirector-->|Emit| Analytics[Analytics Service]
 ```
 
-#### Example: API Endpoint (Flask)
+#### 15.6.1 Example: API Endpoint (Flask)
 
 ```python
 from flask import Flask, request, jsonify, redirect
@@ -142,7 +142,7 @@ def redirect_url(code):
 
 ---
 
-## Step 4: Making Tech & Infrastructure Decisions Strategically
+## 15.7 Step 4: Making Tech & Infrastructure Decisions Strategically
 
 1. **Tech Stack**
    - SQL or NoSQL? In-memory cache (e.g., Redis)? Message queues?
@@ -153,14 +153,14 @@ def redirect_url(code):
 4. **Trade-Offs**
    - Performance vs. cost, simplicity vs. flexibility, etc.
 
-#### Example Choices
+#### 15.7.1 Example Choices
 
 - **DB:** NoSQL (Cassandra) for fast writes, high scalability.
 - **Cache:** Redis to store hot URLs.
 - **Load Balancer:** AWS ALB for HTTP routing.
 - **Scaling:** Auto-Scaling Groups.
 
-#### Example: Redis Caching
+#### 15.7.2 Example: Redis Caching
 
 ```python
 import redis
@@ -179,7 +179,7 @@ def get_original_url(code):
 
 ---
 
-## Managing 45 Minutes of Interview Time
+## 15.8 Managing 45 Minutes of Interview Time
 
 A typical system design interview is **45 minutes**. Most candidates run out of time because they spend 20 minutes on requirements. Here's the rough budget:
 
@@ -194,7 +194,7 @@ A typical system design interview is **45 minutes**. Most candidates run out of 
 
 ---
 
-## Common Interview Frameworks
+## 15.9 Common Interview Frameworks
 
 Different mentors give different acronyms. They all roughly describe the same flow. Pick whichever you remember:
 
@@ -206,7 +206,7 @@ Different mentors give different acronyms. They all roughly describe the same fl
 
 ---
 
-## Reading the Interviewer
+## 15.10 Reading the Interviewer
 
 System design interviews are **collaborative.** Watch for cues:
 
@@ -221,7 +221,7 @@ System design interviews are **collaborative.** Watch for cues:
 
 ---
 
-## Handling "I Don't Know"
+## 15.11 Handling "I Don't Know"
 
 The right answer is **never "I don't know" and stop.** It's: "I don't know, but here's how I'd approach finding out."
 
@@ -233,7 +233,7 @@ Showing how you reason in the face of uncertainty is **more impressive** than me
 
 ---
 
-## State Trade-offs Explicitly (the One Skill That Matters Most)
+## 15.12 State Trade-offs Explicitly (the One Skill That Matters Most)
 
 Juniors propose solutions. Seniors propose solutions *and name what they're sacrificing.* In every interview, after every choice, say:
 
@@ -248,7 +248,7 @@ This sentence pattern alone is worth a level on the rubric.
 
 ---
 
-## Tips and Tricks for System Design Interviews
+## 15.13 Tips and Tricks for System Design Interviews
 
 - **Always start with requirements:** Don't jump to solutions; clarify what's needed.
 - **Think in trade-offs:** There's no perfect design — always state what you're optimizing for.
@@ -260,7 +260,7 @@ This sentence pattern alone is worth a level on the rubric.
 
 ---
 
-## Conclusion: Your Blueprint for Success
+## 15.14 Conclusion: Your Blueprint for Success
 
 - **Start with clear requirements and constraints.**
 - **Use scale and bottleneck analysis to guide architecture.**
@@ -271,7 +271,7 @@ By following this four-step process, you'll build systems that are robust, relia
 
 ---
 
-## Further Reading
+## 15.15 Further Reading
 
 - [System Design Primer (GitHub)](https://github.com/donnemartin/system-design-primer)
 - [Designing Data-Intensive Applications by Martin Kleppmann](https://dataintensive.net/)

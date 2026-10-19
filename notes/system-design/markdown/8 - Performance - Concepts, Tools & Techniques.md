@@ -4,7 +4,7 @@ Performance is the heart of modern system design. It's not just about how fast y
 
 ---
 
-## Learning Outcomes
+## 8.1 Learning Outcomes
 
 After reading this chapter, you'll be able to:
 
@@ -18,22 +18,22 @@ After reading this chapter, you'll be able to:
 
 ## Table of Contents
 
-1. [Introduction to System Performance](#introduction-to-system-performance)
-2. [Key Metrics — Latency, Throughput, Scalability & Responsiveness](#key-metrics--latency-throughput-scalability--responsiveness)
-3. [Measuring Performance — SLAs, SLOs, SLIs, and Percentiles](#measuring-performance--slas-slos-slis-and-percentiles)
-4. [Performance Testing & Monitoring](#performance-testing--monitoring)
-5. [Caching for Speed Optimization](#caching-for-speed-optimization)
-6. [Messaging & Queues for Decoupling](#messaging--queues-for-decoupling)
-7. [Concurrency & Parallelism](#concurrency--parallelism)
-8. [Database Performance Optimization Techniques](#database-performance-optimization-techniques)
-9. [Combined Tips & Tricks](#combined-tips--tricks)
-10. [Sample Interview Questions](#sample-interview-questions)
-11. [Summary & Key Takeaways](#summary--key-takeaways)
-12. [Further Reading](#further-reading)
+- [8.2 Introduction to System Performance](#82-introduction-to-system-performance)
+- [8.3 Key Metrics — Latency, Throughput, Scalability & Responsiveness](#83-key-metrics--latency-throughput-scalability--responsiveness)
+- [8.4 Measuring Performance — SLAs, SLOs, SLIs, and Percentiles](#84-measuring-performance--slas-slos-slis-and-percentiles)
+- [8.5 Performance Testing & Monitoring](#85-performance-testing--monitoring)
+- [8.6 Caching for Speed Optimization](#86-caching-for-speed-optimization)
+- [8.7 Messaging & Queues for Decoupling](#87-messaging--queues-for-decoupling)
+- [8.8 Concurrency & Parallelism](#88-concurrency--parallelism)
+- [8.9 Database Performance Optimization Techniques](#89-database-performance-optimization-techniques)
+- [8.12 Combined Tips & Tricks](#812-combined-tips--tricks)
+- [8.13 Sample Interview Questions](#813-sample-interview-questions)
+- [8.14 Summary & Key Takeaways](#814-summary--key-takeaways)
+- [8.15 Further Reading](#815-further-reading)
 
 ---
 
-## Introduction to System Performance
+## 8.2 Introduction to System Performance
 
 Performance in system design is a **multidimensional goal** — balancing speed, scalability, and efficiency:
 
@@ -43,7 +43,7 @@ Performance in system design is a **multidimensional goal** — balancing speed,
 
 > **Performance is not a single metric — it's about achieving the right balance for your application.**
 
-### Why Performance Matters
+### 8.2.1 Why Performance Matters
 
 - **User expectations:** Slow systems lose users and revenue.
 - **Business impact:** Performance affects drop-offs, bounce rates, and costs.
@@ -53,9 +53,9 @@ Performance in system design is a **multidimensional goal** — balancing speed,
 
 ---
 
-## Key Metrics — Latency, Throughput, Scalability & Responsiveness
+## 8.3 Key Metrics — Latency, Throughput, Scalability & Responsiveness
 
-### Latency vs. Throughput
+### 8.3.1 Latency vs. Throughput
 
 | Metric      | Description                          | Unit       | Affects                |
 |-------------|--------------------------------------|------------|------------------------|
@@ -64,7 +64,7 @@ Performance in system design is a **multidimensional goal** — balancing speed,
 
 > **Note:** Low latency ≠ high throughput. Both must be balanced per use case.
 
-### Code: Measuring Latency and Throughput (Python)
+### 8.3.2 Code: Measuring Latency and Throughput (Python)
 
 ```python
 import time
@@ -87,7 +87,7 @@ print("Latency:", measure_latency("https://example.com"))
 print("Throughput:", measure_throughput("https://example.com", 100), "req/sec")
 ```
 
-### Diagram: Latency vs. Throughput
+### 8.3.3 Diagram: Latency vs. Throughput
 
 ```
 |--- Latency ---|
@@ -108,7 +108,7 @@ sequenceDiagram
     Note over Server: Throughput = Total requests/time
 ```
 
-### Scalability vs. Responsiveness
+### 8.3.4 Scalability vs. Responsiveness
 
 - **Scalability:** Can the system handle more load as users/data grow?
   - **Horizontal scaling:** Adding more servers.
@@ -119,9 +119,9 @@ sequenceDiagram
 
 ---
 
-## Measuring Performance — SLAs, SLOs, SLIs, and Percentiles
+## 8.4 Measuring Performance — SLAs, SLOs, SLIs, and Percentiles
 
-### SLAs, SLOs, and SLIs
+### 8.4.1 SLAs, SLOs, and SLIs
 
 - **SLA (Service Level Agreement):** External contractual performance guarantee.
 - **SLO (Service Level Objective):** Internal performance target.
@@ -135,7 +135,7 @@ SLO: 95% of requests < 300ms latency
 SLI: Actual: 93% of requests < 300ms (need improvement!)
 ```
 
-### Percentiles: P50, P95, P99
+### 8.4.2 Percentiles: P50, P95, P99
 
 **Why not just use averages?** Because averages hide outliers.
 
@@ -152,9 +152,9 @@ SLI: Actual: 93% of requests < 300ms (need improvement!)
 
 ---
 
-## Performance Testing & Monitoring
+## 8.5 Performance Testing & Monitoring
 
-### Performance Testing Types
+### 8.5.1 Performance Testing Types
 
 | Type             | Description               | Goal                        |
 |------------------|---------------------------|-----------------------------|
@@ -165,13 +165,13 @@ SLI: Actual: 93% of requests < 300ms (need improvement!)
 
 **Goal:** Identify bottlenecks & ensure reliability.
 
-#### CLI Example: Load Testing with `wrk`
+#### 8.5.1.1 CLI Example: Load Testing with `wrk`
 
 ```bash
 wrk -t8 -c400 -d30s https://yourapi.com/api/endpoint
 ```
 
-### Performance Monitoring
+### 8.5.2 Performance Monitoring
 
 - **Testing** is pre-deployment; **monitoring** is continuous in production.
 - **APM tools:** New Relic, Datadog.
@@ -185,11 +185,11 @@ wrk -t8 -c400 -d30s https://yourapi.com/api/endpoint
 
 ---
 
-## Caching for Speed Optimization
+## 8.6 Caching for Speed Optimization
 
 Caching is one of the most powerful levers for reducing latency, easing backend load, and scaling systems.
 
-### Why Caching Matters
+### 8.6.1 Why Caching Matters
 
 - **Reducing latency:** Serve requests in milliseconds by avoiding repeated trips to databases or recomputing results.
 - **Easing backend load:** Offload expensive queries or computations from databases.
@@ -214,7 +214,7 @@ flowchart LR
                   |<-- cache hit|
 ```
 
-### Types of Caching
+### 8.6.2 Types of Caching
 
 | Type                | Where it Lives             | Example Tools / Tech                   | Use Case                                  |
 |---------------------|----------------------------|----------------------------------------|--------------------------------------------|
@@ -223,9 +223,9 @@ flowchart LR
 | **CDN caching**     | Content Delivery Networks  | Cloudflare, Akamai                     | Static assets (JS, CSS, images), API responses |
 | **Database caching**| Database result-set cache  | Redis, Materialized Views              | Expensive queries, analytics              |
 
-### Caching Strategies
+### 8.6.3 Caching Strategies
 
-#### 1. Write-Through Caching
+#### 8.6.3.1 Write-Through Caching
 
 (See `image-10.png` for diagram.)
 
@@ -239,7 +239,7 @@ def write(key, value):
     db.save(key, value)    # Update database
 ```
 
-#### 2. Write-Back (Write-Behind) Caching
+#### 8.6.3.2 Write-Back (Write-Behind) Caching
 
 (See `image-11.png`.)
 
@@ -254,7 +254,7 @@ def write(key, value):
     schedule_async_db_write(key, value)
 ```
 
-#### 3. Lazy Loading (Cache-Aside)
+#### 8.6.3.3 Lazy Loading (Cache-Aside)
 
 (See `image-12.png`.)
 
@@ -271,13 +271,13 @@ def read(key):
     return value
 ```
 
-#### 4. Explicit / Manual Caching
+#### 8.6.3.4 Explicit / Manual Caching
 
 - **How it works:** Developers decide explicitly when and what to cache.
 - **Pro:** Maximum flexibility.
 - **Con:** Higher complexity, risk of staleness if not managed well.
 
-### Cache Eviction Policies
+### 8.6.4 Cache Eviction Policies
 
 (See `image-13.png`.)
 
@@ -290,7 +290,7 @@ Caches have limited memory, so old or less useful data must be evicted.
 | **FIFO (First In, First Out)**  | Remove oldest item added                 | Simplicity, but less intelligent         |
 | **TTL (Time To Live)**          | Expire items after a fixed time          | Time-sensitive data (API responses, sessions) |
 
-### Redis: The Caching Powerhouse
+### 8.6.5 Redis: The Caching Powerhouse
 
 [Redis](https://redis.io/) is an open-source, in-memory key-value store, renowned for its blazing speed:
 
@@ -375,7 +375,7 @@ function fetchProductFromDB(productId) {
 app.listen(3000, () => console.log("Server running on port 3000"));
 ```
 
-### Real-World Caching Examples
+### 8.6.6 Real-World Caching Examples
 
 - **CDN:** Static assets (images, JS, CSS) cached near users for instant load times.
 - **E-commerce:** Product catalog queries cached to avoid repeated expensive DB hits.
@@ -390,7 +390,7 @@ app.listen(3000, () => console.log("Server running on port 3000"));
 | Product page data      | Server-side  | Redis/Memcached  |
 | API responses          | Server-side  | Redis            |
 
-### Caching — Tips & Tricks
+### 8.6.7 Caching — Tips & Tricks
 
 - **Always measure:** Use metrics to identify what should be cached (hot queries).
 - **Apply TTL smartly:** Especially on volatile or time-sensitive data.
@@ -403,11 +403,11 @@ app.listen(3000, () => console.log("Server running on port 3000"));
 
 ---
 
-## Messaging & Queues for Decoupling
+## 8.7 Messaging & Queues for Decoupling
 
 Asynchronous messaging **decouples** services, boosts scalability, and enhances resilience.
 
-### Why Use Asynchronous Messaging?
+### 8.7.1 Why Use Asynchronous Messaging?
 
 Traditional synchronous calls force producers (e.g., APIs) to wait for consumers (e.g., email sender, payment processor) to finish their work. This **tightly couples** services and limits scalability.
 
@@ -421,7 +421,7 @@ Traditional synchronous calls force producers (e.g., APIs) to wait for consumers
 - **Resilience:** If a consumer fails, messages are not lost.
 - **Flexibility:** Add new consumers without touching producers.
 
-### Core Concepts
+### 8.7.2 Core Concepts
 
 (See `image-15.png` for architecture overview.)
 
@@ -434,7 +434,7 @@ Traditional synchronous calls force producers (e.g., APIs) to wait for consumers
 | **Queue/Topic** | Logical channel for delivery                              |
 | **Ack**       | Acknowledgement from consumer after successful processing   |
 
-### Typical Flow
+### 8.7.3 Typical Flow
 
 ```mermaid
 sequenceDiagram
@@ -465,7 +465,7 @@ graph TD
     B -- Delivers --> D[Consumer 2]
 ```
 
-### Real-World Example: Decoupled Order Processing
+### 8.7.4 Real-World Example: Decoupled Order Processing
 
 (See `image-16.png` for diagram.)
 
@@ -481,7 +481,7 @@ graph TD
 - **Downstream failures** don't block the producer.
 - **Easy to add new consumers** (e.g., promotions service).
 
-### When to Use Queues?
+### 8.7.5 When to Use Queues?
 
 - **Bursty workloads:** Traffic spikes (flash sales), batch imports.
 - **Background jobs:** Emails, processing, report generation, exports.
@@ -489,9 +489,9 @@ graph TD
 - **Buffering:** Smoothing out peaks to avoid overloading downstream systems.
 - **Decoupling between services.**
 
-### Popular Message Brokers: RabbitMQ vs. Kafka
+### 8.7.6 Popular Message Brokers: RabbitMQ vs. Kafka
 
-#### RabbitMQ — Traditional Message Broker
+#### 8.7.6.1 RabbitMQ — Traditional Message Broker
 
 - Built on AMQP, designed for reliable message delivery.
 - Follows a **push-based model:** messages are pushed to consumers.
@@ -500,7 +500,7 @@ graph TD
 - Focuses on **routing flexibility** (direct, topic, fanout exchanges).
 - Messages are **removed after consumption.**
 
-#### Kafka — Distributed Event Streaming Platform
+#### 8.7.6.2 Kafka — Distributed Event Streaming Platform
 
 - Built for **high-throughput**, durable, distributed event logs.
 - Uses a **pull-based model:** consumers read at their own pace.
@@ -509,7 +509,7 @@ graph TD
 - Highly **scalable and fault-tolerant.**
 - Messages are **retained for configurable durations** (even after consumption).
 
-#### RabbitMQ vs Kafka
+#### 8.7.6.3 RabbitMQ vs Kafka
 
 | Feature        | RabbitMQ                          | Kafka                                |
 |----------------|-----------------------------------|--------------------------------------|
@@ -521,15 +521,15 @@ graph TD
 | **Routing**    | Flexible (direct, topic, fanout)  | Partitioned topics                   |
 | **Scale**      | Good                              | Excellent (built for high throughput)|
 
-### Delivery Guarantees
+### 8.7.7 Delivery Guarantees
 
 - **At-least-once** (default): Message retried until acknowledged; possible duplicates. *Consumer must be idempotent.*
 - **At-most-once:** Message delivered only once (no retries); possible loss.
 - **Exactly-once:** Processed once and only once; hardest to implement, supported by Kafka under constraints.
 
-### Sample Code: Publishing & Consuming Messages
+### 8.7.8 Sample Code: Publishing & Consuming Messages
 
-#### Example 1: RabbitMQ (Python with `pika`)
+#### 8.7.8.1 Example 1: RabbitMQ (Python with `pika`)
 
 **Producer:**
 
@@ -602,7 +602,7 @@ channel.basic_consume(queue='task_queue', on_message_callback=callback)
 channel.start_consuming()
 ```
 
-#### Example 2: Kafka (Node.js with `kafkajs`)
+#### 8.7.8.2 Example 2: Kafka (Node.js with `kafkajs`)
 
 **Producer:**
 
@@ -638,7 +638,7 @@ await consumer.run({
 });
 ```
 
-### Messaging — Best Practices
+### 8.7.9 Messaging — Best Practices
 
 - **Idempotent consumers:** Ensure re-processing a message doesn't cause incorrect results.
 - **Dead-letter queues (DLQ):** Capture and inspect messages that fail multiple times.
@@ -647,7 +647,7 @@ await consumer.run({
 - **Choose guarantees wisely:** At-least-once is common, but know your requirements.
 - **Security:** Encrypt messages, use authentication & authorization.
 
-### Messaging — Tips & Tricks
+### 8.7.10 Messaging — Tips & Tricks
 
 - **Make operations idempotent:** Store processed message IDs or use database upserts.
 - **Use DLQs:** Never silently drop or lose failing messages.
@@ -658,11 +658,11 @@ await consumer.run({
 
 ---
 
-## Concurrency & Parallelism
+## 8.8 Concurrency & Parallelism
 
 Unlocking performance often means handling **many tasks at once** — but how?
 
-### Concurrency vs. Parallelism
+### 8.8.1 Concurrency vs. Parallelism
 
 (See `image-17.png` for diagram.)
 
@@ -732,7 +732,7 @@ Concurrency (Task Management)        Parallelism (Task Execution)
 +------------------------------+     +--------------------------+
 ```
 
-### Processes vs. Threads
+### 8.8.2 Processes vs. Threads
 
 (See `image-18.png` for diagram.)
 
@@ -749,9 +749,9 @@ Concurrency (Task Management)        Parallelism (Task Execution)
 - **Processes:** Chrome and Word, each with its memory.
 - **Threads:** Multiple HTTP request handlers in a web server, sharing cache.
 
-### Thread Pools & Worker Models
+### 8.8.3 Thread Pools & Worker Models
 
-#### Thread Pools
+#### 8.8.3.1 Thread Pools
 
 - **What:** Pre-created pool of threads reused for multiple tasks.
 - **Why:** Avoids the overhead of creating/destroying threads per task.
@@ -789,7 +789,7 @@ with ThreadPoolExecutor(max_workers=10) as executor:
         executor.submit(process_request, req)
 ```
 
-#### Worker Model
+#### 8.8.3.2 Worker Model
 
 - **What:** Tasks are distributed to idle workers from a shared queue.
 - **Why:** Improves scalability and balances CPU utilization.
@@ -805,7 +805,7 @@ tasks.forEach(task => {
 });
 ```
 
-### Asynchronous Processing
+### 8.8.4 Asynchronous Processing
 
 **Why Async?**
 
@@ -825,7 +825,7 @@ async function getUserData(id) {
 }
 ```
 
-### Concurrency in Web Servers
+### 8.8.5 Concurrency in Web Servers
 
 | Traditional Servers          | Modern Servers                         |
 |------------------------------|----------------------------------------|
@@ -838,9 +838,9 @@ async function getUserData(id) {
 - **Node.js:** Event-loop, non-blocking I/O.
 - **ASP.NET Core / Nginx:** Thread pools + async I/O.
 
-### Common Pitfalls: Race Conditions & Deadlocks
+### 8.8.6 Common Pitfalls: Race Conditions & Deadlocks
 
-#### Race Condition
+#### 8.8.6.1 Race Condition
 
 - Occurs when multiple threads access/modify shared data unsafely.
 - Can corrupt data or cause unpredictable bugs.
@@ -859,13 +859,13 @@ def increment():
             counter += 1
 ```
 
-#### Deadlock
+#### 8.8.6.2 Deadlock
 
 - Threads stuck waiting for each other's resources.
 - System can freeze.
 - **Fix:** Lock ordering, timeouts, avoiding nested locks.
 
-### Concurrency — Best Practices
+### 8.8.7 Concurrency — Best Practices
 
 - Prefer async/non-blocking I/O for I/O-bound tasks.
 - Use thread pools for CPU-bound work, not raw threads.
@@ -879,7 +879,7 @@ def increment():
 - Background jobs (RabbitMQ, Kafka): Worker model.
 - Parallel image rendering: Each frame on different core.
 
-### Concurrency — Summary Table
+### 8.8.8 Concurrency — Summary Table
 
 | Concept             | Purpose              | Typical Tools/Techniques        | Example                        |
 |---------------------|----------------------|---------------------------------|--------------------------------|
@@ -891,7 +891,7 @@ def increment():
 | Synchronization     | Prevent race bugs    | Locks, mutexes, semaphores      | threading.Lock (Python)        |
 | Deadlock Avoidance  | System stability     | Lock ordering, timeouts         | Consistent lock strategy       |
 
-### Event Loop (Simplified)
+### 8.8.9 Event Loop (Simplified)
 
 ```
 +-------------------------+
@@ -907,9 +907,9 @@ def increment():
 
 ---
 
-## Database Performance Optimization Techniques
+## 8.9 Database Performance Optimization Techniques
 
-### 1. Replication
+### 8.9.1 Replication
 
 **Replication** is the process of copying and maintaining database objects in multiple places. Critical for:
 
@@ -926,9 +926,9 @@ def increment():
 
 > **Tip:** Use master-slave for simple read scaling; master-master for HA and fault tolerance, but beware of write conflicts.
 
-### 2. Sharding & Partitioning
+### 8.9.2 Sharding & Partitioning
 
-#### Sharding
+#### 8.9.2.1 Sharding
 
 **Sharding** splits large datasets across multiple servers (shards), each holding a subset of the data. Enables horizontal scaling.
 
@@ -941,7 +941,7 @@ graph LR
     A[Client] --> D[Shard 3: ASIA]
 ```
 
-#### Partitioning
+#### 8.9.2.2 Partitioning
 
 **Partitioning** divides data inside a single database:
 
@@ -961,7 +961,7 @@ CREATE TABLE orders_2023 PARTITION OF orders
 
 > **Tip:** Sharding is for scaling *across servers*; partitioning is for organizing data *within a server*.
 
-### 3. CAP Theorem (Performance Perspective)
+### 8.9.3 CAP Theorem (Performance Perspective)
 
 The **CAP Theorem** states that in a distributed system, you can only guarantee two of:
 
@@ -976,7 +976,7 @@ The **CAP Theorem** states that in a distributed system, you can only guarantee 
 
 > **Performance note:** Prioritizing availability (AP) often improves performance at scale but may introduce temporary inconsistencies.
 
-### 4. Indexes
+### 8.9.4 Indexes
 
 An **index** is a data structure (like a B-tree or hash table) that lets the database quickly find data without scanning every row.
 
@@ -1010,25 +1010,25 @@ CREATE INDEX idx_user_email ON users(email);
 
 > **Tip:** Indexes accelerate reads but slow down writes. Use them judiciously.
 
-### 5. Normalization vs. Denormalization
+### 8.9.5 Normalization vs. Denormalization
 
 (See `image-21.png` for diagram.)
 
-#### Normalization
+#### 8.9.5.1 Normalization
 
 - **Goal:** Reduce data redundancy by organizing data into tables.
 - **Benefits:** Minimizes storage costs and eliminates anomalies.
 - **Drawback:** Can lead to complex joins and slower read performance.
 - Splits data into related tables to reduce redundancy. Ideal for transactional (OLTP) systems.
 
-#### Denormalization
+#### 8.9.5.2 Denormalization
 
 - **Goal:** Introduce redundancy to reduce join operations and speed up reads.
 - **Benefits:** Faster read performance.
 - **Drawback:** Increased storage and potential data anomalies.
 - Best for reporting/analytics (OLAP).
 
-#### When to Use Each
+#### 8.9.5.3 When to Use Each
 
 - **Normalization:** For transactional systems (OLTP).
 - **Denormalization:** For reporting systems or read-heavy workloads.
@@ -1051,7 +1051,7 @@ FROM orders_denormalized;
 
 > **Tip:** Normalize for consistency; denormalize for read performance (especially in reporting / data warehouse scenarios).
 
-### 6. Connection Pooling
+### 8.9.6 Connection Pooling
 
 (See `image-22.png` for diagram.)
 
@@ -1093,7 +1093,7 @@ pool.query('SELECT * FROM products', (err, res) => { /* ... */ });
 
 > **Tip:** Always use connection pooling for web apps and microservices to avoid exhausting DB resources under load.
 
-### 7. Query Optimization
+### 8.9.7 Query Optimization
 
 Techniques to make queries run faster:
 
@@ -1114,7 +1114,7 @@ JOIN order_items oi ON o.id = oi.order_id
 WHERE o.user_id = 123;
 ```
 
-### 8. Materialized Views
+### 8.9.8 Materialized Views
 
 (See `image-23.png` for diagram.)
 
@@ -1140,14 +1140,14 @@ GROUP BY region;
 REFRESH MATERIALIZED VIEW sales_summary;
 ```
 
-### 9. Batching & Pagination
+### 8.9.9 Batching & Pagination
 
-#### Batching
+#### 8.9.9.1 Batching
 
 - **Definition:** Sending multiple operations in a single request or transaction to reduce overhead.
 - **Use case:** Bulk inserts or updates.
 
-#### Pagination
+#### 8.9.9.2 Pagination
 
 - **Definition:** Breaking large sets of data into smaller chunks for efficient retrieval.
 - **Prevents** large queries that could lead to timeouts or memory issues.
@@ -1166,7 +1166,7 @@ SELECT * FROM products ORDER BY id LIMIT 50 OFFSET 100;
 
 > **Tip:** Always paginate API and UI queries to prevent performance bottlenecks.
 
-### Database Optimization — Quick Reference
+### 8.9.10 Database Optimization — Quick Reference
 
 | Technique           | Use For                       | Caution / Trade-off                     |
 |---------------------|-------------------------------|------------------------------------------|
@@ -1181,7 +1181,7 @@ SELECT * FROM products ORDER BY id LIMIT 50 OFFSET 100;
 | Batching            | Bulk inserts/updates          | Transaction size limits                  |
 | Pagination          | UI, API data navigation       | Inaccurate results on data change        |
 
-### Database Optimization — Layered Architecture Diagram
+### 8.9.11 Database Optimization — Layered Architecture Diagram
 
 ```mermaid
 graph TD
@@ -1197,9 +1197,9 @@ graph TD
 
 ---
 
-## Performance Anti-Patterns (and How to Fix Them)
+## 8.10 Performance Anti-Patterns (and How to Fix Them)
 
-### 1. Cache Stampede / Thundering Herd
+### 8.10.1 Cache Stampede / Thundering Herd
 
 A popular key expires. **1,000 concurrent requests** all miss the cache simultaneously and all hit the database. The DB falls over.
 
@@ -1208,7 +1208,7 @@ A popular key expires. **1,000 concurrent requests** all miss the cache simultan
 2. **Lock on regeneration** — first request that misses takes a lock, regenerates the value, others wait. Use Redis SETNX or distributed locks.
 3. **Probabilistic early expiration** — regenerate slightly before expiry, in the background. Avoids the cliff entirely.
 
-### 2. N+1 Query Problem
+### 8.10.2 N+1 Query Problem
 
 You fetch 100 users, then loop and run `SELECT * FROM orders WHERE user_id = ?` for each. That's **1 + 100 = 101 queries** instead of 1.
 
@@ -1228,7 +1228,7 @@ results = db.query("""
 
 > **Most ORMs make this easy to hit accidentally.** Use eager loading (`.includes` in Rails, `selectinload` in SQLAlchemy, `Include` in EF).
 
-### 3. Database Connection Pool Sized Wrong
+### 8.10.3 Database Connection Pool Sized Wrong
 
 Common mistake: setting pool size to a huge number like 500, assuming "more is better."
 
@@ -1236,13 +1236,13 @@ Common mistake: setting pool size to a huge number like 500, assuming "more is b
 
 **Use a pooler** (PgBouncer, ProxySQL) if you have many app servers. App-level pool stays small; pooler multiplexes.
 
-### 4. Blocking I/O on Hot Path
+### 8.10.4 Blocking I/O on Hot Path
 
 A 5 ms log-to-disk call doesn't sound bad — until you do it on every request and your p99 doubles.
 
 **Fix:** offload I/O to a background queue or async logger. The hot path should *never* block on disk/network for non-essential work.
 
-### 5. Synchronous Calls in a Chain
+### 8.10.5 Synchronous Calls in a Chain
 
 Service A → Service B → Service C, all synchronous. Total latency = sum of all three; failure of any one fails the whole request.
 
@@ -1250,7 +1250,7 @@ Service A → Service B → Service C, all synchronous. Total latency = sum of a
 
 ---
 
-## Cache Patterns — The Full Picture
+## 8.11 Cache Patterns — The Full Picture
 
 | Pattern        | How it works                                                           | Use when                                  |
 |----------------|-------------------------------------------------------------------------|-------------------------------------------|
@@ -1264,11 +1264,11 @@ Service A → Service B → Service C, all synchronous. Total latency = sum of a
 
 ---
 
-## Combined Tips & Tricks
+## 8.12 Combined Tips & Tricks
 
 A consolidated master list drawn from all sections.
 
-### Monitoring & Metrics
+### 8.12.1 Monitoring & Metrics
 
 - **Always monitor:** Use tools like Prometheus, Grafana, DataDog.
 - **Set SLOs/SLAs:** Make performance measurable and accountable.
@@ -1276,24 +1276,24 @@ A consolidated master list drawn from all sections.
 - **Watch for bottlenecks:** They often hide until your system is under stress.
 - **Document your performance strategy:** Make it part of your architecture, not an afterthought.
 
-### Testing
+### 8.12.2 Testing
 
 - **Test under real conditions:** Simulate both steady load and traffic spikes.
 - **Test under load:** Locust, JMeter, k6 to simulate concurrency issues before production.
 
-### Caching
+### 8.12.3 Caching
 
 - **Cache wisely:** Cache only what's expensive or slow to compute, and ensure consistency.
 - **Apply TTL smartly:** Especially on volatile or time-sensitive data.
 - **Prevent cache stampede:** Use locks or request coalescing.
 - **Automate cache invalidation:** Design carefully for dynamic content.
 
-### Messaging
+### 8.12.4 Messaging
 
 - **Design for failure:** Ensure your queue/message broker can handle spikes and outages.
 - **Make consumers idempotent:** Especially in queuing systems with at-least-once delivery.
 
-### Concurrency
+### 8.12.5 Concurrency
 
 - **Use thread pools:** Avoid creating/destroying threads for each task.
 - **Async for I/O-bound, thread pool for CPU-bound.**
@@ -1301,7 +1301,7 @@ A consolidated master list drawn from all sections.
 - **Avoid nested locks:** Keep locking hierarchy simple to reduce deadlock risk.
 - **Prefer async/non-blocking I/O:** Especially for I/O-bound tasks.
 
-### Database
+### 8.12.6 Database
 
 - **Tune your DB:** Indexes, sharding, connection pooling, and query optimization all matter.
 - **Use prepared statements:** Prevent SQL injection and improve plan caching.
@@ -1315,7 +1315,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## Sample Interview Questions
+## 8.13 Sample Interview Questions
 
 1. What is the difference between latency and throughput?
 2. Explain SLAs, SLOs, and SLIs. Why use P95/P99 instead of average?
@@ -1342,7 +1342,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## Summary & Key Takeaways
+## 8.14 Summary & Key Takeaways
 
 - Performance = speed, scalability, and efficiency under real-world load.
 - Use **caching** to reduce latency and load.
@@ -1358,7 +1358,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## Further Reading
+## 8.15 Further Reading
 
 - [System Design Interview – Alex Xu](https://www.amazon.com/System-Design-Interview-insiders-Second/dp/B08CMF2CQF)
 - [Google SRE Book: SLIs, SLOs, SLAs](https://sre.google/sre-book/service-level-objectives/)
