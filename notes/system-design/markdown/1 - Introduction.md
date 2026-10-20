@@ -687,12 +687,12 @@ This 29-chapter course is designed to take you from beginner to confident archit
 ### 1.10.2 Case Studies
 
 16. **URL Shortener** (TinyURL)
-17. **Chat / Messaging App** (WhatsApp) *(coming soon)*
-18. **News Feed** (Twitter / Instagram) *(coming soon)*
-19. **Distributed Key-Value Store & Cache** *(coming soon)*
-20. **Payment System** *(coming soon)*
+17. **Chat / Messaging App** (WhatsApp)
+18. **News Feed** (Twitter / Instagram)
+19. **Distributed Key-Value Store & Cache**
+20. **Payment System**
 21. **Auction Platform** (eBay)
-22. **Ticket Booking System** (Ticketmaster) *(coming soon)*
+22. **Ticket Booking System** (Ticketmaster)
 23. **Cloud Storage** (Google Drive / Dropbox)
 24. **Video Sharing Platform** (YouTube)
 25. **Search Engine** (Google)
@@ -700,7 +700,6 @@ This 29-chapter course is designed to take you from beginner to confident archit
 27. **Taxi Hailing App** (Uber)
 28. **Collaborative Document Editor** (Google Docs)
 
-> **About the gaps in numbering:** chapters 17–20 and 22 are reserved for planned chapters that haven't been written yet (marked *coming soon* above). They're not missing content — they're TBD slots.
 
 ### 1.10.3 Wrap-Up
 
