@@ -33,11 +33,11 @@ After reading this chapter, you'll be able to:
 - [7.10 Object Storage](#710-object-storage)
 - [7.11 File Systems and Distributed Storage](#711-file-systems-and-distributed-storage)
 - [7.12 Big Data Fundamentals](#712-big-data-fundamentals)
-- [7.19 Choosing the Right Storage Solution](#719-choosing-the-right-storage-solution)
-- [7.20 Combined Tips & Tricks](#720-combined-tips--tricks)
-- [7.21 Sample Interview Questions](#721-sample-interview-questions)
-- [7.22 Summary & Key Takeaways](#722-summary--key-takeaways)
-- [7.23 Further Reading](#723-further-reading)
+- [7.18 Choosing the Right Storage Solution](#718-choosing-the-right-storage-solution)
+- [7.19 Combined Tips & Tricks](#719-combined-tips--tricks)
+- [7.20 Sample Interview Questions](#720-sample-interview-questions)
+- [7.21 Summary & Key Takeaways](#721-summary--key-takeaways)
+- [7.22 Further Reading](#722-further-reading)
 
 ---
 
@@ -1758,47 +1758,7 @@ LIMIT 5;
 
 Federation does not remove the single-writer limit inside one function: a busy orders DB may still need replicas or sharding later.
 
-## 7.18 Multi-Tenancy
-
-Tenant isolation models (pool, bridge, silo), data isolation, and tenant-aware routing/security.
-
-**In one sentence:** a multi-tenant SaaS serves many customer organizations (tenants) from one system, and the core design choice is how much they share — everything (pool), a shared app with separate databases or schemas (bridge), or fully separate stacks (silo) — traded off against cost, isolation, and operational effort.
-
-**Mental model — housing.** Pool is a hostel: one big room, cheapest, and everyone relies on the staff to keep belongings apart. Bridge is an apartment building: shared walls and elevators, but each unit has its own lock. Silo is a street of detached houses: expensive, but nobody's plumbing problem floods the neighbors.
-
-**The three models**
-
-| | Pool (shared everything) | Bridge (shared app, separate schema or DB) | Silo (dedicated stack) |
-|-|-------------------------|-------------------------------------------|------------------------|
-| Data | one DB, a `tenant_id` column on every row | schema-per-tenant or DB-per-tenant | separate DB, app, and often account/VPC |
-| Isolation | logical (code + RLS) | stronger (separate objects) | strongest (physical) |
-| Cost per tenant | lowest | medium | highest |
-| Number of tenants | 100,000s | 100s–1,000s (schema) / 100s (DB) | tens to hundreds |
-| Noisy neighbors | a real risk | reduced (DB-level) | none |
-| Per-tenant backup / restore / delete | hard (row-level) | easy | easy |
-| Migrations | one run | N runs (automate!) | N stacks to upgrade |
-| Customization | little | some | a lot (versions, regions, keys) |
-| Typical tier | free / self-serve | business | enterprise, regulated, "bring your own key" |
-
-Real SaaS usually mixes them: pool for the long tail, silo for the biggest or most regulated tenants (a *tiered* model).
-
-**Preventing tenant data leaks — defense in depth**
-
-| Layer | Control |
-|-------|---------|
-| Identity | every request carries an authenticated tenant ID (from the token, never from a URL parameter alone) |
-| Application | a tenant context set once per request; repository methods *require* the tenant; no "unscoped" queries |
-| Database | **Row-Level Security (RLS)** policies filter by `current_setting('app.tenant_id')`; unique constraints include `tenant_id` |
-| Caches, queues, search | the tenant ID is part of every cache key, message, index filter, and object-storage prefix |
-| Keys | per-tenant encryption keys (envelope encryption) for silo/bridge tiers |
-| Testing | automated **cross-tenant tests**: tenant A's token must never read tenant B's IDs, across every endpoint |
-| Observability | the tenant ID in logs, metrics, and traces (and per-tenant usage metering) |
-
-**Noisy neighbors** — per-tenant rate limits and quotas (Ch 8), fair queuing for background jobs, statement timeouts, moving heavy tenants to their own shard or silo, and metering usage so it can also be billed.
-
-**Tenant-aware routing** — resolve the tenant from the subdomain (`acme.app.com`), a header, or the token, then look up its placement (`tenant → shard / region / stack`) in a small, cached **tenant catalog**, and route there.
-
-## 7.19 Choosing the Right Storage Solution
+## 7.18 Choosing the Right Storage Solution
 
 | Requirement                          | Best Storage Type                                       |
 |--------------------------------------|---------------------------------------------------------|
@@ -1810,7 +1770,7 @@ Real SaaS usually mixes them: pool for the long tail, silo for the biggest or mo
 
 ---
 
-### 7.19.1 Five Questions Before You Choose a Database
+### 7.18.1 Five Questions Before You Choose a Database
 
 1. **What are the access patterns?** Look-ups by key, ad-hoc queries and joins, full-text search, graph traversals, time-ordered writes, or similarity search?
 2. **How connected is the data?** Many relationships point to relational or graph; self-contained records point to documents.
@@ -1820,17 +1780,17 @@ Real SaaS usually mixes them: pool for the long tail, silo for the biggest or mo
 
 **Derived stores are not the source of truth.** A search engine (Elasticsearch) or a cache is built *from* a primary database and lags behind it, so it can be stale and is weak at transactions and updates. Keep the system of record in a database designed for it, and rebuild derived stores from it when needed.
 
-## 7.20 Combined Tips & Tricks
+## 7.19 Combined Tips & Tricks
 
 A consolidated master list drawn from across all sections.
 
-### 7.20.1 Data Modeling
+### 7.19.1 Data Modeling
 
 - **Always know your data!** Structured or unstructured? This guides storage and DB choice.
 - For SQL, design normalized schemas; for NoSQL, optimize for access patterns.
 - **Know your consistency needs:** Financial or mission-critical systems need strong consistency (ACID/CP). For social feeds or caching, availability (AP/BASE) is often more valuable.
 
-### 7.20.2 Scaling
+### 7.19.2 Scaling
 
 - **Design for scale from day one:** Use distributed storage and sharding for growth.
 - **Plan for scale:** If you expect massive growth, design for horizontal scaling — favor NoSQL or distributed SQL solutions.
@@ -1839,19 +1799,19 @@ A consolidated master list drawn from across all sections.
 - **Use consistent hashing for dynamic clusters**, especially if you expect nodes to be added/removed frequently.
 - **Document your sharding key choices:** Poorly chosen sharding keys can lead to hotspots or unbalanced data.
 
-### 7.20.3 Reliability & Replication
+### 7.19.3 Reliability & Replication
 
 - **Replication for read-heavy systems:** Deploy read replicas to distribute load but monitor replication lag.
 - **Automate failover and recovery:** Use managed database services or robust orchestration for quick failover.
 - **Test failover and replication regularly:** Don't just set it and forget it.
 - **Simulate failures:** Test your replication and failover strategies (e.g., using Chaos Engineering).
 
-### 7.20.4 Trade-offs
+### 7.19.4 Trade-offs
 
 - **Monitor the CAP trade-offs:** Decide early if your system values consistency over availability, or vice versa.
 - **Monitor trade-offs:** Optimize for the property (scalability, reliability, or performance) that aligns with your business needs.
 
-### 7.20.5 Object & Distributed Storage
+### 7.19.5 Object & Distributed Storage
 
 - **Use object storage for unstructured, growing data:** Images, backups, logs belong here.
 - **Choose storage class wisely:** For S3, select Standard, Infrequent Access, or Glacier based on retrieval needs and cost.
@@ -1859,7 +1819,7 @@ A consolidated master list drawn from across all sections.
 - **Object Storage Cost:** Use lifecycle policies to move old data to cheaper storage classes (e.g., S3 Glacier).
 - **DFS for Analytics:** Choose HDFS or similar for big data processing pipelines, ensuring replication and scalability.
 
-### 7.20.6 Big Data
+### 7.19.6 Big Data
 
 - **Know your 6 V's:** Always consider volume, velocity, variety, veracity, value, and variability.
 - **Hybrid processing:** Combine batch (for large-scale analytics) and stream (for real-time actions) for robust solutions.
@@ -1870,7 +1830,7 @@ A consolidated master list drawn from across all sections.
 - **Monitor and clean data:** Poor veracity can taint downstream analytics.
 - **Scalability first:** Assume your data will grow — design horizontally scalable systems from the start.
 
-### 7.20.7 Security & Operations
+### 7.19.7 Security & Operations
 
 - **Security:** Implement access controls and encryption, especially for object and distributed storage.
 - **Backup:** Regularly backup critical data, and test restoration procedures.
@@ -1879,7 +1839,7 @@ A consolidated master list drawn from across all sections.
 
 ---
 
-## 7.21 Sample Interview Questions
+## 7.20 Sample Interview Questions
 
 1. Why is storage a critical component in system design?
 2. How do you differentiate between structured and unstructured data?
@@ -1897,7 +1857,7 @@ A consolidated master list drawn from across all sections.
 
 ---
 
-## 7.22 Summary & Key Takeaways
+## 7.21 Summary & Key Takeaways
 
 - **Storage is foundational:** Impacts every system's performance, reliability, and cost.
 - **Understand your data:** Structured vs. unstructured shapes your architecture.
@@ -1912,7 +1872,7 @@ A consolidated master list drawn from across all sections.
 
 ---
 
-## 7.23 Further Reading
+## 7.22 Further Reading
 
 - [AWS Storage Services Overview](https://aws.amazon.com/products/storage/)
 - [Google Cloud Storage Documentation](https://cloud.google.com/storage/docs/)

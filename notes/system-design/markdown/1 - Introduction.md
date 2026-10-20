@@ -678,10 +678,10 @@ This 29-chapter course is designed to take you from beginner to confident archit
 8. **Performance** — Caching, message queues, concurrency, indexing, query optimization
 9. **Reliability, Availability & Disaster Recovery** — Fault tolerance, redundancy, multi-data-center design, RTO/RPO, backups, CI/CD and safe deployment
 10. **Security** — CIA triad, authentication, authorization, encryption, threat modeling
-11. **Distributed Systems Fundamentals** *(coming soon)*
-12. **Cloud Design Patterns** *(coming soon)*
-13. **Multi-Tenancy** *(coming soon)*
-14. **Cloud Architecture & Cost** *(coming soon)*
+11. **Distributed Systems Fundamentals**
+12. **Cloud Design Patterns**
+13. **Multi-Tenancy**
+14. **Cloud Architecture & Cost**
 15. **The System Design Blueprint** — A 4-step methodology for tackling any design problem
 
 ### 1.10.2 Case Studies
@@ -700,7 +700,7 @@ This 29-chapter course is designed to take you from beginner to confident archit
 27. **Taxi Hailing App** (Uber)
 28. **Collaborative Document Editor** (Google Docs)
 
-> **About the gaps in numbering:** chapters 11–14, 17–20 and 22 are reserved for planned chapters that haven't been written yet (marked *coming soon* above). They're not missing content — they're TBD slots.
+> **About the gaps in numbering:** chapters 17–20 and 22 are reserved for planned chapters that haven't been written yet (marked *coming soon* above). They're not missing content — they're TBD slots.
 
 ### 1.10.3 Wrap-Up
 

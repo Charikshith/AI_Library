@@ -139,6 +139,34 @@
       "summary": "CIA triad, STRIDE, OAuth 2.0 flows, JWT pitfalls, defense-in-depth, encryption, secrets management, Zero Trust.",
       "subtitle": "Security is a core pillar — not a feature. This chapter walks through the CIA triad, threat modeling, OAuth 2.0 flows, JWT pitfalls, encryption & PKI, network segmentation, Zero Trust, defense-in-depth, OWASP Top 10, and the security headers every app should set by default."
     },
+    "Distributed Systems Fundamentals": {
+      "icon": "🧩",
+      "short": "Distributed Systems Fundamentals",
+      "phase": "Foundations",
+      "summary": "Replication, quorums, consistency trade-offs, failure modes and event-driven systems in practice.",
+      "subtitle": "Replication, quorums, consistency trade-offs, failure modes and event-driven systems in practice."
+    },
+    "Cloud Design Patterns": {
+      "icon": "☁️",
+      "short": "Cloud Design Patterns",
+      "phase": "Foundations",
+      "summary": "A catalog of named patterns for messaging, data, design, reliability and security, and which to learn first.",
+      "subtitle": "A catalog of named patterns for messaging, data, design, reliability and security, and which to learn first."
+    },
+    "Multi-Tenancy": {
+      "icon": "🏢",
+      "short": "Multi-Tenancy",
+      "phase": "Foundations",
+      "summary": "Isolation models, tenant-aware routing, noisy neighbours and cross-tenant safety for SaaS.",
+      "subtitle": "Isolation models, tenant-aware routing, noisy neighbours and cross-tenant safety for SaaS."
+    },
+    "Cloud Architecture & Cost": {
+      "icon": "💰",
+      "short": "Cloud Architecture & Cost",
+      "phase": "Foundations",
+      "summary": "Choosing managed services, serverless vs containers vs VMs, and designing with unit economics in mind.",
+      "subtitle": "Choosing managed services, serverless vs containers vs VMs, and designing with unit economics in mind."
+    },
     "The System Design Blueprint": {
       "icon": "🧭",
       "short": "The System Design Blueprint",

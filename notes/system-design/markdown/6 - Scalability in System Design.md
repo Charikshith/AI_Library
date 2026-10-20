@@ -30,10 +30,10 @@ After reading this chapter, you'll be able to:
 - [6.9 Cloud Building Blocks: An AWS Service Map](#69-cloud-building-blocks-an-aws-service-map)
 - [6.10 Monitoring & Proactive Scaling](#610-monitoring--proactive-scaling)
 - [6.11 Cost Optimization Strategies](#611-cost-optimization-strategies)
-- [6.19 Combined Tips & Tricks](#619-combined-tips--tricks)
-- [6.20 Sample Interview Questions](#620-sample-interview-questions)
-- [6.21 Key Takeaways](#621-key-takeaways)
-- [6.22 Further Reading](#622-further-reading)
+- [6.17 Combined Tips & Tricks](#617-combined-tips--tricks)
+- [6.18 Sample Interview Questions](#618-sample-interview-questions)
+- [6.19 Key Takeaways](#619-key-takeaways)
+- [6.20 Further Reading](#620-further-reading)
 
 ---
 
@@ -1061,97 +1061,11 @@ Turn product numbers ("10 million daily users") into engineering numbers with qu
 
 **State your assumptions.** Every estimate is only as good as its inputs. Write them down so others can challenge the right number.
 
-## 6.17 Cloud Architecture Choices
-
-Cloud building blocks (compute, storage, networking, managed services), serverless vs containers, and cost-aware design.
-
-**In one sentence:** cloud architecture is choosing and connecting rented building blocks — compute, storage, networking, and managed services — so the system meets its reliability, performance, security, and cost goals with the least undifferentiated work for your team.
-
-**Mental model — building with LEGO Technic vs carving wood.** On-premises you carve every part yourself: servers, racks, databases, backups. In the cloud you snap together ready-made parts (a managed database, a queue, a load balancer) that someone else maintains. The skill moves from making parts to choosing the right parts, connecting them safely, and not buying far more bricks than you need.
-
-**The building blocks (AWS / GCP / Azure names)**
-
-| Category | Options | Use |
-|----------|---------|-----|
-| **Compute** | VMs (EC2 / Compute Engine / VMs); containers (EKS/ECS, GKE, Cloud Run, AKS, Container Apps); functions (Lambda, Cloud Functions, Azure Functions) | run code |
-| **Storage** | object (S3 / GCS / Blob); block (EBS / PD / Managed Disks); file (EFS / Filestore / Files) | files, volumes, shared file systems |
-| **Databases** | relational (RDS/Aurora, Cloud SQL/AlloyDB, Azure SQL); NoSQL (DynamoDB, Firestore/Bigtable, Cosmos DB); caches (ElastiCache, Memorystore); warehouses (Redshift, BigQuery, Synapse) | data |
-| **Networking** | VPC/VNet, subnets, NAT, load balancers, DNS, CDN, private endpoints, transit gateways | connectivity and isolation |
-| **Integration** | queues (SQS, Pub/Sub, Service Bus), streams (Kinesis, managed Kafka), workflows (Step Functions, Workflows), API gateways, event buses (EventBridge) | decoupling |
-| **Identity & security** | IAM, KMS, secrets managers, WAF | Ch 18 |
-| **Observability** | CloudWatch, Cloud Monitoring/Logging, Azure Monitor, managed Prometheus/Grafana | operations |
-
-**Serverless vs containers vs VMs**
-
-| | Functions (Lambda) | Serverless containers (Cloud Run, Fargate) | Kubernetes / VMs |
-|-|--------------------|-------------------------------------------|------------------|
-| Unit | a function per event | a container, scaled per request | pods/processes you manage |
-| Scaling | per request, to zero, very fast | per request/concurrency, to zero (Cloud Run) | autoscalers you configure; rarely to zero |
-| Max run time | ~15 min (Lambda) | long (up to 60 min per request on Cloud Run; unlimited on Fargate tasks) | unlimited |
-| Cold starts | yes (100 ms–seconds) | yes, smaller with min instances | none |
-| Ops burden | lowest | low | highest |
-| Cost at low/bursty traffic | **lowest** (pay per ms) | low | idle capacity costs money |
-| Cost at high steady traffic | can be **highest** | moderate | **lowest** per unit (with commitments) |
-| Portability / control | lowest | high (it's a container) | highest |
-| Fits | event glue, webhooks, cron, spiky APIs | most web APIs and workers | large platforms, special hardware/networking, steady heavy load |
-
-**Break-even sketch:** Lambda at 512 MB, 100 ms per request ≈ $0.00000083 compute + $0.0000002 request ≈ **$1.03 per million requests**. A 2-vCPU container at ~$50/month handling 200 req/s sustained ≈ 518M requests/month ≈ **$0.10 per million**. Serverless wins at low or spiky volume; containers win at high steady volume. Always model your own numbers.
-
-**Managed services — when sensible:** use managed databases, queues, caches, and object storage unless you have a strong reason not to (special performance, cost at huge scale, portability requirements). Running your own Postgres HA with backups, patching, and failover is a full-time job.
-
-**Lock-in, sensibly** — lock-in isn't binary; it's a cost you weigh. Low-regret choices: standard interfaces (Postgres, Kafka API, S3 API, OCI containers, Kubernetes, OpenTelemetry, Terraform). Accept deep lock-in where the service gives a big advantage (DynamoDB, BigQuery), and keep your domain logic behind your own interfaces (Vol 3 Ch 9) so a later migration touches adapters, not everything.
-
-**Well-architected pillars** (shared by the major clouds): operational excellence, security, reliability, performance efficiency, cost optimization, sustainability.
-
-## 6.18 Cost and Capacity Economics
-
-Unit economics, cloud cost drivers, right-sizing, and cost as a design constraint.
-
-**In one sentence:** at the design level, cost is a requirement like latency — you estimate the cost of an architecture before building it, express it per unit of business value, find which components dominate as scale grows, and choose designs whose cost grows slower than revenue.
-
-**Mental model — running a restaurant.** You don't just look at the monthly total. You know the *cost per plate*: ingredients, staff minutes, a share of rent. If a dish costs €9 to make and sells for €8, selling more of it makes things worse. Architecture decisions set your cost per plate.
-
-This chapter is the **design-time** view. For operational cost hygiene (tagging, right-sizing a running cluster, purchase models), see Vol 1 Ch 59.
-
-**Unit economics**
-
-| Metric | Formula | Use |
-|--------|---------|-----|
-| Cost per request | infra cost ÷ requests | API efficiency; compare services |
-| **Cost per active customer / tenant** | infra cost ÷ monthly active customers (or tenants) | pricing, margins, plan design |
-| Cost per transaction / order | infra cost ÷ orders | e-commerce, payments |
-| Cost per GB stored / processed | storage or pipeline cost ÷ GB | data platforms |
-| Infra cost as % of revenue (COGS) | infra ÷ revenue | SaaS gross margin (healthy SaaS: infra ≈ 5–15% of revenue) |
-| Marginal cost | Δcost ÷ Δunits | does the next customer cost less than the average? |
-
-**How costs scale with design choices**
-
-| Design choice | Cost behavior |
-|---------------|---------------|
-| Per-tenant silos | fixed cost per tenant → bad for many small tenants (Ch 15) |
-| Fan-out on write for feeds | writes × followers: celebrities explode cost |
-| Synchronous calls to paid APIs per request | linear in traffic × price; cache or batch |
-| Keeping all logs / traces | linear in traffic × retention; sample and tier |
-| Multi-region active-active | ~2–3× infra + cross-region transfer |
-| Chatty microservices across AZs | transfer charges per GB on every hop |
-| LLM calls per request | often the *largest* cost line; see Vol 5 Ch 18 |
-
-**Right-sizing, continuously** — compare provisioned capacity with p95 usage (CPU, memory, IOPS, connections); keep headroom for SLOs (e.g. target 60–70% CPU at peak); autoscale; review monthly because usage drifts; pick newer, cheaper instance families (ARM).
-
-**Reducing spend without hurting reliability**
-
-1. Measure unit cost and the SLOs *together* on one dashboard.
-2. Remove pure waste first (idle, orphaned, over-retained) — no reliability impact.
-3. Right-size with load tests, one change at a time; watch p99 and errors.
-4. Buy commitments only for the proven steady baseline.
-5. Architectural changes (caching, batching, tiered storage, fewer cross-zone hops) — with ADRs.
-6. Never cut redundancy that the SLO depends on (multi-AZ, backups) without an explicit decision.
-
-## 6.19 Combined Tips & Tricks
+## 6.17 Combined Tips & Tricks
 
 A consolidated master list drawn from all sections.
 
-### 6.19.1 General Scaling
+### 6.17.1 General Scaling
 
 - **Start simple:** Use vertical scaling for MVPs; switch to horizontal as needs grow. Don't over-engineer.
 - **Design stateless services:** Easier to distribute and scale horizontally. Use shared databases or distributed caches for state.
@@ -1159,7 +1073,7 @@ A consolidated master list drawn from all sections.
 - **Know when to switch:** Monitor system metrics; switch when approaching hardware limits or needing high availability.
 - **Document scaling decisions:** Record why/when you chose vertical, horizontal, or diagonal scaling to aid future maintenance.
 
-### 6.19.2 Automation & Monitoring
+### 6.17.2 Automation & Monitoring
 
 - **Automate monitoring:** Track key metrics and set up alerts.
 - **Monitor everything:** Use dashboards and alerts (CloudWatch, Prometheus, Grafana).
@@ -1167,7 +1081,7 @@ A consolidated master list drawn from all sections.
 - **Plan for failure:** Implement health checks and graceful failover in load balancers.
 - **Test under load:** Use chaos engineering and load testing to surface bottlenecks early.
 
-### 6.19.3 Load Balancers
+### 6.17.3 Load Balancers
 
 - **Implement load balancers:** Distribute traffic, prevent overload, increase reliability.
 - **Choose the right load balancing strategy:** Match to traffic patterns.
@@ -1175,7 +1089,7 @@ A consolidated master list drawn from all sections.
 - **For microservices**, consider using a service mesh (Istio, Linkerd) for advanced L7 routing.
 - **Enable SSL termination** at the load balancer to reduce backend CPU load.
 
-### 6.19.4 Autoscaling
+### 6.17.4 Autoscaling
 
 - **Set conservative thresholds at first, then tune.** Avoid thrashing (rapid scaling in/out).
 - **Test autoscaling in staging with simulated traffic spikes.**
@@ -1185,7 +1099,7 @@ A consolidated master list drawn from all sections.
 - **Always review cloud provider pricing calculators** to forecast cost under peak loads.
 - **Limit autoscaling:** Set quotas to avoid runaway costs.
 
-### 6.19.5 Cost Optimization
+### 6.17.5 Cost Optimization
 
 - **Avoid over-provisioning.** Use auto-pausing and scale-to-zero features in serverless/cloud.
 - **Use spot/preemptible instances** for batch workloads (up to 80% cheaper).
@@ -1194,7 +1108,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## 6.20 Sample Interview Questions
+## 6.18 Sample Interview Questions
 
 1. What does scalability mean in system design?
 2. Compare vertical and horizontal scaling. When would you use each?
@@ -1217,7 +1131,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## 6.21 Key Takeaways
+## 6.19 Key Takeaways
 
 - **Scalability is essential** for growth, reliability, and performance in modern architectures.
 - **Vertical, horizontal, and diagonal scaling** serve different needs — choose wisely based on workload and growth patterns.
@@ -1229,7 +1143,7 @@ A consolidated master list drawn from all sections.
 
 ---
 
-## 6.22 Further Reading
+## 6.20 Further Reading
 
 **AWS:**
 
